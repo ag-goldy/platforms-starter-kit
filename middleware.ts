@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 import { rootDomain } from '@/lib/utils';
 
 function extractSubdomain(request: NextRequest): string | null {
@@ -44,9 +45,20 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const subdomain = extractSubdomain(request);
 
+  // Protect internal console routes
+  if (pathname.startsWith('/app')) {
+    const session = await auth();
+    if (!session) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    // Note: Customer user redirect is handled in the page component (can't use DB in Edge runtime)
+  }
+
   if (subdomain) {
-    // Block access to admin page from subdomains
-    if (pathname.startsWith('/admin')) {
+    // Block access to admin/app pages from subdomains
+    if (pathname.startsWith('/admin') || pathname.startsWith('/app')) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 

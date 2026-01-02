@@ -1,0 +1,145 @@
+# AGR Support - Project Rules & Guardrails
+
+## Architecture Principles
+
+### Data Isolation (NON-NEGOTIABLE)
+- Enforce org-level isolation on every read/write at the server layer (no client-only checks)
+- All database queries must include orgId filter where applicable
+- All Server Actions must verify user permissions before operations
+- Use centralized permission utilities, never inline authorization checks
+
+### Stack Alignment
+- Keep existing architecture patterns (routing, UI, auth patterns)
+- Use Drizzle ORM for database operations (PostgreSQL)
+- Use NextAuth.js v5 for authentication
+- Use Server Actions for mutations
+- Use shadcn/ui components for UI
+- TypeScript strict mode - NO `any` types
+
+### Code Quality
+- "Boring but reliable": predictable patterns, consistent naming, no clever hacks
+- Every endpoint/action must include authorization + org scoping
+- Add audit trail for sensitive actions (status changes, assignment, role changes)
+- Use consistent error handling patterns
+
+## UI/UX Requirements
+
+### Design Philosophy
+- Simple and fast: minimal clicks, obvious navigation, no clutter
+- Unique, non-generic look: DO NOT copy "SaaS dashboard template" or "AI app" aesthetic
+- No chat-first UI, no "assistant panels", no neon gradients, no gimmicky AI badges
+
+### Layout System
+- One consistent layout system for all dashboards (sidebar + top bar OR top bar + secondary nav)
+- Pick one layout pattern and stick to it across all pages
+- Clear hierarchy: queues → list → details
+
+### Ticket Handling ("Command Center" Style)
+- Default view = Queue + list
+- Ticket detail: key fields at top, timeline below, actions always visible
+- Quick actions inline (status, assign, priority) without modals where possible
+- Deeper edits in a single dedicated edit drawer/modal
+
+### Usability
+- Search and filters are first-class (status, priority, org, assignee)
+- Smart defaults (e.g., internal queue defaults to "Open/New")
+- Clear empty states and error states
+- Keyboard friendly for internal agents (basic shortcuts optional)
+
+### Accessibility
+- Focus states visible
+- Readable contrast ratios
+- Labels for all inputs
+- No icon-only controls without text labels
+
+## File Organization
+
+- `app/` - Next.js App Router pages
+  - `app/app/` - Internal console (agent/admin)
+  - `app/s/[subdomain]/` - Customer portal (subdomain-based)
+  - `app/support/` - Public ticket intake
+  - `app/ticket/[token]/` - Magic link ticket access
+- `components/` - React components
+  - `components/ui/` - shadcn/ui components
+  - `components/tickets/` - Ticket-related components
+  - `components/customer/` - Customer portal components
+  - `components/layouts/` - Layout components
+- `lib/` - Utility libraries
+  - `lib/auth/` - Authentication & authorization
+  - `lib/tickets/` - Ticket utilities
+  - `lib/email/` - Email service
+  - `lib/audit/` - Audit logging
+- `db/` - Database schema and migrations
+- `app/*/actions/` - Server Actions grouped by feature
+
+## Naming Conventions
+
+- Components: PascalCase (TicketList, TicketDetail)
+- Server Actions: camelCase with "Action" suffix (createTicketAction, updateTicketStatusAction)
+- Database tables: plural, snake_case (organizations, ticket_comments)
+- Database columns: snake_case (org_id, created_at)
+- Types/Interfaces: PascalCase (Ticket, User, Membership)
+- Constants: UPPER_SNAKE_CASE (ADMIN_ROLE, TICKET_STATUS)
+- Functions: camelCase (getTicketById, requireInternalRole)
+
+## Permission Patterns
+
+- Internal roles: ADMIN, AGENT, READONLY
+- Customer roles: CUSTOMER_ADMIN, REQUESTER, VIEWER
+- All permission checks must happen in server code
+- Use helper functions: requireInternalRole(), requireOrgMemberRole(orgId), canViewTicket(ticketId)
+- Return clear error messages on authorization failures
+
+## Database Patterns
+
+- All queries must include org filtering where applicable
+- Use transactions for multi-step operations
+- Use Drizzle's type-safe query builder
+- Timestamps: use createdAt, updatedAt consistently
+- Soft deletes: consider deletedAt if needed (not required for MVP)
+
+## Server Actions Pattern
+
+```typescript
+'use server';
+
+export async function actionName(
+  prevState: ActionState | null,
+  formData: FormData
+): Promise<ActionState> {
+  // 1. Check authentication
+  const session = await getServerSession();
+  if (!session) throw new Error('Unauthorized');
+  
+  // 2. Check authorization
+  await requireInternalRole(['ADMIN', 'AGENT']);
+  
+  // 3. Validate input
+  const data = validateFormData(formData);
+  
+  // 4. Perform operation with org scoping
+  const result = await performOperation(data, session.user.orgId);
+  
+  // 5. Audit log
+  await logAudit({ action: 'ACTION_NAME', ... });
+  
+  // 6. Revalidate/redirect
+  revalidatePath('/path');
+  return { success: true };
+}
+```
+
+## Error Handling
+
+- Use typed error responses
+- Never expose internal errors to clients
+- Log errors server-side
+- Return user-friendly error messages
+
+## Testing
+
+- Add tests for permission utilities
+- Add tests for ticket key generation
+- Test org isolation in queries
+- Manual testing checklist for key flows
+

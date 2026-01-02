@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import { rootDomain, protocol } from '@/lib/utils';
 
 export async function createSubdomainAction(
-  prevState: any,
+  _prevState: unknown,
   formData: FormData
 ) {
   const subdomain = formData.get('subdomain') as string;
@@ -59,7 +59,7 @@ export async function createSubdomainAction(
 }
 
 export async function deleteSubdomainAction(
-  prevState: any,
+  _prevState: unknown,
   formData: FormData
 ) {
   const subdomain = formData.get('subdomain');
