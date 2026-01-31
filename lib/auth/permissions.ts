@@ -1,8 +1,8 @@
-import { getServerUser } from './session';
 import { db } from '@/db';
-import { tickets, memberships } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { attachments, internalGroupMemberships, internalGroups, memberships, tickets } from '@/db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { InternalRole, CustomerRole } from './roles';
+import { getRequestContext } from './context';
 
 export class AuthorizationError extends Error {
   constructor(message: string) {
@@ -12,17 +12,21 @@ export class AuthorizationError extends Error {
 }
 
 export async function requireAuth() {
-  const user = await getServerUser();
-  if (!user) {
+  const ctx = await getRequestContext();
+  if (!ctx.user) {
     throw new AuthorizationError('You must be logged in to access this resource');
   }
-  return user;
+  return ctx.user;
 }
 
 export async function requireInternalRole(allowedRoles?: InternalRole[]) {
-  const user = await requireAuth();
+  const ctx = await getRequestContext();
+  const user = ctx.user;
+  if (!user) {
+    throw new AuthorizationError('You must be logged in to access this resource');
+  }
 
-  if (!user.isInternal) {
+  if (!ctx.isInternal) {
     throw new AuthorizationError('This resource is only accessible to internal users');
   }
 
@@ -38,15 +42,99 @@ export async function requireInternalRole(allowedRoles?: InternalRole[]) {
   return user;
 }
 
-export async function requireOrgMemberRole(orgId: string, allowedRoles?: CustomerRole[]) {
-  const user = await requireAuth();
+export async function requireInternalAdmin() {
+  const ctx = await getRequestContext();
+  const user = ctx.user;
 
-  const membership = await db.query.memberships.findFirst({
-    where: and(
-      eq(memberships.userId, user.id),
-      eq(memberships.orgId, orgId)
-    ),
-  });
+  if (!user || !ctx.isInternal) {
+    throw new AuthorizationError('This resource is only accessible to internal users');
+  }
+
+  const platformAdminRoles = ['PLATFORM_SUPER_ADMIN', 'PLATFORM_ADMIN'] as const;
+  const platformAdminRoleList = [...platformAdminRoles];
+
+  const [groupMembership] = await db
+    .select({ roleType: internalGroups.roleType })
+    .from(internalGroupMemberships)
+    .innerJoin(
+      internalGroups,
+      eq(internalGroupMemberships.groupId, internalGroups.id)
+    )
+    .where(
+      and(
+        eq(internalGroupMemberships.userId, user.id),
+        eq(internalGroups.scope, 'PLATFORM'),
+        inArray(internalGroups.roleType, platformAdminRoleList)
+      )
+    )
+    .limit(1);
+
+  const allowlist = process.env.INTERNAL_ADMIN_EMAILS;
+  if (!allowlist) {
+    if (groupMembership) {
+      return user;
+    }
+
+    const [anyPlatformAdminGroup] = await db
+      .select({ id: internalGroups.id })
+      .from(internalGroups)
+      .where(
+        and(
+          eq(internalGroups.scope, 'PLATFORM'),
+          inArray(internalGroups.roleType, platformAdminRoleList)
+        )
+      )
+      .limit(1);
+
+    if (anyPlatformAdminGroup) {
+      throw new AuthorizationError('This resource is only accessible to admins');
+    }
+
+    return user;
+  }
+
+  const allowed = allowlist
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowed.includes(user.email.toLowerCase())) {
+    return user;
+  }
+
+  if (!groupMembership) {
+    throw new AuthorizationError('This resource is only accessible to admins');
+  }
+
+  return user;
+}
+
+export async function requireOrgMemberRole(orgId?: string, allowedRoles?: CustomerRole[]) {
+  const ctx = await getRequestContext();
+  const user = ctx.user;
+
+  if (!user) {
+    throw new AuthorizationError('You must be logged in to access this resource');
+  }
+
+  const resolvedOrgId = ctx.org?.id ?? orgId;
+  if (!resolvedOrgId) {
+    throw new AuthorizationError('Organization context is missing');
+  }
+
+  if (ctx.org && orgId && ctx.org.id !== orgId) {
+    throw new AuthorizationError('Organization mismatch');
+  }
+
+  const membership =
+    (ctx.membership?.isActive ? ctx.membership : null) ||
+    (await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, user.id),
+        eq(memberships.orgId, resolvedOrgId),
+        eq(memberships.isActive, true)
+      ),
+    }));
 
   if (!membership) {
     throw new AuthorizationError('You do not have access to this organization');
@@ -58,11 +146,16 @@ export async function requireOrgMemberRole(orgId: string, allowedRoles?: Custome
     }
   }
 
-  return { user, membership };
+  return { user, membership, orgId: resolvedOrgId };
 }
 
 export async function canViewTicket(ticketId: string) {
-  const user = await requireAuth();
+  const ctx = await getRequestContext();
+  const user = ctx.user;
+
+  if (!user) {
+    throw new AuthorizationError('You must be logged in to access this resource');
+  }
 
   const ticket = await db.query.tickets.findFirst({
     where: eq(tickets.id, ticketId),
@@ -73,17 +166,26 @@ export async function canViewTicket(ticketId: string) {
   }
 
   // Internal users can view all tickets
-  if (user.isInternal) {
-    return { ticket, user };
+  if (ctx.isInternal) {
+    return { ticket, user, membership: null };
   }
 
   // External users must be members of the ticket's org
-  const membership = await db.query.memberships.findFirst({
-    where: and(
-      eq(memberships.userId, user.id),
-      eq(memberships.orgId, ticket.orgId)
-    ),
-  });
+  let membership = ctx.membership?.isActive ? ctx.membership : null;
+  if (membership && membership.orgId !== ticket.orgId) {
+    membership = null;
+  }
+
+  if (!membership) {
+    const foundMembership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, user.id),
+        eq(memberships.orgId, ticket.orgId),
+        eq(memberships.isActive, true)
+      ),
+    });
+    membership = foundMembership || null;
+  }
 
   if (!membership) {
     throw new AuthorizationError('You do not have access to this ticket');
@@ -92,29 +194,74 @@ export async function canViewTicket(ticketId: string) {
   return { ticket, user, membership };
 }
 
-export async function canEditTicket(ticketId: string) {
+export async function canReplyTicket(ticketId: string) {
   const result = await canViewTicket(ticketId);
 
-  // Internal users can edit
   if (result.user.isInternal) {
     return result;
   }
 
-  // External users need at least REQUESTER role
   if (result.membership) {
     const role = result.membership.role;
     if (role === 'VIEWER') {
-      throw new AuthorizationError('You do not have permission to edit this ticket');
+      throw new AuthorizationError('You do not have permission to reply to this ticket');
     }
     return result;
   }
 
-  throw new AuthorizationError('You do not have permission to edit this ticket');
+  throw new AuthorizationError('You do not have permission to reply to this ticket');
+}
+
+export async function canEditTicket(ticketId: string) {
+  return canReplyTicket(ticketId);
+}
+
+export async function canDownloadAttachment(attachmentId: string) {
+  const ctx = await getRequestContext();
+  const user = ctx.user;
+
+  if (!user) {
+    throw new AuthorizationError('You must be logged in to access this resource');
+  }
+
+  const attachment = await db.query.attachments.findFirst({
+    where: eq(attachments.id, attachmentId),
+  });
+
+  if (!attachment) {
+    throw new AuthorizationError('Attachment not found');
+  }
+
+  if (ctx.isInternal) {
+    return { ...attachment, attachment, user, membership: null };
+  }
+
+  let membership = ctx.membership?.isActive ? ctx.membership : null;
+  if (membership && membership.orgId !== attachment.orgId) {
+    membership = null;
+  }
+
+  if (!membership) {
+    const foundMembership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, user.id),
+        eq(memberships.orgId, attachment.orgId),
+        eq(memberships.isActive, true)
+      ),
+    });
+    membership = foundMembership || null;
+  }
+
+  if (!membership) {
+    throw new AuthorizationError('You do not have access to this attachment');
+  }
+
+  return { ...attachment, attachment, user, membership };
 }
 
 export async function getUserOrgMemberships(userId: string) {
   return db.query.memberships.findMany({
-    where: eq(memberships.userId, userId),
+    where: and(eq(memberships.userId, userId), eq(memberships.isActive, true)),
     with: {
       organization: true,
     },
@@ -130,7 +277,8 @@ export async function isOrgMember(userId: string, orgId: string): Promise<boolea
   const membership = await db.query.memberships.findFirst({
     where: and(
       eq(memberships.userId, userId),
-      eq(memberships.orgId, orgId)
+      eq(memberships.orgId, orgId),
+      eq(memberships.isActive, true)
     ),
   });
   return !!membership;

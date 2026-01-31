@@ -14,6 +14,10 @@ export interface RedisLike {
   expire(key: string, seconds: number): Promise<number>;
   keys(pattern: string): Promise<string[]>;
   mget<T = unknown>(...keys: string[]): Promise<(T | null)[]>;
+  lpush(key: string, ...values: string[]): Promise<number>;
+  rpop<T = string>(key: string): Promise<T | null>;
+  llen(key: string): Promise<number>;
+  lrem(key: string, count: number, value: string): Promise<number>;
 }
 
 const url = process.env.KV_REST_API_URL;
@@ -84,6 +88,66 @@ function createMockRedis(): RedisLike {
         const entry = readEntry(key);
         return (entry?.value as T) ?? null;
       });
+    },
+    async lpush(key: string, ...values: string[]) {
+      const entry = readEntry(key);
+      const list = (entry?.value as string[]) || [];
+      list.unshift(...values);
+      store.set(key, { value: list });
+      return list.length;
+    },
+    async rpop<T = string>(key: string) {
+      const entry = readEntry(key);
+      const list = (entry?.value as string[]) || [];
+      if (list.length === 0) return null;
+      const value = list.pop()!;
+      store.set(key, { value: list });
+      return value as T;
+    },
+    async llen(key: string) {
+      const entry = readEntry(key);
+      const list = (entry?.value as string[]) || [];
+      return list.length;
+    },
+    async lrem(key: string, count: number, value: string) {
+      const entry = readEntry(key);
+      const list = (entry?.value as string[]) || [];
+      let removed = 0;
+      if (count === 0) {
+        // Remove all occurrences
+        const filtered = list.filter((v) => {
+          if (v === value) {
+            removed++;
+            return false;
+          }
+          return true;
+        });
+        store.set(key, { value: filtered });
+      } else if (count > 0) {
+        // Remove from left
+        const filtered: string[] = [];
+        for (const v of list) {
+          if (v === value && removed < count) {
+            removed++;
+          } else {
+            filtered.push(v);
+          }
+        }
+        store.set(key, { value: filtered });
+      } else {
+        // Remove from right (count < 0)
+        const filtered: string[] = [];
+        const toRemove = Math.abs(count);
+        for (let i = list.length - 1; i >= 0; i--) {
+          if (list[i] === value && removed < toRemove) {
+            removed++;
+          } else {
+            filtered.unshift(list[i]);
+          }
+        }
+        store.set(key, { value: filtered });
+      }
+      return removed;
     },
   };
 }

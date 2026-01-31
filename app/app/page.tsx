@@ -5,6 +5,7 @@ import { getOrganizations } from '@/lib/organizations/queries';
 import { getInternalUsers } from '@/lib/users/queries';
 import { TicketList } from '@/components/tickets/ticket-list';
 import { TicketFilters } from '@/components/tickets/ticket-filters';
+import { SavedViews } from '@/components/tickets/saved-views';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,10 @@ export default async function TicketsPage({
     priority?: string;
     assigneeId?: string;
     search?: string;
+    tagIds?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    searchInComments?: string;
   }>;
 }) {
   await requireInternalRole();
@@ -41,6 +46,10 @@ export default async function TicketsPage({
     priority: priorityValue ? [priorityValue] : undefined,
     assigneeId: params.assigneeId === 'unassigned' ? null : params.assigneeId,
     search: params.search,
+    tagIds: params.tagIds ? params.tagIds.split(',') : undefined,
+    dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
+    dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
+    searchInComments: params.searchInComments === 'true',
   };
 
   const [ticketList, organizations, internalUsers] = await Promise.all([
@@ -48,6 +57,8 @@ export default async function TicketsPage({
     getOrganizations(),
     getInternalUsers(),
   ]);
+
+  const user = await requireInternalRole();
 
   return (
     <div className="space-y-6">
@@ -58,6 +69,8 @@ export default async function TicketsPage({
         </Link>
       </div>
 
+      <SavedViews currentUserId={user.id} />
+
       <TicketFilters
         organizations={organizations}
         internalUsers={internalUsers}
@@ -67,6 +80,10 @@ export default async function TicketsPage({
           orgId: params.orgId,
           assigneeId: params.assigneeId,
           search: params.search,
+          tagIds: params.tagIds,
+          dateFrom: params.dateFrom,
+          dateTo: params.dateTo,
+          searchInComments: params.searchInComments,
         }}
       />
 
@@ -75,7 +92,12 @@ export default async function TicketsPage({
           <CardTitle>All Tickets</CardTitle>
         </CardHeader>
         <CardContent>
-          <TicketList tickets={ticketList} />
+          <TicketList
+            tickets={ticketList}
+            internalUsers={internalUsers}
+            searchTerm={params.search}
+            currentUserId={user.id}
+          />
         </CardContent>
       </Card>
     </div>

@@ -24,13 +24,18 @@ export default async function CustomerTicketsPage({
     const { user } = await requireOrgMemberRole(org.id);
     const tickets = await getTickets({ orgId: org.id, requesterId: user.id });
 
+    // Track session activity for authenticated users
+    // Track session activity
+    const { trackSessionActivity } = await import('@/lib/auth/session-tracking');
+    await trackSessionActivity(user.id);
+
     return (
       <CustomerPortalShell subdomain={subdomain}>
         <div className="mx-auto max-w-4xl space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">My Tickets</h1>
             <Link href={`/s/${subdomain}/tickets/new`}>
-              <Button>New Ticket</Button>
+              <Button>Create Request</Button>
             </Link>
           </div>
 
@@ -45,7 +50,8 @@ export default async function CustomerTicketsPage({
         </div>
       </CustomerPortalShell>
     );
-  } catch {
+  } catch (error) {
+    console.error('[CustomerTicketsPage] Error:', error);
     // Not authenticated or not a member
     return (
       <CustomerPortalShell subdomain={subdomain}>
@@ -57,6 +63,9 @@ export default async function CustomerTicketsPage({
             <CardContent>
               <p className="text-sm text-gray-600">
                 Please sign in to access your tickets.
+              </p>
+              <p className="text-xs text-red-500 mt-2">
+                Debug: {(error as Error).message}
               </p>
             </CardContent>
           </Card>

@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { addPublicTicketCommentAction } from '@/app/ticket/[token]/actions';
-import { Ticket } from '@/db/schema';
+import { Ticket, Attachment } from '@/db/schema';
 import { Separator } from '@/components/ui/separator';
+import { AttachmentList } from '@/components/tickets/attachment-list';
+import { useRouter } from 'next/navigation';
+import { formatDateTime } from '@/lib/utils/date';
 
 interface PublicTicketViewProps {
   ticket: Ticket & {
@@ -18,8 +21,11 @@ interface PublicTicketViewProps {
     comments: (TicketComment & {
       user: { name: string | null; email: string } | null;
     })[];
+    attachments: Attachment[];
   };
-  token: string;
+  replyToken: string;
+  viewToken: string;
+  downloadTokens: Record<string, string>;
 }
 
 type TicketComment = {
@@ -63,24 +69,45 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-export function PublicTicketView({ ticket, token }: PublicTicketViewProps) {
+export function PublicTicketView({
+  ticket,
+  replyToken,
+  viewToken,
+  downloadTokens,
+}: PublicTicketViewProps) {
+  const router = useRouter();
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentReplyToken, setCurrentReplyToken] = useState(replyToken);
+
+  useEffect(() => {
+    if (!viewToken) return;
+    const nextUrl = `/ticket/${viewToken}`;
+    if (window.location.pathname !== nextUrl) {
+      window.history.replaceState({}, '', nextUrl);
+    }
+  }, [viewToken]);
 
   async function handleAddComment() {
     if (!comment.trim()) return;
     setIsSubmitting(true);
     try {
-      await addPublicTicketCommentAction(token, comment);
+      const result = await addPublicTicketCommentAction(
+        currentReplyToken,
+        comment
+      );
       setComment('');
-      window.location.reload();
+      if (result?.replyToken) {
+        setCurrentReplyToken(result.replyToken);
+      }
+      router.refresh();
     } finally {
       setIsSubmitting(false);
     }
   }
 
   // Only show public comments (filter out internal notes)
-  const publicComments = ticket.comments.filter((c) => !c.isInternal);
+  const publicComments = ticket.comments.filter((c: { isInternal: boolean }) => !c.isInternal);
 
   return (
     <div className="space-y-6">
@@ -109,6 +136,18 @@ export function PublicTicketView({ ticket, token }: PublicTicketViewProps) {
 
           <Separator />
 
+          <div>
+            <Label className="text-xs text-gray-500">Attachments</Label>
+            <div className="mt-2">
+              <AttachmentList
+                attachments={ticket.attachments}
+                downloadTokens={downloadTokens}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
           <div className="text-sm text-gray-600 space-y-1">
             <p>
               <strong>Status:</strong> {ticket.status}
@@ -122,7 +161,7 @@ export function PublicTicketView({ ticket, token }: PublicTicketViewProps) {
               </p>
             )}
             <p>
-              <strong>Created:</strong> {new Date(ticket.createdAt).toLocaleString()}
+              <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
             </p>
           </div>
         </CardContent>
@@ -133,7 +172,7 @@ export function PublicTicketView({ ticket, token }: PublicTicketViewProps) {
           <CardTitle>Conversation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {publicComments.map((comment) => (
+          {publicComments.map((comment: { id: string; content: string; isInternal: boolean; createdAt: Date; user?: { name: string | null; email: string } | null; authorEmail?: string | null }) => (
             <div key={comment.id} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -144,7 +183,7 @@ export function PublicTicketView({ ticket, token }: PublicTicketViewProps) {
                       'Support Team'}
                   </strong>
                   <span className="text-xs text-gray-500">
-                    {new Date(comment.createdAt).toLocaleString()}
+                    {formatDateTime(comment.createdAt)}
                   </span>
                 </div>
               </div>

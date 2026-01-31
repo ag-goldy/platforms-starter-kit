@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
     // Enable experimental features if needed
+    serverActions: {
+      bodySizeLimit: '10mb', // Increase from default 1MB to 10MB for file uploads
+    },
   },
   // Ensure proper handling of Vercel Analytics and Speed Insights
   // headers: async () => {

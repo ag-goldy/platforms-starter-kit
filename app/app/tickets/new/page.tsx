@@ -2,13 +2,20 @@ import { requireInternalRole } from '@/lib/auth/permissions';
 import { getOrganizations } from '@/lib/organizations/queries';
 import { getInternalUsers } from '@/lib/users/queries';
 import { TicketForm } from '@/components/tickets/ticket-form';
+import { db } from '@/db';
 
 export default async function NewTicketPage() {
   await requireInternalRole();
 
-  const [organizations, internalUsers] = await Promise.all([
+  const [organizations, internalUsers, siteList, areaList] = await Promise.all([
     getOrganizations(),
     getInternalUsers(),
+    db.query.sites.findMany({
+      orderBy: (table, { asc }) => [asc(table.name)],
+    }),
+    db.query.areas.findMany({
+      orderBy: (table, { asc }) => [asc(table.name)],
+    }),
   ]);
 
   return (
@@ -20,7 +27,12 @@ export default async function NewTicketPage() {
         </p>
       </div>
 
-      <TicketForm organizations={organizations} internalUsers={internalUsers} />
+      <TicketForm
+        organizations={organizations}
+        internalUsers={internalUsers}
+        sites={siteList}
+        areas={areaList}
+      />
     </div>
   );
 }

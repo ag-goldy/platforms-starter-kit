@@ -5,6 +5,9 @@ import { notFound } from 'next/navigation';
 import { CustomerTicketDetail } from '@/components/customer/ticket-detail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomerPortalShell } from '@/components/customer/portal-shell';
+import { type Ticket, type TicketComment, type Attachment, assets } from '@/db/schema';
+import { db } from '@/db';
+import { eq } from 'drizzle-orm';
 
 export default async function CustomerTicketDetailPage({
   params,
@@ -19,7 +22,8 @@ export default async function CustomerTicketDetailPage({
   }
 
   try {
-    await requireOrgMemberRole(org.id);
+    const { membership } = await requireOrgMemberRole(org.id);
+    const isAdmin = membership.role === 'CUSTOMER_ADMIN';
     
     // Verify user can view this ticket
     const result = await canViewTicket(id);
@@ -29,20 +33,40 @@ export default async function CustomerTicketDetailPage({
       notFound();
     }
 
-    const ticket = await getTicketById(id);
+    const ticket = await getTicketById(id, org.id);
 
     if (!ticket) {
       notFound();
     }
 
+    const availableAssets = isAdmin
+      ? await db.query.assets.findMany({
+          where: eq(assets.orgId, org.id),
+          orderBy: (table, { asc }) => [asc(table.name)],
+          with: {
+            site: true,
+            area: true,
+          },
+        })
+      : [];
+
     return (
       <CustomerPortalShell subdomain={subdomain}>
         <div className="mx-auto max-w-4xl space-y-6">
-          <CustomerTicketDetail ticket={ticket} subdomain={subdomain} />
+          <CustomerTicketDetail ticket={ticket as unknown as Ticket & {
+            organization: { name: string };
+            requester: { name: string | null; email: string } | null;
+            assignee: { name: string | null; email: string } | null;
+            comments: (TicketComment & {
+              user: { name: string | null; email: string } | null;
+            })[];
+            attachments: Attachment[];
+          }} subdomain={subdomain} availableAssets={availableAssets} canEditAssets={isAdmin} />
         </div>
       </CustomerPortalShell>
     );
-  } catch {
+  } catch (error) {
+    console.error('[CustomerTicketDetailPage] Error:', error);
     // Not authenticated or not a member
     return (
       <CustomerPortalShell subdomain={subdomain}>
@@ -54,6 +78,9 @@ export default async function CustomerTicketDetailPage({
             <CardContent>
               <p className="text-sm text-gray-600">
                 Please sign in to access this ticket.
+              </p>
+              <p className="text-xs text-red-500 mt-2">
+                Debug: {(error as Error).message}
               </p>
             </CardContent>
           </Card>

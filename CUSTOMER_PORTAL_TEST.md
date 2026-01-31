@@ -137,3 +137,4 @@ curl -s http://localhost:3000/s/acme/tickets -L | grep -q "My Tickets" && echo "
 curl -s http://localhost:3000/login | grep -q "Sign in" && echo "✅ Login page accessible"
 ```
 
+

@@ -1,9 +1,11 @@
+import dotenv from 'dotenv';
 import { db } from './index';
 import { organizations, users, memberships } from './schema';
 import bcrypt from 'bcryptjs';
 import { and, eq } from 'drizzle-orm';
 
 async function seed() {
+  dotenv.config({ path: '.env.local' });
   console.log('Starting seed...');
 
   // Create or update internal admin user

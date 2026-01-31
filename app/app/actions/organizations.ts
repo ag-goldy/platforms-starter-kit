@@ -36,8 +36,39 @@ export async function createOrganizationAction(data: {
     details: JSON.stringify({ name: org.name, slug: org.slug }),
   });
 
+  // Create default automation rules for the new organization
+  try {
+    const { createDefaultRules } = await import('@/lib/automation/default-rules');
+    await createDefaultRules(org.id);
+  } catch (error) {
+    console.error('Failed to create default automation rules:', error);
+    // Don't fail organization creation if default rules fail
+  }
+
   revalidatePath('/app/organizations');
   return { orgId: org.id };
+}
+
+export async function updateOrg2FAPolicyAction(orgId: string, requireTwoFactor: boolean) {
+  const user = await requireInternalRole();
+
+  await db
+    .update(organizations)
+    .set({
+      requireTwoFactor,
+      updatedAt: new Date(),
+    })
+    .where(eq(organizations.id, orgId));
+
+  await logAudit({
+    userId: user.id,
+    orgId,
+    action: 'ORG_UPDATED',
+    details: JSON.stringify({ requireTwoFactor }),
+  });
+
+  revalidatePath(`/app/organizations/${orgId}`);
+  return { success: true, error: null };
 }
 
 export async function inviteUserAction(data: {

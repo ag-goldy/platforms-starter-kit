@@ -1,8 +1,15 @@
-import { emailService } from './index';
 import { Ticket, TicketComment } from '@/db/schema';
-import { protocol, rootDomain } from '@/lib/utils';
+import { appBaseUrl, supportBaseUrl } from '@/lib/utils';
 import { getTicketById } from '@/lib/tickets/queries';
 import { createTicketToken } from '@/lib/tickets/magic-links';
+import { renderAgentReplyEmail } from '@/lib/email/templates/agent-reply';
+import { renderCustomerReplyEmail } from '@/lib/email/templates/customer-reply';
+import { renderStatusChangedEmail } from '@/lib/email/templates/status-changed';
+import { renderTicketCreatedEmail } from '@/lib/email/templates/ticket-created';
+import { sendWithOutbox } from '@/lib/email/outbox';
+import { getCustomerAdminEmails } from '@/lib/organizations/queries';
+import { headers } from 'next/headers';
+import { getClientIP } from '@/lib/rate-limit';
 
 /**
  * Send email notification when agent replies to a ticket
@@ -22,38 +29,35 @@ export async function sendAgentReplyNotification(
     return;
   }
 
-  const recipientEmail = ticket.requesterEmail || ticket.requester?.email;
-  if (!recipientEmail) return;
+  const primaryEmail = ticket.requesterEmail || ticket.requester?.email;
+  const ccList = Array.isArray(ticket.ccEmails) ? ticket.ccEmails : [];
+  const recipients = [
+    ...(primaryEmail ? [primaryEmail] : []),
+    ...ccList.filter((value) => typeof value === 'string' && value.trim().length > 0),
+  ];
+  const uniqueRecipients = Array.from(new Set(recipients));
+  if (uniqueRecipients.length === 0) return;
 
   const agentName = comment.user?.name || comment.user?.email || 'Support Team';
   const ticketKey = ticket.key;
 
-  await emailService.send({
-    to: recipientEmail,
-    subject: `Re: ${ticket.subject} (${ticketKey})`,
-    html: `
-      <h1>New Reply on Ticket ${ticketKey}</h1>
-      <p>${agentName} has replied to your ticket:</p>
-      <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        ${comment.content.replace(/\n/g, '<br>')}
-      </div>
-      ${ticketUrl ? `<p><a href="${ticketUrl}">View ticket</a></p>` : ''}
-      <p>Ticket: ${ticketKey}<br>
-      Subject: ${ticket.subject}</p>
-    `,
-    text: `
-New Reply on Ticket ${ticketKey}
-
-${agentName} has replied to your ticket:
-
-${comment.content}
-
-${ticketUrl ? `View ticket: ${ticketUrl}` : ''}
-
-Ticket: ${ticketKey}
-Subject: ${ticket.subject}
-    `,
+  const email = renderAgentReplyEmail({
+    ticketKey,
+    subject: ticket.subject,
+    agentName,
+    comment: comment.content,
+    ticketUrl,
   });
+
+  for (const address of uniqueRecipients) {
+    await sendWithOutbox({
+      type: 'agent_reply',
+      to: address,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+    });
+  }
 }
 
 /**
@@ -68,37 +72,32 @@ export async function sendCustomerReplyNotification(
 ) {
   // Get ticket with assignee info
   const ticket = await getTicketById(ticketId);
-  if (!ticket || !ticket.assignee) {
+  if (!ticket || !('assignee' in ticket) || !ticket.assignee) {
     return; // Only notify if ticket is assigned
   }
 
+  const ticketWithAssignee = ticket as Ticket & {
+    assignee: { name: string | null; email: string } | null;
+  };
+
   const customerName =
     comment.user?.name || comment.authorEmail || comment.user?.email || 'Customer';
-  const ticketUrl = `${protocol}://${rootDomain}/app/tickets/${ticketId}`;
+  const ticketUrl = `${appBaseUrl}/app/tickets/${ticketId}`;
 
-  await emailService.send({
-    to: ticket.assignee.email,
-    subject: `Customer Reply: ${ticket.key} - ${ticket.subject}`,
-    html: `
-      <h1>Customer Reply on ${ticket.key}</h1>
-      <p>${customerName} has replied to ticket <strong>${ticket.key}</strong>:</p>
-      <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        ${comment.content.replace(/\n/g, '<br>')}
-      </div>
-      <p><a href="${ticketUrl}">View ticket</a></p>
-      <p>Subject: ${ticket.subject}</p>
-    `,
-    text: `
-Customer Reply on ${ticket.key}
+  const email = renderCustomerReplyEmail({
+    ticketKey: ticket.key,
+    subject: ticket.subject,
+    customerName,
+    comment: comment.content,
+    ticketUrl,
+  });
 
-${customerName} has replied to ticket ${ticket.key}:
-
-${comment.content}
-
-View ticket: ${ticketUrl}
-
-Subject: ${ticket.subject}
-    `,
+  await sendWithOutbox({
+    type: 'customer_reply',
+    to: ticketWithAssignee.assignee?.email || '',
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
   });
 }
 
@@ -111,12 +110,29 @@ export async function sendCustomerTicketCreatedNotification(
     organization: { name: string };
   }
 ) {
-  // In a real system, you'd send this to a queue email or notify all agents
-  // For MVP, we'll just log it (email service already logs to console)
-  const ticketUrl = `${protocol}://${rootDomain}/app/tickets/${ticket.id}`;
-  
-  // TODO: In production, send to support queue email or notify assigned agents
-  console.log(`[Email Notification] New customer ticket created: ${ticket.key} - ${ticketUrl}`);
+  const supportInbox = process.env.SUPPORT_INBOX_EMAIL;
+  const ticketUrl = `${appBaseUrl}/app/tickets/${ticket.id}`;
+
+  if (!supportInbox) {
+    console.log(`[Email Notification] New customer ticket created: ${ticket.key} - ${ticketUrl}`);
+    return;
+  }
+
+  const email = renderCustomerReplyEmail({
+    ticketKey: ticket.key,
+    subject: ticket.subject,
+    customerName: ticket.requester?.name || ticket.requester?.email || 'Customer',
+    comment: ticket.description,
+    ticketUrl,
+  });
+
+  await sendWithOutbox({
+    type: 'customer_ticket_created',
+    to: supportInbox,
+    subject: `New Ticket: ${ticket.key} - ${ticket.subject}`,
+    html: email.html,
+    text: email.text,
+  });
 }
 
 /**
@@ -129,31 +145,86 @@ export async function sendTicketStatusChangedNotification(
   oldStatus: string,
   newStatus: string
 ) {
-  const recipientEmail = ticket.requesterEmail || ticket.requester?.email;
-  if (!recipientEmail) return;
+  const primaryEmail = ticket.requesterEmail || ticket.requester?.email;
+  const ccList = Array.isArray(ticket.ccEmails) ? ticket.ccEmails : [];
+  const recipients = [
+    ...(primaryEmail ? [primaryEmail] : []),
+    ...ccList.filter((value) => typeof value === 'string' && value.trim().length > 0),
+  ];
+  const uniqueRecipients = Array.from(new Set(recipients));
+  if (uniqueRecipients.length === 0) return;
 
-  const token = await createTicketToken(ticket.id, recipientEmail);
-  const ticketUrl = `${protocol}://${rootDomain}/ticket/${token}`;
+  for (const address of uniqueRecipients) {
+    const token = await createTicketToken({
+      ticketId: ticket.id,
+      email: address,
+      purpose: 'VIEW',
+      lastSentAt: new Date(),
+    });
+    const ticketUrl = `${supportBaseUrl}/ticket/${token}`;
 
-  await emailService.send({
-    to: recipientEmail,
-    subject: `Ticket ${ticket.key} status updated to ${newStatus}`,
-    html: `
-      <h1>Ticket Status Updated</h1>
-      <p>Your ticket <strong>${ticket.key}</strong> has been updated.</p>
-      <p>Status changed from <strong>${oldStatus}</strong> to <strong>${newStatus}</strong>.</p>
-      <p><a href="${ticketUrl}">View your ticket</a></p>
-      <p>Subject: ${ticket.subject}</p>
-    `,
-    text: `
-Ticket Status Updated
+    const email = renderStatusChangedEmail({
+      ticketKey: ticket.key,
+      subject: ticket.subject,
+      oldStatus,
+      newStatus,
+      ticketUrl,
+    });
 
-Ticket: ${ticket.key}
-Status changed from ${oldStatus} to ${newStatus}
+    await sendWithOutbox({
+      type: 'ticket_status_changed',
+      to: address,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+    });
+  }
+}
 
-View your ticket: ${ticketUrl}
+/**
+ * Send email notification to customer admins when an admin creates a ticket for their organization
+ */
+export async function sendAdminCreatedTicketNotification(
+  ticket: Ticket & {
+    organization: { name: string };
+  }
+) {
+  // Get customer admin emails for the organization
+  const adminEmails = await getCustomerAdminEmails(ticket.orgId);
+  
+  if (adminEmails.length === 0) {
+    // No customer admins to notify
+    return;
+  }
 
-Subject: ${ticket.subject}
-    `,
-  });
+  const headersList = await headers();
+  const ip = getClientIP(headersList);
+
+  // Send email to each customer admin with a magic link
+  await Promise.all(
+    adminEmails.map(async (email) => {
+      const token = await createTicketToken({
+        ticketId: ticket.id,
+        email,
+        purpose: 'VIEW',
+        createdIp: ip,
+        lastSentAt: new Date(),
+      });
+      const magicLink = `${supportBaseUrl}/ticket/${token}`;
+
+      const emailContent = renderTicketCreatedEmail({
+        ticketKey: ticket.key,
+        subject: ticket.subject,
+        magicLink,
+      });
+
+      await sendWithOutbox({
+        type: 'admin_created_ticket',
+        to: email,
+        subject: `New Ticket Created for ${ticket.organization.name}: ${ticket.key}`,
+        html: emailContent.html,
+        text: emailContent.text,
+      });
+    })
+  );
 }

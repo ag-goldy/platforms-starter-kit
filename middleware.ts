@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { rootDomain } from '@/lib/utils';
+import { getCorrelationIdFromHeaders, addCorrelationIdHeader } from '@/lib/monitoring/correlation';
+
+const { auth } = NextAuth(authConfig);
 
 function extractSubdomain(request: NextRequest): string | null {
   const url = request.url;
@@ -44,6 +48,11 @@ function extractSubdomain(request: NextRequest): string | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const subdomain = extractSubdomain(request);
+  
+  // Add correlation ID for request tracing
+  const correlationId = getCorrelationIdFromHeaders(request.headers);
+  const response = NextResponse.next();
+  addCorrelationIdHeader(response.headers, correlationId);
 
   // Protect internal console routes
   if (pathname.startsWith('/app')) {
@@ -69,7 +78,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // On the root domain, allow normal access
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

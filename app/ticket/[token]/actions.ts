@@ -2,14 +2,21 @@
 
 import { db } from '@/db';
 import { ticketComments } from '@/db/schema';
-import { validateTicketToken } from '@/lib/tickets/magic-links';
+import { consumeTicketToken, createTicketToken } from '@/lib/tickets/magic-links';
 import { getTicketById } from '@/lib/tickets/queries';
-import { revalidatePath } from 'next/cache';
 import { sendCustomerReplyNotification } from '@/lib/email/notifications';
+import { headers } from 'next/headers';
+import { getClientIP } from '@/lib/rate-limit';
 
 export async function addPublicTicketCommentAction(token: string, content: string) {
   // Validate token first
-  const tokenData = await validateTicketToken(token);
+  const headersList = await headers();
+  const ip = getClientIP(headersList);
+  const tokenData = await consumeTicketToken({
+    token,
+    purpose: 'REPLY',
+    usedIp: ip,
+  });
 
   if (!tokenData) {
     throw new Error('Invalid or expired token');
@@ -38,5 +45,13 @@ export async function addPublicTicketCommentAction(token: string, content: strin
     });
   }
 
-  revalidatePath(`/ticket/${token}`, 'page');
+  const nextToken = await createTicketToken({
+    ticketId: ticket.id,
+    email: tokenData.email,
+    purpose: 'REPLY',
+    createdIp: ip,
+  });
+
+  return { replyToken: nextToken };
 }
+

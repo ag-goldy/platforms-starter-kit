@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { memberships } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export async function getDefaultRedirectUrl(userId: string, isInternal: boolean): Promise<string> {
   if (isInternal) {
@@ -9,7 +9,7 @@ export async function getDefaultRedirectUrl(userId: string, isInternal: boolean)
 
   // For customer users, redirect to their org's subdomain portal
   const userMemberships = await db.query.memberships.findMany({
-    where: eq(memberships.userId, userId),
+    where: and(eq(memberships.userId, userId), eq(memberships.isActive, true)),
     with: {
       organization: true,
     },

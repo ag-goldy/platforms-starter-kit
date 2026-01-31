@@ -7,9 +7,7 @@ async function debugAuth() {
   console.log('Testing authentication...\n');
 
   // Test 1: Check if user exists
-  const user = await db.query.users.findFirst({
-    where: eq(users.email, 'admin@agr.com'),
-  });
+  const [user] = await db.select().from(users).where(eq(users.email, 'admin@agr.com'));
 
   if (!user) {
     console.log('❌ User not found in database');

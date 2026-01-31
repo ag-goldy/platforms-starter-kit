@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,11 @@ import { createTicketAction } from '@/app/app/actions/tickets';
 interface TicketFormProps {
   organizations: { id: string; name: string; subdomain: string }[];
   internalUsers: { id: string; name: string | null; email: string }[];
+  sites: { id: string; orgId: string; name: string }[];
+  areas: { id: string; siteId: string; name: string }[];
 }
 
-export function TicketForm({ organizations, internalUsers }: TicketFormProps) {
+export function TicketForm({ organizations, internalUsers, sites, areas }: TicketFormProps) {
   const router = useRouter();
   const defaultOrgId = useMemo(() => organizations[0]?.id || '', [organizations]);
   const [orgId, setOrgId] = useState(defaultOrgId);
@@ -32,8 +34,36 @@ export function TicketForm({ organizations, internalUsers }: TicketFormProps) {
   const [category, setCategory] = useState('INCIDENT');
   const [assigneeId, setAssigneeId] = useState('unassigned');
   const [requesterEmail, setRequesterEmail] = useState('');
+  const [siteId, setSiteId] = useState('');
+  const [areaId, setAreaId] = useState('');
+  const [siteSearch, setSiteSearch] = useState('');
+  const [areaSearch, setAreaSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSiteId('');
+    setAreaId('');
+    setSiteSearch('');
+    setAreaSearch('');
+  }, [orgId]);
+
+  const filteredSites = useMemo(() => {
+    const orgSites = sites.filter((site) => site.orgId === orgId);
+    const term = siteSearch.trim().toLowerCase();
+    if (!term) return orgSites;
+    return orgSites.filter((site) => site.name.toLowerCase().includes(term));
+  }, [orgId, siteSearch, sites]);
+
+  const filteredAreas = useMemo(() => {
+    const orgSiteIds = sites.filter((site) => site.orgId === orgId).map((site) => site.id);
+    const scopedAreas = areas.filter((area) =>
+      siteId ? area.siteId === siteId : orgSiteIds.includes(area.siteId)
+    );
+    const term = areaSearch.trim().toLowerCase();
+    if (!term) return scopedAreas;
+    return scopedAreas.filter((area) => area.name.toLowerCase().includes(term));
+  }, [areas, areaSearch, orgId, siteId, sites]);
 
   if (organizations.length === 0) {
     return (
@@ -69,6 +99,8 @@ export function TicketForm({ organizations, internalUsers }: TicketFormProps) {
         category,
         assigneeId: assigneeId === 'unassigned' ? null : assigneeId,
         requesterEmail: requesterEmail.trim() || null,
+        siteId: siteId || null,
+        areaId: areaId || null,
       });
 
       if (result.error) {
@@ -190,6 +222,54 @@ export function TicketForm({ organizations, internalUsers }: TicketFormProps) {
                 placeholder="customer@example.com"
                 type="email"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="siteSearch">Site (optional)</Label>
+              <Input
+                id="siteSearch"
+                value={siteSearch}
+                onChange={(e) => setSiteSearch(e.target.value)}
+                placeholder="Search sites..."
+              />
+              <select
+                value={siteId}
+                onChange={(e) => {
+                  setSiteId(e.target.value);
+                  setAreaId('');
+                }}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">No site</option>
+                {filteredSites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="areaSearch">Area (optional)</Label>
+              <Input
+                id="areaSearch"
+                value={areaSearch}
+                onChange={(e) => setAreaSearch(e.target.value)}
+                placeholder="Search areas..."
+              />
+              <select
+                value={areaId}
+                onChange={(e) => setAreaId(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">No area</option>
+                {filteredAreas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

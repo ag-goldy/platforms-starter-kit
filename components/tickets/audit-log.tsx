@@ -1,8 +1,12 @@
-import { AuditLog, User } from '@/db/schema';
+import { AuditLog } from '@/db/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDateTime } from '@/lib/utils/date';
 
 interface AuditLogProps {
-  logs: (AuditLog & { user: User | null })[];
+  logs: (AuditLog & { 
+    user: { id: string; name: string | null; email: string } | null;
+    organization: { id: string; name: string } | null;
+  })[];
 }
 
 const actionLabels: Record<string, string> = {
@@ -50,7 +54,7 @@ export function AuditLogList({ logs }: AuditLogProps) {
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{label}</span>
                   <span className="text-xs text-gray-500">
-                    {new Date(log.createdAt).toLocaleString()}
+                    {formatDateTime(log.createdAt)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-600">

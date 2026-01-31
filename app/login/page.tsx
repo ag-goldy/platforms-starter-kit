@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { createTwoFactorLoginToken, TWO_FACTOR_LOGIN_COOKIE } from '@/lib/auth/two-factor-login';
 
 export default async function LoginPage({
   searchParams,
@@ -13,8 +15,8 @@ export default async function LoginPage({
   const params = await searchParams;
   const error = params.error;
   
-  // Default callback URL - internal users go to /app, customers will be redirected by the page
-  const callbackUrl = params.callbackUrl || '/app';
+  // Store the explicit callback URL if provided (not /app default)
+  const explicitCallbackUrl = params.callbackUrl && params.callbackUrl !== '/app' ? params.callbackUrl : null;
 
   async function loginAction(formData: FormData) {
     'use server';
@@ -22,7 +24,62 @@ export default async function LoginPage({
     const password = formData.get('password') as string;
 
     try {
-      // Sign in - NextAuth will handle the redirect
+      // First verify password and check 2FA status
+      const { db } = await import('@/db');
+      const { users } = await import('@/db/schema');
+      const { eq } = await import('drizzle-orm');
+      const bcrypt = await import('bcryptjs');
+      const { getUser2FAStatus } = await import('@/lib/auth/2fa-queries');
+      const { getDefaultRedirectUrl } = await import('@/lib/auth/redirect');
+      
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, email),
+      });
+
+      if (!user || !user.passwordHash) {
+        redirect(`/login?error=Invalid credentials`);
+      }
+
+      // DEBUG: remove after fixing login
+      console.log('[LOGIN-DEBUG] email:', email);
+      console.log('[LOGIN-DEBUG] plain password:', password);
+      console.log('[LOGIN-DEBUG] stored hash (first 30):', user.passwordHash?.substring(0, 30));
+      const isValid = await bcrypt.default.compare(password, user.passwordHash);
+      console.log('[LOGIN-DEBUG] bcrypt.compare result:', isValid);
+      if (!isValid) {
+        redirect(`/login?error=Invalid credentials`);
+      }
+
+      // Determine the correct redirect URL based on user type
+      // Use explicit callback if provided, otherwise determine based on user type
+      const callbackUrl = explicitCallbackUrl || await getDefaultRedirectUrl(user.id, user.isInternal);
+
+      // Check if 2FA is enabled
+      const twoFAStatus = await getUser2FAStatus(user.id);
+      
+      const cookieStore = await cookies();
+
+      if (twoFAStatus.enabled) {
+        const loginToken = await createTwoFactorLoginToken(user.id);
+        cookieStore.set(TWO_FACTOR_LOGIN_COOKIE, loginToken, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 10 * 60,
+          path: '/',
+        });
+        // Redirect to 2FA verification page
+        redirect(`/login/verify-2fa?userId=${user.id}&callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      }
+
+      // No 2FA - proceed with normal login
+      cookieStore.set(TWO_FACTOR_LOGIN_COOKIE, '', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 0,
+        path: '/',
+      });
       await signIn('credentials', {
         email,
         password,
@@ -32,7 +89,7 @@ export default async function LoginPage({
       const authError = error as { type?: string; code?: string };
       // NextAuth throws CredentialsSignin on failure
       if (authError?.type === 'CredentialsSignin' || authError?.code === 'credentials') {
-        redirect(`/login?error=Invalid credentials&callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        redirect(`/login?error=Invalid credentials`);
       }
       // Re-throw if it's not a credentials error
       throw error;
@@ -75,6 +132,11 @@ export default async function LoginPage({
             <Button type="submit" className="w-full">
               Sign in
             </Button>
+            <div className="text-center">
+              <a href="/forgot-password" className="text-sm text-gray-600 hover:underline">
+                Forgot your password?
+              </a>
+            </div>
           </form>
         </CardContent>
       </Card>

@@ -6,29 +6,35 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { addCustomerTicketCommentAction } from '@/app/s/[subdomain]/actions/tickets';
-import { Ticket } from '@/db/schema';
+import { Input } from '@/components/ui/input';
+import { closeCustomerTicketAction, updateCustomerTicketCcAction, addCustomerTicketCommentAction } from '@/app/s/[subdomain]/actions/tickets';
+import { Ticket, Attachment, type TicketComment, Asset, Area, Site } from '@/db/schema';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { AttachmentList } from '@/components/tickets/attachment-list';
+import { formatDateTime } from '@/lib/utils/date';
+import { LinkedAssets } from '@/components/tickets/linked-assets';
 
 interface CustomerTicketDetailProps {
   ticket: Ticket & {
     organization: { name: string };
+    requestType?: { name: string } | null;
+    site?: { name: string } | null;
+    area?: { name: string } | null;
     requester: { name: string | null; email: string } | null;
     assignee: { name: string | null; email: string } | null;
     comments: (TicketComment & {
       user: { name: string | null; email: string } | null;
     })[];
+    attachments: Attachment[];
+    ticketAssets?: Array<{
+      asset: Asset | null;
+    }>;
   };
+  availableAssets: Array<Asset & { site?: Site | null; area?: Area | null }>;
+  canEditAssets: boolean;
 }
 
-type TicketComment = {
-  id: string;
-  content: string;
-  isInternal: boolean;
-  createdAt: Date;
-  user: { name: string | null; email: string } | null;
-};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -66,9 +72,17 @@ interface CustomerTicketDetailWithSubdomainProps extends CustomerTicketDetailPro
   subdomain: string;
 }
 
-export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetailWithSubdomainProps) {
+export function CustomerTicketDetail({
+  ticket,
+  subdomain,
+  availableAssets,
+  canEditAssets,
+}: CustomerTicketDetailWithSubdomainProps) {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ccInput, setCcInput] = useState((ticket.ccEmails || []).join(', '));
+  const [isUpdatingCc, setIsUpdatingCc] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   async function handleAddComment() {
     if (!comment.trim()) return;
@@ -83,8 +97,44 @@ export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetail
     }
   }
 
+  async function handleUpdateCc() {
+    setIsUpdatingCc(true);
+    try {
+      const emails = ccInput
+        .split(',')
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+      await updateCustomerTicketCcAction(ticket.id, emails);
+      // Force a refresh
+      window.location.reload();
+    } finally {
+      setIsUpdatingCc(false);
+    }
+  }
+
+  async function handleCloseTicket() {
+    if (ticket.status === 'CLOSED') {
+      return;
+    }
+    setIsClosing(true);
+    try {
+      await closeCustomerTicketAction(ticket.id);
+      window.location.reload();
+    } finally {
+      setIsClosing(false);
+    }
+  }
+
   // Only show public comments to customers (filter out internal notes)
-  const publicComments = ticket.comments.filter((c) => !c.isInternal);
+  const publicComments = ticket.comments.filter((c: { isInternal: boolean }) => !c.isInternal);
+  const linkedAssets = (ticket.ticketAssets || [])
+    .map((link) => {
+      const asset = link.asset;
+      if (!asset) return null;
+      const fullAsset = availableAssets.find((candidate) => candidate.id === asset.id);
+      return { asset: fullAsset || asset };
+    })
+    .filter((link): link is { asset: Asset & { site?: Site | null; area?: Area | null } } => !!link);
 
   return (
     <div className="space-y-6">
@@ -101,6 +151,16 @@ export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetail
         <div className="flex gap-2">
           <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
           <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
+          {ticket.status !== 'CLOSED' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCloseTicket}
+              disabled={isClosing}
+            >
+              {isClosing ? 'Closing...' : 'Close ticket'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -116,6 +176,13 @@ export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetail
 
           <Separator />
 
+          <div>
+            <Label className="text-xs text-gray-500">Attachments</Label>
+            <div className="mt-2">
+              <AttachmentList attachments={ticket.attachments} />
+            </div>
+          </div>
+
           <div className="text-sm text-gray-600 space-y-1">
             <p>
               <strong>Status:</strong> {ticket.status}
@@ -123,24 +190,69 @@ export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetail
             <p>
               <strong>Priority:</strong> {ticket.priority}
             </p>
+            <div className="py-2">
+              <Label htmlFor="cc-emails" className="text-xs text-gray-500 block mb-1">
+                CC Emails (comma separated)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cc-emails"
+                  value={ccInput}
+                  onChange={(e) => setCcInput(e.target.value)}
+                  placeholder="email@example.com, another@example.com"
+                  className="h-8 text-sm"
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleUpdateCc}
+                  disabled={isUpdatingCc || ccInput === (ticket.ccEmails || []).join(', ')}
+                >
+                  {isUpdatingCc ? 'Saving...' : 'Update'}
+                </Button>
+              </div>
+            </div>
+            {ticket.requestType && (
+              <p>
+                <strong>Request Type:</strong> {ticket.requestType.name}
+              </p>
+            )}
+            {ticket.site && (
+              <p>
+                <strong>Site:</strong> {ticket.site.name}
+              </p>
+            )}
+            {ticket.area && (
+              <p>
+                <strong>Area:</strong> {ticket.area.name}
+              </p>
+            )}
             {ticket.assignee && (
               <p>
                 <strong>Assigned to:</strong> {ticket.assignee.name || ticket.assignee.email}
               </p>
             )}
             <p>
-              <strong>Created:</strong> {new Date(ticket.createdAt).toLocaleString()}
+              <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
             </p>
           </div>
         </CardContent>
       </Card>
+
+      <LinkedAssets
+        ticketId={ticket.id}
+        linkedAssets={linkedAssets}
+        availableAssets={availableAssets}
+        canEdit={canEditAssets}
+        scope="customer"
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Conversation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {publicComments.map((comment) => (
+          {publicComments.map((comment: TicketComment & { user?: { name: string | null; email: string } | null; authorEmail?: string | null }) => (
             <div key={comment.id} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -148,7 +260,7 @@ export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetail
                     {comment.user?.name || comment.user?.email || 'Support Team'}
                   </strong>
                   <span className="text-xs text-gray-500">
-                    {new Date(comment.createdAt).toLocaleString()}
+                    {formatDateTime(comment.createdAt)}
                   </span>
                 </div>
               </div>
@@ -184,4 +296,3 @@ export function CustomerTicketDetail({ ticket, subdomain }: CustomerTicketDetail
     </div>
   );
 }
-

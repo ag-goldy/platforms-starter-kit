@@ -41,6 +41,7 @@
 - [ ] Status change persists
 - [ ] Priority change persists
 - [ ] Comments save successfully
+- [ ] Attachments upload and appear in the list
 
 ### Organizations (`/app/organizations`)
 - [ ] Page loads
@@ -71,6 +72,7 @@
 - [ ] Redirects to success page
 - [ ] Success page shows ticket number
 - [ ] Email sent (check console logs for email output)
+    - [ ] If SMTP configured, email is received
 
 ### Magic Links
 - [ ] Email contains magic link
