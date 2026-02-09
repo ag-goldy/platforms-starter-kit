@@ -2,7 +2,6 @@ import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { CustomerPortalShell } from '@/components/customer/portal-shell';
 import { CustomerTeamManager } from '@/components/customer/team-manager';
 import { db } from '@/db';
 import { memberships, users, userInvitations } from '@/db/schema';
@@ -72,47 +71,43 @@ export default async function CustomerTeamPage({
     }
 
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="mx-auto max-w-4xl space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Team</h1>
-            <p className="text-sm text-gray-600">
-              Manage your organization&apos;s team members
-            </p>
-          </div>
-
-          <CustomerTeamManager
-            orgId={org.id}
-            orgName={org.name}
-            subdomain={subdomain}
-            members={teamMembers}
-            pendingInvitations={pendingInvitations}
-            currentUserId={user.id}
-            isAdmin={isAdmin}
-          />
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Team</h1>
+          <p className="text-sm text-gray-600">
+            Manage your organization&apos;s team members
+          </p>
         </div>
-      </CustomerPortalShell>
+
+        <CustomerTeamManager
+          orgId={org.id}
+          orgName={org.name}
+          subdomain={subdomain}
+          members={teamMembers}
+          pendingInvitations={pendingInvitations}
+          currentUserId={user.id}
+          isAdmin={isAdmin}
+        />
+      </div>
     );
   } catch {
     // Not authenticated or not a member
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="flex items-center justify-center py-12">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Access Required</CardTitle>
-              <CardDescription>
-                Please sign in to access team management.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <a href="/login" className="text-blue-600 hover:underline">
-                Sign in
-              </a>
-            </CardContent>
-          </Card>
-        </div>
-      </CustomerPortalShell>
+      <div className="flex items-center justify-center py-12">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Required</CardTitle>
+            <CardDescription>
+              Please sign in to access team management.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <a href="/login" className="text-blue-600 hover:underline">
+              Sign in
+            </a>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 }

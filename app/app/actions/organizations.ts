@@ -5,7 +5,7 @@ import { organizations, users, memberships } from '@/db/schema';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { logAudit } from '@/lib/audit/log';
 import { revalidatePath } from 'next/cache';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 
 export async function createOrganizationAction(data: {
   name: string;
@@ -150,5 +150,22 @@ export async function updateUserRoleAction(data: {
   });
 
   revalidatePath(`/app/organizations/${data.orgId}`);
+}
+
+/**
+ * Get all organizations (admin only)
+ */
+export async function getAllOrganizationsAction() {
+  await requireInternalRole();
+
+  const orgs = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+    })
+    .from(organizations)
+    .orderBy(asc(organizations.name));
+
+  return orgs;
 }
 

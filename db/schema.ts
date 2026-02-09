@@ -1,5 +1,24 @@
-import { pgTable, text, timestamp, uuid, integer, boolean, pgEnum, unique, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, boolean, pgEnum, unique, jsonb, date, decimal, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+// Zabbix Types
+export interface ZabbixTrigger {
+  triggerid: string;
+  description: string;
+  priority: string;
+  status: string;
+  value: string;
+  lastchange: string;
+  hostname?: string;
+}
+
+export interface ZabbixHost {
+  hostid: string;
+  host: string;
+  name: string;
+  status: string;
+  available: string;
+}
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', [
@@ -109,6 +128,8 @@ export const auditActionEnum = pgEnum('audit_action', [
   'TICKET_MERGED',
   'TICKET_TAG_ADDED',
   'TICKET_TAG_REMOVED',
+  'TICKET_SLA_WARNING',
+  'USER_CREATED',
   'USER_INVITED',
   'USER_ROLE_CHANGED',
   'USER_UPDATED',
@@ -214,6 +235,15 @@ export const services = pgTable('services', {
   slaResolutionHoursP2: integer('sla_resolution_hours_p2'),
   slaResolutionHoursP3: integer('sla_resolution_hours_p3'),
   slaResolutionHoursP4: integer('sla_resolution_hours_p4'),
+  // Zabbix monitoring fields
+  zabbixHostId: text('zabbix_host_id'),
+  zabbixHostName: text('zabbix_host_name'),
+  zabbixTriggers: jsonb('zabbix_triggers').$type<ZabbixTrigger[]>().default([]),
+  monitoringEnabled: boolean('monitoring_enabled').default(false),
+  monitoringStatus: text('monitoring_status').default('UNKNOWN'),
+  lastSyncedAt: timestamp('last_synced_at'),
+  uptimePercentage: decimal('uptime_percentage', { precision: 5, scale: 2 }),
+  responseTimeMs: integer('response_time_ms'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -441,6 +471,9 @@ export const tickets = pgTable('tickets', {
   slaPauseReason: text('sla_pause_reason'),
   deletedAt: timestamp('deleted_at'),
   isAnonymized: boolean('is_anonymized').default(false),
+  // Asset reference for quick lookup by serial/hostname
+  assetSerialNumber: text('asset_serial_number'),
+  assetHostname: text('asset_hostname'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -824,6 +857,53 @@ export const servicesRelations = relations(services, ({ one, many }) => ({
     references: [organizations.id],
   }),
   tickets: many(tickets),
+  monitoringHistory: many(serviceMonitoringHistory),
+}));
+
+// Zabbix Configuration Table
+export const zabbixConfigs = pgTable('zabbix_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  apiUrl: text('api_url').notNull(),
+  apiToken: text('api_token').notNull(),
+  isActive: boolean('is_active').default(true),
+  lastSyncedAt: timestamp('last_synced_at'),
+  syncIntervalMinutes: integer('sync_interval_minutes').default(5),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueOrgId: unique('zabbix_configs_org_id_unique').on(table.orgId),
+}));
+
+export const zabbixConfigsRelations = relations(zabbixConfigs, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [zabbixConfigs.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+// Service Monitoring History Table
+export const serviceMonitoringHistory = pgTable('service_monitoring_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  serviceId: uuid('service_id')
+    .notNull()
+    .references(() => services.id, { onDelete: 'cascade' }),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+  status: text('status').notNull(),
+  uptimePercentage: decimal('uptime_percentage', { precision: 5, scale: 2 }),
+  responseTimeMs: integer('response_time_ms'),
+  alertsCount: integer('alerts_count').default(0),
+  details: jsonb('details').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const serviceMonitoringHistoryRelations = relations(serviceMonitoringHistory, ({ one }) => ({
+  service: one(services, {
+    fields: [serviceMonitoringHistory.serviceId],
+    references: [services.id],
+  }),
 }));
 
 export const internalGroupsRelations = relations(internalGroups, ({ many, one }) => ({
@@ -1045,6 +1125,12 @@ export type Area = typeof areas.$inferSelect;
 export type NewArea = typeof areas.$inferInsert;
 export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
+export type Service = typeof services.$inferSelect;
+export type NewService = typeof services.$inferInsert;
+export type ZabbixConfig = typeof zabbixConfigs.$inferSelect;
+export type NewZabbixConfig = typeof zabbixConfigs.$inferInsert;
+export type ServiceMonitoringHistory = typeof serviceMonitoringHistory.$inferSelect;
+export type NewServiceMonitoringHistory = typeof serviceMonitoringHistory.$inferInsert;
 export type InternalGroup = typeof internalGroups.$inferSelect;
 export type NewInternalGroup = typeof internalGroups.$inferInsert;
 export type InternalGroupMembership = typeof internalGroupMemberships.$inferSelect;
@@ -1085,3 +1171,707 @@ export type UserSession = typeof userSessions.$inferSelect;
 export type NewUserSession = typeof userSessions.$inferInsert;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+// Notifications System
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'TICKET_CREATED',
+  'TICKET_UPDATED',
+  'TICKET_ASSIGNED',
+  'TICKET_COMMENTED',
+  'TICKET_STATUS_CHANGED',
+  'TICKET_PRIORITY_CHANGED',
+  'TICKET_RESOLVED',
+  'TICKET_REOPENED',
+  'TICKET_MERGED',
+  'TICKET_ESCALATED',
+  'TICKET_SLA_BREACH',
+  'TICKET_SLA_WARNING',
+  'USER_MENTIONED',
+  'ORG_INVITATION',
+  'ORG_ROLE_CHANGED',
+  'INTERNAL_GROUP_ASSIGNED',
+  'AUTOMATION_TRIGGERED',
+]);
+
+export const notifications = pgTable('notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  type: notificationTypeEnum('type').notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  data: jsonb('data'),
+  link: text('link'),
+  read: boolean('read').default(false).notNull(),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+  emailEnabled: boolean('email_enabled').default(true).notNull(),
+  emailDigestFrequency: text('email_digest_frequency').default('immediate').notNull(),
+  emailTypes: jsonb('email_types').$type<string[]>().default([]),
+  pushEnabled: boolean('push_enabled').default(true).notNull(),
+  pushTypes: jsonb('push_types').$type<string[]>().default([]),
+  inAppEnabled: boolean('in_app_enabled').default(true).notNull(),
+  inAppTypes: jsonb('in_app_types').$type<string[]>().default([]),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+// User Mentions in comments
+export const userMentions = pgTable('user_mentions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  commentId: uuid('comment_id')
+    .notNull()
+    .references(() => ticketComments.id, { onDelete: 'cascade' }),
+  mentionedUserId: uuid('mentioned_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueMention: unique().on(table.commentId, table.mentionedUserId),
+}));
+
+// Ticket Watchers
+export const ticketWatchers = pgTable('ticket_watchers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueWatcher: unique().on(table.ticketId, table.userId),
+}));
+
+// Draft Tickets
+export const draftTickets = pgTable('draft_tickets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  requesterId: uuid('requester_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  subject: text('subject'),
+  description: text('description'),
+  priority: ticketPriorityEnum('priority').default('P3'),
+  category: ticketCategoryEnum('category').default('INCIDENT'),
+  serviceId: uuid('service_id').references(() => services.id, { onDelete: 'set null' }),
+  requestTypeId: uuid('request_type_id').references(() => requestTypes.id, { onDelete: 'set null' }),
+  siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+  areaId: uuid('area_id').references(() => areas.id, { onDelete: 'set null' }),
+  formData: jsonb('form_data'),
+  attachments: jsonb('attachments').$type<string[]>().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Knowledge Base Categories
+export const kbCategories = pgTable('kb_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  description: text('description'),
+  parentId: uuid('parent_id').references((): AnyPgColumn => kbCategories.id, { onDelete: 'set null' }),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  isPublic: boolean('is_public').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueOrgSlug: unique().on(table.orgId, table.slug),
+}));
+
+// Knowledge Base Articles
+export const kbArticles = pgTable('kb_articles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  categoryId: uuid('category_id').references(() => kbCategories.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  slug: text('slug').notNull(),
+  content: text('content').notNull(),
+  contentType: text('content_type').default('markdown').notNull(), // markdown, html
+  excerpt: text('excerpt'),
+  status: text('status').default('draft').notNull(), // draft, published, archived
+  visibility: text('visibility').default('public').notNull(), // public, internal, agents_only
+  authorId: uuid('author_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  publishedAt: timestamp('published_at'),
+  viewCount: integer('view_count').default(0).notNull(),
+  helpfulCount: integer('helpful_count').default(0).notNull(),
+  notHelpfulCount: integer('not_helpful_count').default(0).notNull(),
+  tags: jsonb('tags').$type<string[]>().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueOrgSlug: unique().on(table.orgId, table.slug),
+}));
+
+// Knowledge Base Article Feedback
+export const kbArticleFeedback = pgTable('kb_article_feedback', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  articleId: uuid('article_id')
+    .notNull()
+    .references(() => kbArticles.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  helpful: boolean('helpful').notNull(),
+  comment: text('comment'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations for new tables
+export const userMentionsRelations = relations(userMentions, ({ one }) => ({
+  comment: one(ticketComments, {
+    fields: [userMentions.commentId],
+    references: [ticketComments.id],
+  }),
+  mentionedUser: one(users, {
+    fields: [userMentions.mentionedUserId],
+    references: [users.id],
+  }),
+}));
+
+export const ticketWatchersRelations = relations(ticketWatchers, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [ticketWatchers.ticketId],
+    references: [tickets.id],
+  }),
+  user: one(users, {
+    fields: [ticketWatchers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const draftTicketsRelations = relations(draftTickets, ({ one }) => ({
+  org: one(organizations, {
+    fields: [draftTickets.orgId],
+    references: [organizations.id],
+  }),
+  requester: one(users, {
+    fields: [draftTickets.requesterId],
+    references: [users.id],
+  }),
+  service: one(services, {
+    fields: [draftTickets.serviceId],
+    references: [services.id],
+  }),
+  requestType: one(requestTypes, {
+    fields: [draftTickets.requestTypeId],
+    references: [requestTypes.id],
+  }),
+  site: one(sites, {
+    fields: [draftTickets.siteId],
+    references: [sites.id],
+  }),
+  area: one(areas, {
+    fields: [draftTickets.areaId],
+    references: [areas.id],
+  }),
+}));
+
+export const kbCategoriesRelations = relations(kbCategories, ({ one, many }) => ({
+  org: one(organizations, {
+    fields: [kbCategories.orgId],
+    references: [organizations.id],
+  }),
+  parent: one(kbCategories, {
+    fields: [kbCategories.parentId],
+    references: [kbCategories.id],
+  }),
+  children: many(kbCategories),
+  articles: many(kbArticles),
+}));
+
+export const kbArticlesRelations = relations(kbArticles, ({ one, many }) => ({
+  org: one(organizations, {
+    fields: [kbArticles.orgId],
+    references: [organizations.id],
+  }),
+  category: one(kbCategories, {
+    fields: [kbArticles.categoryId],
+    references: [kbCategories.id],
+  }),
+  author: one(users, {
+    fields: [kbArticles.authorId],
+    references: [users.id],
+  }),
+  feedback: many(kbArticleFeedback),
+}));
+
+// Type exports
+export type UserMention = typeof userMentions.$inferSelect;
+export type NewUserMention = typeof userMentions.$inferInsert;
+export type TicketWatcher = typeof ticketWatchers.$inferSelect;
+export type NewTicketWatcher = typeof ticketWatchers.$inferInsert;
+export type DraftTicket = typeof draftTickets.$inferSelect;
+export type NewDraftTicket = typeof draftTickets.$inferInsert;
+export type KbCategory = typeof kbCategories.$inferSelect;
+export type NewKbCategory = typeof kbCategories.$inferInsert;
+export type KbArticle = typeof kbArticles.$inferSelect;
+export type NewKbArticle = typeof kbArticles.$inferInsert;
+export type KbArticleFeedback = typeof kbArticleFeedback.$inferSelect;
+export type NewKbArticleFeedback = typeof kbArticleFeedback.$inferInsert;
+
+
+// ============================================
+// Phase 5: New Advanced Features
+// ============================================
+
+// CSAT (Customer Satisfaction) Enums and Tables
+export const csatRatingEnum = pgEnum('csat_rating', ['1', '2', '3', '4', '5']);
+
+export const csatSurveys = pgTable('csat_surveys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  requesterId: uuid('requester_id').references(() => users.id, { onDelete: 'set null' }),
+  rating: integer('rating'),
+  comment: text('comment'),
+  sentAt: timestamp('sent_at').defaultNow().notNull(),
+  respondedAt: timestamp('responded_at'),
+  reminderCount: integer('reminder_count').default(0).notNull(),
+  lastReminderAt: timestamp('last_reminder_at'),
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const csatAnalytics = pgTable('csat_analytics', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  totalSent: integer('total_sent').default(0).notNull(),
+  totalResponses: integer('total_responses').default(0).notNull(),
+  averageRating: decimal('average_rating', { precision: 3, scale: 2 }),
+  rating1Count: integer('rating_1_count').default(0).notNull(),
+  rating2Count: integer('rating_2_count').default(0).notNull(),
+  rating3Count: integer('rating_3_count').default(0).notNull(),
+  rating4Count: integer('rating_4_count').default(0).notNull(),
+  rating5Count: integer('rating_5_count').default(0).notNull(),
+  last30DaysAvg: decimal('last_30_days_avg', { precision: 3, scale: 2 }),
+  last90DaysAvg: decimal('last_90_days_avg', { precision: 3, scale: 2 }),
+  responseRate: decimal('response_rate', { precision: 5, scale: 2 }),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Time Tracking Tables
+export const timeTrackingSettings = pgTable('time_tracking_settings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  enabled: boolean('enabled').default(false).notNull(),
+  defaultHourlyRate: decimal('default_hourly_rate', { precision: 10, scale: 2 }),
+  requireDescription: boolean('require_description').default(true).notNull(),
+  minimumEntryMinutes: integer('minimum_entry_minutes').default(5).notNull(),
+  roundToMinutes: integer('round_to_minutes').default(15).notNull(),
+  allowManualEntry: boolean('allow_manual_entry').default(true).notNull(),
+  autoPauseOnStatus: boolean('auto_pause_on_status').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const activeTimers = pgTable('active_timers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .unique()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  lastResumedAt: timestamp('last_resumed_at').defaultNow().notNull(),
+  totalPausedMinutes: integer('total_paused_minutes').default(0).notNull(),
+  description: text('description'),
+  isBillable: boolean('is_billable').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const timeEntries = pgTable('time_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  startedAt: timestamp('started_at').notNull(),
+  endedAt: timestamp('ended_at').notNull(),
+  durationMinutes: integer('duration_minutes').notNull(),
+  description: text('description'),
+  isBillable: boolean('is_billable').default(true).notNull(),
+  isManualEntry: boolean('is_manual_entry').default(false).notNull(),
+  manualDate: date('manual_date'),
+  hourlyRate: decimal('hourly_rate', { precision: 10, scale: 2 }),
+  billedAmount: decimal('billed_amount', { precision: 10, scale: 2 }),
+  invoiceId: uuid('invoice_id'),
+  invoicedAt: timestamp('invoiced_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Webhook System
+export const webhookEventEnum = pgEnum('webhook_event', [
+  'ticket.created',
+  'ticket.updated',
+  'ticket.status_changed',
+  'ticket.assigned',
+  'ticket.commented',
+  'ticket.resolved',
+  'ticket.closed',
+  'ticket.reopened',
+  'user.created',
+  'user.updated',
+  'organization.updated',
+  'sla.warning',
+  'sla.breached',
+]);
+
+export const webhookStatusEnum = pgEnum('webhook_status', ['active', 'inactive', 'failing']);
+
+export const webhooks = pgTable('webhooks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  secret: text('secret'),
+  events: webhookEventEnum('events').array().notNull(),
+  status: webhookStatusEnum('status').default('active').notNull(),
+  filterConditions: jsonb('filter_conditions').default({}),
+  customHeaders: jsonb('custom_headers').default({}),
+  maxRetries: integer('max_retries').default(3).notNull(),
+  retryCount: integer('retry_count').default(0).notNull(),
+  lastError: text('last_error'),
+  lastErrorAt: timestamp('last_error_at'),
+  lastSuccessAt: timestamp('last_success_at'),
+  totalDeliveries: integer('total_deliveries').default(0).notNull(),
+  totalFailures: integer('total_failures').default(0).notNull(),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const webhookDeliveries = pgTable('webhook_deliveries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  webhookId: uuid('webhook_id')
+    .notNull()
+    .references(() => webhooks.id, { onDelete: 'cascade' }),
+  event: webhookEventEnum('event').notNull(),
+  payload: jsonb('payload').notNull(),
+  requestHeaders: jsonb('request_headers'),
+  requestBody: text('request_body'),
+  responseStatus: integer('response_status'),
+  responseBody: text('response_body'),
+  responseHeaders: jsonb('response_headers'),
+  attemptedAt: timestamp('attempted_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+  durationMs: integer('duration_ms'),
+  success: boolean('success').notNull(),
+  errorMessage: text('error_message'),
+  retryNumber: integer('retry_number').default(0).notNull(),
+  willRetry: boolean('will_retry').default(false).notNull(),
+  nextRetryAt: timestamp('next_retry_at'),
+});
+
+// Scheduled Tickets
+export const scheduledTicketStatusEnum = pgEnum('scheduled_ticket_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+  'cancelled',
+]);
+
+export const scheduledTickets = pgTable('scheduled_tickets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  scheduledFor: timestamp('scheduled_for').notNull(),
+  timezone: text('timezone').default('UTC').notNull(),
+  processedAt: timestamp('processed_at'),
+  subject: text('subject').notNull(),
+  description: text('description').notNull(),
+  priority: ticketPriorityEnum('priority').default('P3').notNull(),
+  category: ticketCategoryEnum('category').default('SERVICE_REQUEST').notNull(),
+  requesterId: uuid('requester_id').references(() => users.id, { onDelete: 'set null' }),
+  requesterEmail: text('requester_email'),
+  assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+  serviceId: uuid('service_id').references(() => services.id, { onDelete: 'set null' }),
+  siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+  areaId: uuid('area_id').references(() => areas.id, { onDelete: 'set null' }),
+  ccEmails: text('cc_emails').array(),
+  tags: text('tags').array(),
+  customFields: jsonb('custom_fields').default({}),
+  recurrencePattern: text('recurrence_pattern'),
+  recurrenceEndDate: timestamp('recurrence_end_date'),
+  parentScheduleId: uuid('parent_schedule_id').references((): AnyPgColumn => scheduledTickets.id, { onDelete: 'set null' }),
+  status: scheduledTicketStatusEnum('status').default('pending').notNull(),
+  errorMessage: text('error_message'),
+  createdTicketId: uuid('created_ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Dashboard Widgets
+export const widgetTypeEnum = pgEnum('widget_type', [
+  'ticket_count',
+  'sla_compliance',
+  'recent_tickets',
+  'assigned_to_me',
+  'unassigned_tickets',
+  'csat_score',
+  'time_tracked',
+  'activity_feed',
+  'priority_breakdown',
+  'status_breakdown',
+]);
+
+export const dashboardWidgets = pgTable('dashboard_widgets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  type: widgetTypeEnum('type').notNull(),
+  title: text('title'),
+  config: jsonb('config').default({}),
+  positionX: integer('position_x').default(0).notNull(),
+  positionY: integer('position_y').default(0).notNull(),
+  width: integer('width').default(2).notNull(),
+  height: integer('height').default(2).notNull(),
+  refreshIntervalSeconds: integer('refresh_interval_seconds').default(300).notNull(),
+  isVisible: boolean('is_visible').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Bulk Operations
+export const bulkOperationTypeEnum = pgEnum('bulk_operation_type', [
+  'assign',
+  'status_change',
+  'priority_change',
+  'add_tags',
+  'remove_tags',
+  'merge',
+  'close',
+  'delete',
+]);
+
+export const bulkOperationStatusEnum = pgEnum('bulk_operation_status', [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'partial',
+]);
+
+export const bulkOperations = pgTable('bulk_operations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  type: bulkOperationTypeEnum('type').notNull(),
+  status: bulkOperationStatusEnum('status').default('pending').notNull(),
+  ticketIds: uuid('ticket_ids').array().notNull(),
+  ticketCount: integer('ticket_count').notNull(),
+  data: jsonb('data').notNull(),
+  processedCount: integer('processed_count').default(0).notNull(),
+  successCount: integer('success_count').default(0).notNull(),
+  failureCount: integer('failure_count').default(0).notNull(),
+  errors: jsonb('errors').default([]),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations for Phase 5 tables
+export const csatSurveysRelations = relations(csatSurveys, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [csatSurveys.ticketId],
+    references: [tickets.id],
+  }),
+  org: one(organizations, {
+    fields: [csatSurveys.orgId],
+    references: [organizations.id],
+  }),
+  requester: one(users, {
+    fields: [csatSurveys.requesterId],
+    references: [users.id],
+  }),
+}));
+
+export const csatAnalyticsRelations = relations(csatAnalytics, ({ one }) => ({
+  org: one(organizations, {
+    fields: [csatAnalytics.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+export const timeTrackingSettingsRelations = relations(timeTrackingSettings, ({ one }) => ({
+  org: one(organizations, {
+    fields: [timeTrackingSettings.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+export const activeTimersRelations = relations(activeTimers, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [activeTimers.ticketId],
+    references: [tickets.id],
+  }),
+  user: one(users, {
+    fields: [activeTimers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [timeEntries.ticketId],
+    references: [tickets.id],
+  }),
+  org: one(organizations, {
+    fields: [timeEntries.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [timeEntries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const webhooksRelations = relations(webhooks, ({ one, many }) => ({
+  org: one(organizations, {
+    fields: [webhooks.orgId],
+    references: [organizations.id],
+  }),
+  createdByUser: one(users, {
+    fields: [webhooks.createdBy],
+    references: [users.id],
+  }),
+  deliveries: many(webhookDeliveries),
+}));
+
+export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one }) => ({
+  webhook: one(webhooks, {
+    fields: [webhookDeliveries.webhookId],
+    references: [webhooks.id],
+  }),
+}));
+
+export const scheduledTicketsRelations = relations(scheduledTickets, ({ one }) => ({
+  org: one(organizations, {
+    fields: [scheduledTickets.orgId],
+    references: [organizations.id],
+  }),
+  createdByUser: one(users, {
+    fields: [scheduledTickets.createdBy],
+    references: [users.id],
+  }),
+  requester: one(users, {
+    fields: [scheduledTickets.requesterId],
+    references: [users.id],
+  }),
+  assignee: one(users, {
+    fields: [scheduledTickets.assigneeId],
+    references: [users.id],
+  }),
+  service: one(services, {
+    fields: [scheduledTickets.serviceId],
+    references: [services.id],
+  }),
+  site: one(sites, {
+    fields: [scheduledTickets.siteId],
+    references: [sites.id],
+  }),
+  area: one(areas, {
+    fields: [scheduledTickets.areaId],
+    references: [areas.id],
+  }),
+  createdTicket: one(tickets, {
+    fields: [scheduledTickets.createdTicketId],
+    references: [tickets.id],
+  }),
+}));
+
+export const dashboardWidgetsRelations = relations(dashboardWidgets, ({ one }) => ({
+  user: one(users, {
+    fields: [dashboardWidgets.userId],
+    references: [users.id],
+  }),
+  org: one(organizations, {
+    fields: [dashboardWidgets.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+export const bulkOperationsRelations = relations(bulkOperations, ({ one }) => ({
+  org: one(organizations, {
+    fields: [bulkOperations.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [bulkOperations.userId],
+    references: [users.id],
+  }),
+}));
+
+// Type exports for Phase 5
+export type CSATSurvey = typeof csatSurveys.$inferSelect;
+export type NewCSATSurvey = typeof csatSurveys.$inferInsert;
+export type CSATAnalytics = typeof csatAnalytics.$inferSelect;
+export type NewCSATAnalytics = typeof csatAnalytics.$inferInsert;
+export type TimeTrackingSettings = typeof timeTrackingSettings.$inferSelect;
+export type NewTimeTrackingSettings = typeof timeTrackingSettings.$inferInsert;
+export type ActiveTimer = typeof activeTimers.$inferSelect;
+export type NewActiveTimer = typeof activeTimers.$inferInsert;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type NewTimeEntry = typeof timeEntries.$inferInsert;
+export type Webhook = typeof webhooks.$inferSelect;
+export type NewWebhook = typeof webhooks.$inferInsert;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type NewWebhookDelivery = typeof webhookDeliveries.$inferInsert;
+export type ScheduledTicket = typeof scheduledTickets.$inferSelect;
+export type NewScheduledTicket = typeof scheduledTickets.$inferInsert;
+export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
+export type NewDashboardWidget = typeof dashboardWidgets.$inferInsert;
+export type BulkOperation = typeof bulkOperations.$inferSelect;
+export type NewBulkOperation = typeof bulkOperations.$inferInsert;

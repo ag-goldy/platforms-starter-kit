@@ -155,7 +155,8 @@ export async function createCustomerTicketWithAttachmentsAction(formData: FormDa
       where: eq(areas.id, resolvedAreaId),
       with: { site: true },
     });
-    if (!area || !area.site || area.site.orgId !== resolvedOrgId) {
+    const site = area?.site as { orgId: string } | undefined;
+    if (!area || !site || site.orgId !== resolvedOrgId) {
       return { ticketId: null, error: 'Selected area is invalid.' };
     }
     if (resolvedSiteId && area.siteId !== resolvedSiteId) {

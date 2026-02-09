@@ -71,7 +71,18 @@ export async function getRequestContext(): Promise<RequestContext> {
     console.log('[RequestContext] Session exists but no token in cookie. Session user:', session.user.email);
   }
 
-  if (session?.user?.email) {
+  // Look up user by ID first (more reliable), then by email as fallback
+  if (session?.user?.id) {
+    const foundUser = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    });
+    user = foundUser || null;
+    
+    if (!user) {
+      console.log('[RequestContext] Session user ID not found in DB:', session.user.id, session.user.email);
+    }
+  } else if (session?.user?.email) {
+    // Fallback to email lookup for older sessions that might not have ID
     const foundUser = await db.query.users.findFirst({
       where: eq(users.email, session.user.email),
     });

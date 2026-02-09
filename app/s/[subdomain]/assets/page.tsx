@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { CustomerPortalShell } from '@/components/customer/portal-shell';
 import { AssetsManager } from '@/components/assets/assets-manager';
 import { db } from '@/db';
 import { areas, assets, sites, requestTypes, exportRequests, ticketAssets } from '@/db/schema';
@@ -110,44 +109,40 @@ export default async function CustomerAssetsPage({
     ];
 
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="mx-auto max-w-5xl space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Assets</h1>
-            <p className="text-sm text-gray-600">
-              Manage assets linked to your support tickets.
-            </p>
-          </div>
-
-          <AssetsManager
-            orgId={org.id}
-            assets={orgAssets}
-            sites={orgSites}
-            areas={orgAreas}
-            scope="customer"
-            basePath={`/s/${subdomain}/assets`}
-            assetStats={assetStats}
-            modules={modules}
-          />
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Assets</h1>
+          <p className="text-sm text-gray-600">
+            Manage assets linked to your support tickets.
+          </p>
         </div>
-      </CustomerPortalShell>
+
+        <AssetsManager
+          orgId={org.id}
+          assets={orgAssets as any}
+          sites={orgSites}
+          areas={orgAreas}
+          scope="customer"
+          basePath={`/s/${subdomain}/assets`}
+          assetStats={assetStats}
+          modules={modules}
+        />
+      </div>
     );
   } catch {
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="flex items-center justify-center py-12">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Access Required</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600">
-                Customer admins can manage assets.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </CustomerPortalShell>
+      <div className="flex items-center justify-center py-12">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Required</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Customer admins can manage assets.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 }

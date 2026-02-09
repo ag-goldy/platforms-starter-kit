@@ -73,9 +73,17 @@ export class SmtpEmailService implements EmailService {
     const info = await this.transporter.sendMail({
       from: this.from,
       to: options.to,
+      cc: options.cc,
+      bcc: options.bcc,
+      replyTo: options.replyTo,
       subject: options.subject,
       html: options.html,
       text: options.text,
+      attachments: options.attachments?.map(att => ({
+        filename: att.filename,
+        content: att.content,
+        contentType: att.contentType,
+      })),
     });
 
     const accepted = info.accepted ?? [];

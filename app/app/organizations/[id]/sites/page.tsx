@@ -47,7 +47,7 @@ export default async function OrganizationSitesPage({
         </p>
       </div>
 
-      <SitesManager orgId={orgId} sites={sites} />
+      <SitesManager orgId={orgId} sites={sites as any} />
     </div>
   );
 }

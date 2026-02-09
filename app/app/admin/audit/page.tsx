@@ -225,16 +225,17 @@ export default async function AuditAdminPage({
                         {formatDateTime(log.createdAt)}
                       </td>
                       <td className="px-2 py-1">
-                        {log.organization?.name || '—'}
+                        {(log.organization as { name?: string } | undefined)?.name || '—'}
                       </td>
                       <td className="px-2 py-1">
-                        {log.user?.name || log.user?.email || 'System'}
+                        {(log.user as { name?: string; email?: string } | undefined)?.name || 
+                         (log.user as { name?: string; email?: string } | undefined)?.email || 'System'}
                       </td>
                       <td className="px-2 py-1">
                         {actionLabels[log.action] || log.action}
                       </td>
                       <td className="px-2 py-1">
-                        {log.ticket?.key || '—'}
+                        {(log.ticket as { key?: string } | undefined)?.key || '—'}
                       </td>
                       <td className="max-w-xs px-2 py-1 text-xs text-gray-600">
                         {log.details}

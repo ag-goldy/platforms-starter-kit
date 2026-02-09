@@ -18,7 +18,7 @@ interface TicketListProps {
     requester: { name: string | null; email: string } | null;
     assignee: { id: string; name: string | null; email: string } | null;
     tagAssignments?: Array<{
-      tag: { id: string; name: string; color: string };
+      tag: { id: string; name: string; color: string | null };
     }>;
   })[];
   basePath?: string;

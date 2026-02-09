@@ -1,10 +1,15 @@
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { getAllUsersAction } from '@/app/app/actions/users';
+import { getAllOrganizationsAction } from '@/app/app/actions/organizations';
 import { UsersList } from '@/components/users/users-list';
+import { CreateUserDialog } from '@/components/users/create-user-dialog';
 
 export default async function UsersPage() {
   await requireInternalRole();
-  const users = await getAllUsersAction();
+  const [users, organizations] = await Promise.all([
+    getAllUsersAction(),
+    getAllOrganizationsAction(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -15,6 +20,7 @@ export default async function UsersPage() {
             Manage all users across all organizations
           </p>
         </div>
+        <CreateUserDialog organizations={organizations} />
       </div>
 
       <UsersList users={users} />

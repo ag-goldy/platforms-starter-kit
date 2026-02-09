@@ -100,7 +100,7 @@ export function TicketFilters({
     if (searchInComments) params.set('searchInComments', 'true');
 
     const query = params.toString();
-    router.push(query ? `/app?${query}` : '/app');
+    router.push(query ? `/app/tickets?${query}` : '/app/tickets');
   }
 
   function clearFilters() {
@@ -113,7 +113,7 @@ export function TicketFilters({
     setDateFrom('');
     setDateTo('');
     setSearchInComments(false);
-    router.push('/app');
+    router.push('/app/tickets');
   }
 
   async function handleSaveSearch() {
@@ -166,7 +166,7 @@ export function TicketFilters({
     if (filters.dateTo) params.set('dateTo', new Date(filters.dateTo).toISOString().split('T')[0]);
     if (filters.searchInComments) params.set('searchInComments', 'true');
 
-    router.push(`/app?${params.toString()}`);
+    router.push(`/app/tickets?${params.toString()}`);
   }
 
   async function handleDeleteSavedSearch(searchId: string) {

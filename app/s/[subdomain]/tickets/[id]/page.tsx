@@ -4,8 +4,7 @@ import { getTicketById } from '@/lib/tickets/queries';
 import { notFound } from 'next/navigation';
 import { CustomerTicketDetail } from '@/components/customer/ticket-detail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CustomerPortalShell } from '@/components/customer/portal-shell';
-import { type Ticket, type TicketComment, type Attachment, assets } from '@/db/schema';
+import { type Ticket, type TicketComment, type Attachment, type Asset, type Site, type Area, assets } from '@/db/schema';
 import { db } from '@/db';
 import { eq } from 'drizzle-orm';
 
@@ -51,41 +50,37 @@ export default async function CustomerTicketDetailPage({
       : [];
 
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="mx-auto max-w-4xl space-y-6">
-          <CustomerTicketDetail ticket={ticket as unknown as Ticket & {
-            organization: { name: string };
-            requester: { name: string | null; email: string } | null;
-            assignee: { name: string | null; email: string } | null;
-            comments: (TicketComment & {
-              user: { name: string | null; email: string } | null;
-            })[];
-            attachments: Attachment[];
-          }} subdomain={subdomain} availableAssets={availableAssets} canEditAssets={isAdmin} />
-        </div>
-      </CustomerPortalShell>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <CustomerTicketDetail ticket={ticket as unknown as Ticket & {
+          organization: { name: string };
+          requester: { name: string | null; email: string } | null;
+          assignee: { name: string | null; email: string } | null;
+          comments: (TicketComment & {
+            user: { name: string | null; email: string } | null;
+          })[];
+          attachments: Attachment[];
+        }} subdomain={subdomain} availableAssets={availableAssets as (Asset & { site?: Site | null; area?: Area | null })[]} canEditAssets={isAdmin} />
+      </div>
     );
   } catch (error) {
     console.error('[CustomerTicketDetailPage] Error:', error);
     // Not authenticated or not a member
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="flex items-center justify-center py-12">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Access Required</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600">
-                Please sign in to access this ticket.
-              </p>
-              <p className="text-xs text-red-500 mt-2">
-                Debug: {(error as Error).message}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </CustomerPortalShell>
+      <div className="flex items-center justify-center py-12">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Required</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Please sign in to access this ticket.
+            </p>
+            <p className="text-xs text-red-500 mt-2">
+              Debug: {(error as Error).message}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 }

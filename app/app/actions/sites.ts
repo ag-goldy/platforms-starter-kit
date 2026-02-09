@@ -176,8 +176,9 @@ export async function updateAreaAction(
     where: eq(areas.id, areaId),
     with: { site: true },
   });
+  const site1 = area?.site as { orgId: string } | undefined;
 
-  if (!area || !area.site || area.site.orgId !== orgId) {
+  if (!area || !site1 || site1.orgId !== orgId) {
     throw new Error('Area not found');
   }
 
@@ -204,8 +205,9 @@ export async function toggleAreaActiveAction(orgId: string, areaId: string, isAc
     where: eq(areas.id, areaId),
     with: { site: true },
   });
+  const site2 = area?.site as { orgId: string } | undefined;
 
-  if (!area || !area.site || area.site.orgId !== orgId) {
+  if (!area || !site2 || site2.orgId !== orgId) {
     throw new Error('Area not found');
   }
 

@@ -10,6 +10,7 @@ import { getPendingInvitations } from '@/lib/users/invitations';
 import { getOrganizationMembersAction } from '@/app/app/actions/users';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Settings, Workflow, FileText, Layers, MapPin, Server, Bell, Shield, Users } from 'lucide-react';
 
 export default async function OrganizationDetailPage({
   params,
@@ -50,94 +51,87 @@ export default async function OrganizationDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Settings
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
+          <nav className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <Link
               href={`/app/organizations/${orgId}/automation`}
-              className="block rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Automation Rules</h3>
-                  <p className="text-sm text-gray-600">
-                    Configure automated workflows for this organization
-                  </p>
-                </div>
-                <span className="text-gray-400">→</span>
+              <Workflow className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Automation Rules</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Configure automated workflows
+                </p>
               </div>
             </Link>
             <Link
               href={`/app/organizations/${orgId}/request-types`}
-              className="block rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Service Catalog</h3>
-                  <p className="text-sm text-gray-600">
-                    Configure request types and dynamic forms
-                  </p>
-                </div>
-                <span className="text-gray-400">→</span>
+              <FileText className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Service Catalog</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Request types and dynamic forms
+                </p>
               </div>
             </Link>
             <Link
               href={`/app/organizations/${orgId}/services`}
-              className="block rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Services</h3>
-                  <p className="text-sm text-gray-600">
-                    Define supported services and per-service SLA policies
-                  </p>
-                </div>
-                <span className="text-gray-400">→</span>
+              <Layers className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Services</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Services and SLA policies
+                </p>
               </div>
             </Link>
             <Link
               href={`/app/organizations/${orgId}/sites`}
-              className="block rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Sites & Areas</h3>
-                  <p className="text-sm text-gray-600">
-                    Manage locations and areas for this organization
-                  </p>
-                </div>
-                <span className="text-gray-400">→</span>
+              <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Sites & Areas</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Manage locations and areas
+                </p>
               </div>
             </Link>
             <Link
               href={`/app/organizations/${orgId}/assets`}
-              className="block rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Assets</h3>
-                  <p className="text-sm text-gray-600">
-                    Maintain linked assets and infrastructure inventory
-                  </p>
-                </div>
-                <span className="text-gray-400">→</span>
+              <Server className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Assets</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Infrastructure inventory
+                </p>
               </div>
             </Link>
             <Link
               href={`/app/organizations/${orgId}/notices`}
-              className="block rounded-lg border bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Notices</h3>
-                  <p className="text-sm text-gray-600">
-                    Publish maintenance and known issue banners
-                  </p>
-                </div>
-                <span className="text-gray-400">→</span>
+              <Bell className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Notices</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Maintenance and issue banners
+                </p>
               </div>
             </Link>
+          </nav>
+          <div className="mt-4 pt-4 border-t">
             <Organization2FAPolicy orgId={orgId} requireTwoFactor={org.requireTwoFactor || false} />
           </div>
         </CardContent>
@@ -159,7 +153,10 @@ export default async function OrganizationDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Team Management</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Team Management
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <OrganizationTeamManager

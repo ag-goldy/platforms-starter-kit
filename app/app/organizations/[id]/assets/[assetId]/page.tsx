@@ -74,8 +74,8 @@ export default async function AssetDetailPage({
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{asset.type}</Badge>
             <Badge variant="outline">{asset.status}</Badge>
-            {asset.site && <Badge variant="secondary">{asset.site.name}</Badge>}
-            {asset.area && <Badge variant="secondary">{asset.area.name}</Badge>}
+            {asset.site && <Badge variant="secondary">{(asset.site as { name: string }).name}</Badge>}
+            {asset.area && <Badge variant="secondary">{(asset.area as { name: string }).name}</Badge>}
           </div>
           {asset.hostname && <p>Hostname: {asset.hostname}</p>}
           {asset.ipAddress && <p>IP Address: {asset.ipAddress}</p>}
@@ -100,30 +100,31 @@ export default async function AssetDetailPage({
           {linkedTickets.length === 0 ? (
             <p className="text-sm text-gray-500">No tickets linked yet.</p>
           ) : (
-            linkedTickets.map((link) =>
-              link.ticket ? (
-                <div key={link.ticket.id} className="rounded-md border p-3">
+            linkedTickets.map((link) => {
+              const ticket = link.ticket as { id: string; key: string; subject: string; status: string; priority: string } | undefined;
+              return ticket ? (
+                <div key={ticket.id} className="rounded-md border p-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <Link
-                        href={`/app/tickets/${link.ticket.id}`}
+                        href={`/app/tickets/${ticket.id}`}
                         className="text-sm font-medium hover:underline"
                       >
-                        {link.ticket.key}
+                        {ticket.key}
                       </Link>
-                      <p className="text-xs text-gray-500">{link.ticket.subject}</p>
+                      <p className="text-xs text-gray-500">{ticket.subject}</p>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline">{link.ticket.status}</Badge>
-                      <Badge variant="outline">{link.ticket.priority}</Badge>
+                      <Badge variant="outline">{ticket.status}</Badge>
+                      <Badge variant="outline">{ticket.priority}</Badge>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
                     Linked {formatDateTime(link.createdAt)}
                   </p>
                 </div>
-              ) : null
-            )
+              ) : null;
+            })
           )}
         </CardContent>
       </Card>

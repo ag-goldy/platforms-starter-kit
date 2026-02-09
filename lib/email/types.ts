@@ -1,8 +1,16 @@
 export interface EmailOptions {
-  to: string;
+  to: string | string[];
   subject: string;
-  html: string;
+  html?: string;
   text?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
+  replyTo?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
 }
 
 export interface EmailService {

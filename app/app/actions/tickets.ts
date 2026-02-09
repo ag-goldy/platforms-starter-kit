@@ -23,6 +23,7 @@ import { updateSLAPauseStatus } from '@/lib/tickets/sla-pause';
 import { checkQuota, incrementStorageUsage } from '@/lib/attachments/quota';
 import { enqueueJob } from '@/lib/jobs/queue';
 import { triggerOnTicketCreate, triggerOnTicketUpdate } from '@/lib/automation/rules';
+import { processMentions } from '@/lib/mentions';
 
 const ticketStatusSchema = z.enum(['NEW', 'OPEN', 'WAITING_ON_CUSTOMER', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
 const ticketPrioritySchema = z.enum(['P1', 'P2', 'P3', 'P4']);
@@ -220,6 +221,15 @@ export async function addTicketCommentAction(
     }
   }
 
+  // Process @mentions in the comment
+  await processMentions({
+    commentId: comment.id,
+    content,
+    authorId: user.id,
+    ticketId,
+    ticketKey: result.ticket.key,
+  });
+
   revalidatePath(`/app/tickets/${ticketId}`);
 }
 
@@ -271,7 +281,8 @@ export async function createTicketAction(data: {
       where: eq(areas.id, resolvedAreaId),
       with: { site: true },
     });
-    if (!area || !area.site || area.site.orgId !== orgId) {
+    const site = area?.site as { orgId: string } | undefined;
+    if (!area || !site || site.orgId !== orgId) {
       throw new Error('Area not found');
     }
     if (resolvedSiteId && area.siteId !== resolvedSiteId) {
@@ -303,6 +314,22 @@ export async function createTicketAction(data: {
       slaResolutionTargetHours: slaTargets.resolutionHours,
     })
     .returning();
+
+  // Add ticket created date as public comment
+  const createdDate = new Date().toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  await db.insert(ticketComments).values({
+    ticketId: ticket.id,
+    content: `Ticket created on ${createdDate}`,
+    isInternal: false,
+    userId: user.id,
+  });
 
   await logAudit({
     userId: user.id,

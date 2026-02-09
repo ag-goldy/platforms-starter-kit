@@ -30,10 +30,13 @@
     "db:apply-services": "tsx scripts/apply-services-migration.ts",
     "db:apply-org-customization": "tsx scripts/apply-org-customization-migration.ts",
     "test": "vitest",
+    "test:services": "tsx scripts/test-all-services.ts",
     "test:e2e": "playwright test tests/e2e",
     "test:e2e:ui": "playwright test tests/e2e --ui"
   },
   "dependencies": {
+    "@azure/identity": "^4.13.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.13",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -42,6 +45,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.2",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@upstash/redis": "^1.34.9",
     "@vercel/analytics": "^1.5.0",
     "@vercel/blob": "^0.24.1",
@@ -60,6 +64,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
     "redis": "^5.10.0",
     "tailwind-merge": "^3.3.0",
     "zod": "^3.24.1"

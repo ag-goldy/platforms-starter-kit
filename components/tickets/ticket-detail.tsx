@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { MentionInput } from '@/components/mentions/mention-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -37,6 +37,7 @@ import { TicketUpdateNotification } from './ticket-update-notification';
 import { CannedResponsePicker } from './canned-response-picker';
 import { TicketLinks } from './ticket-links';
 import { LinkedAssets } from '@/components/tickets/linked-assets';
+import { TicketWatchers } from './ticket-watchers';
 import type { SLAMetrics } from '@/lib/tickets/sla';
 
 interface TicketDetailProps {
@@ -235,6 +236,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
             <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <TicketWatchers ticketId={ticket.id} />
             {slaMetrics && <SLAIndicator metrics={slaMetrics} showDetails={true} />}
             {!ticket.mergedIntoId && (
               <Button
@@ -440,11 +442,11 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
                 )}
               </div>
             </div>
-            <Textarea
-              id="comment"
+            <MentionInput
+              orgId={ticket.orgId}
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Add a comment..."
+              onChange={setComment}
+              placeholder="Add a comment... Use @ to mention someone"
               rows={4}
             />
             <div className="flex items-center gap-4">

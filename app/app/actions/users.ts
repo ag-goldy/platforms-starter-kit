@@ -370,10 +370,111 @@ export async function getInternalUsersAction() {
 }
 
 /**
- * Get organization members with details
+ * Create a new user directly (admin only)
+ * This creates the user immediately without sending an invitation
  */
-export async function getOrganizationMembersAction(orgId: string) {
+export async function createUserAction(data: {
+  email: string;
+  name: string;
+  password: string;
+  isInternal: boolean;
+  orgId?: string;
+  role?: CustomerRole;
+}) {
+  const admin = await requireInternalRole();
+  const bcrypt = await import('bcryptjs');
+
+  // Validate inputs
+  const emailSchema = z.string().email();
+  const validatedEmail = emailSchema.parse(data.email);
+  
+  if (!data.name || data.name.trim().length < 2) {
+    throw new Error('Name must be at least 2 characters');
+  }
+  
+  if (!data.password || data.password.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
+
+  // Check if email already exists
+  const existingUser = await db.query.users.findFirst({
+    where: eq(users.email, validatedEmail),
+  });
+
+  if (existingUser) {
+    throw new Error('A user with this email already exists');
+  }
+
+  // Hash password
+  const passwordHash = await bcrypt.hash(data.password, 10);
+
+  // Create user
+  const [newUser] = await db
+    .insert(users)
+    .values({
+      email: validatedEmail,
+      name: data.name.trim(),
+      passwordHash,
+      isInternal: data.isInternal,
+      emailVerified: new Date(), // Auto-verify since admin is creating
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  if (!newUser) {
+    throw new Error('Failed to create user');
+  }
+
+  // If orgId and role provided, create membership
+  if (data.orgId && data.role) {
+    await db
+      .insert(memberships)
+      .values({
+        userId: newUser.id,
+        orgId: data.orgId,
+        role: data.role,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoNothing();
+  }
+
+  await logAudit({
+    userId: admin.id,
+    action: 'USER_CREATED',
+    details: JSON.stringify({ 
+      targetUserId: newUser.id, 
+      email: validatedEmail,
+      isInternal: data.isInternal,
+      orgId: data.orgId,
+    }),
+  });
+
+  revalidatePath('/app/users');
+  if (data.orgId) {
+    revalidatePath(`/app/organizations/${data.orgId}`);
+  }
+
+  return { 
+    success: true, 
+    userId: newUser.id,
+    email: newUser.email,
+  };
+}
+
+/**
+ * Get organization members with details
+ * @param orgId - Organization ID
+ * @param includeInternal - Whether to include internal users (default: false)
+ */
+export async function getOrganizationMembersAction(orgId: string, includeInternal = false) {
   await requireInternalRole();
+
+  const whereClause = includeInternal
+    ? eq(memberships.orgId, orgId)
+    : and(eq(memberships.orgId, orgId), eq(users.isInternal, false));
 
   const members = await db
     .select({
@@ -397,7 +498,7 @@ export async function getOrganizationMembersAction(orgId: string) {
     })
     .from(memberships)
     .innerJoin(users, eq(memberships.userId, users.id))
-    .where(eq(memberships.orgId, orgId))
+    .where(whereClause)
     .orderBy(asc(memberships.createdAt));
 
   return members.map((m) => ({

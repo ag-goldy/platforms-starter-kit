@@ -54,7 +54,7 @@ export default async function TicketDetailPage({
           user: { name: string | null; email: string } | null;
         })[];
         attachments: Attachment[];
-      }} internalUsers={internalUsers} slaMetrics={slaMetrics} availableAssets={availableAssets} />
+      }} internalUsers={internalUsers} slaMetrics={slaMetrics} availableAssets={availableAssets as any} />
       <AuditLogList logs={auditLogs} />
     </div>
   );

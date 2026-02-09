@@ -8,7 +8,8 @@ export type JobType =
   | 'GENERATE_ORG_EXPORT'
   | 'RECALCULATE_SLA'
   | 'PROCESS_ATTACHMENT'
-  | 'AUDIT_COMPACTION';
+  | 'AUDIT_COMPACTION'
+  | 'SLA_WARNING_CHECK';
 
 export type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -79,13 +80,21 @@ export interface AuditCompactionJob extends BaseJob {
   };
 }
 
+export interface SLAWarningCheckJob extends BaseJob {
+  type: 'SLA_WARNING_CHECK';
+  data: {
+    orgId?: string; // Optional: check specific org, or all if not provided
+  };
+}
+
 export type Job =
   | SendEmailJob
   | GenerateExportJob
   | GenerateOrgExportJob
   | RecalculateSLAJob
   | ProcessAttachmentJob
-  | AuditCompactionJob;
+  | AuditCompactionJob
+  | SLAWarningCheckJob;
 
 export interface JobResult {
   success: boolean;

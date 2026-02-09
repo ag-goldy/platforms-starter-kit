@@ -9,6 +9,8 @@ import { authConfig } from '@/auth.config';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  // Explicitly set trustHost to true for Vercel deployment
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {

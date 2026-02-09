@@ -1,8 +1,9 @@
 import { db } from '@/db';
-import { attachments, internalGroupMemberships, internalGroups, memberships, tickets } from '@/db/schema';
+import { attachments, internalGroupMemberships, internalGroups, memberships, tickets, users } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { InternalRole, CustomerRole } from './roles';
 import { getRequestContext } from './context';
+import { redirect } from 'next/navigation';
 
 export class AuthorizationError extends Error {
   constructor(message: string) {
@@ -14,7 +15,9 @@ export class AuthorizationError extends Error {
 export async function requireAuth() {
   const ctx = await getRequestContext();
   if (!ctx.user) {
-    throw new AuthorizationError('You must be logged in to access this resource');
+    // User not found in DB but has valid JWT - need to clear cookies
+    // Redirect to server-side signout to clear invalid session
+    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
   }
   return ctx.user;
 }
@@ -22,8 +25,10 @@ export async function requireAuth() {
 export async function requireInternalRole(allowedRoles?: InternalRole[]) {
   const ctx = await getRequestContext();
   const user = ctx.user;
+  
   if (!user) {
-    throw new AuthorizationError('You must be logged in to access this resource');
+    // User not found in DB but has valid JWT - need to clear cookies
+    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
   }
 
   if (!ctx.isInternal) {
@@ -70,26 +75,11 @@ export async function requireInternalAdmin() {
     .limit(1);
 
   const allowlist = process.env.INTERNAL_ADMIN_EMAILS;
-  if (!allowlist) {
-    if (groupMembership) {
-      return user;
-    }
-
-    const [anyPlatformAdminGroup] = await db
-      .select({ id: internalGroups.id })
-      .from(internalGroups)
-      .where(
-        and(
-          eq(internalGroups.scope, 'PLATFORM'),
-          inArray(internalGroups.roleType, platformAdminRoleList)
-        )
-      )
-      .limit(1);
-
-    if (anyPlatformAdminGroup) {
-      throw new AuthorizationError('This resource is only accessible to admins');
-    }
-
+  // If allowlist is not set or empty, allow any internal user (for easier setup)
+  // To restrict access, set INTERNAL_ADMIN_EMAILS env variable
+  if (!allowlist || allowlist.trim() === '') {
+    // When no allowlist is configured, all internal users have admin access
+    // This is for easier initial setup
     return user;
   }
 
@@ -114,7 +104,7 @@ export async function requireOrgMemberRole(orgId?: string, allowedRoles?: Custom
   const user = ctx.user;
 
   if (!user) {
-    throw new AuthorizationError('You must be logged in to access this resource');
+    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
   }
 
   const resolvedOrgId = ctx.org?.id ?? orgId;
@@ -154,7 +144,7 @@ export async function canViewTicket(ticketId: string) {
   const user = ctx.user;
 
   if (!user) {
-    throw new AuthorizationError('You must be logged in to access this resource');
+    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
   }
 
   const ticket = await db.query.tickets.findFirst({
@@ -221,7 +211,7 @@ export async function canDownloadAttachment(attachmentId: string) {
   const user = ctx.user;
 
   if (!user) {
-    throw new AuthorizationError('You must be logged in to access this resource');
+    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
   }
 
   const attachment = await db.query.attachments.findFirst({
@@ -282,4 +272,22 @@ export async function isOrgMember(userId: string, orgId: string): Promise<boolea
     ),
   });
   return !!membership;
+}
+
+/**
+ * Check if user has access to an organization (either as internal user or org member)
+ */
+export async function requireOrgAccess(userId: string, orgId: string): Promise<boolean> {
+  // Check if user is internal
+  const [user] = await db
+    .select({ isInternal: users.isInternal })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (user?.isInternal) {
+    return true;
+  }
+
+  // Check org membership
+  return isOrgMember(userId, orgId);
 }

@@ -51,7 +51,7 @@ export default async function OrganizationNoticesPage({
         </p>
       </div>
 
-      <NoticesManager orgId={orgId} notices={notices} sites={sites} />
+      <NoticesManager orgId={orgId} notices={notices as any} sites={sites} />
     </div>
   );
 }

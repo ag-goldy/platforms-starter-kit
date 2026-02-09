@@ -15,7 +15,7 @@ import { ChevronDown } from 'lucide-react';
 
 export function OrganizedNav() {
   const pathname = usePathname();
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
 
   return (
     <div className="hidden lg:flex items-center gap-1">
@@ -23,7 +23,17 @@ export function OrganizedNav() {
       <Link
         href="/app"
         className={`px-3 py-2 text-sm rounded-md transition-colors ${
-          isActive('/app')
+          pathname === '/app' || pathname === '/app/'
+            ? 'bg-gray-100 text-gray-900 font-medium'
+            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+        }`}
+      >
+        Dashboard
+      </Link>
+      <Link
+        href="/app/tickets"
+        className={`px-3 py-2 text-sm rounded-md transition-colors ${
+          pathname?.startsWith('/app/tickets')
             ? 'bg-gray-100 text-gray-900 font-medium'
             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
         }`}
@@ -31,14 +41,14 @@ export function OrganizedNav() {
         Tickets
       </Link>
       <Link
-        href="/app/dashboard"
+        href="/app/kb"
         className={`px-3 py-2 text-sm rounded-md transition-colors ${
-          isActive('/app/dashboard')
+          pathname?.startsWith('/app/kb')
             ? 'bg-gray-100 text-gray-900 font-medium'
             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
         }`}
       >
-        Dashboard
+        Knowledge Base
       </Link>
 
       {/* Configuration */}

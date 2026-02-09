@@ -47,7 +47,8 @@ async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId
       where: eq(areas.id, areaId),
       with: { site: true },
     });
-    if (!area || !area.site || area.site.orgId !== orgId) {
+    const site = area?.site as { orgId: string } | undefined;
+    if (!area || !site || site.orgId !== orgId) {
       throw new Error('Area not found');
     }
     if (siteId && area.siteId !== siteId) {

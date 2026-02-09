@@ -15,25 +15,25 @@ export function SavedViews({ currentUserId }: SavedViewsProps) {
     {
       name: 'My Open',
       icon: Inbox,
-      href: '/app?status=OPEN&assigneeId=' + currentUserId,
+      href: '/app/tickets?status=OPEN&assigneeId=' + currentUserId,
       description: 'Tickets assigned to me that are open',
     },
     {
       name: 'Unassigned',
       icon: UserX,
-      href: '/app?status=OPEN&assigneeId=unassigned',
+      href: '/app/tickets?status=OPEN&assigneeId=unassigned',
       description: 'Open tickets with no assignee',
     },
     {
       name: 'Waiting',
       icon: Clock,
-      href: '/app?status=WAITING_ON_CUSTOMER',
+      href: '/app/tickets?status=WAITING_ON_CUSTOMER',
       description: 'Tickets waiting on customer response',
     },
     {
       name: 'P1/P2',
       icon: AlertCircle,
-      href: '/app?priority=P1',
+      href: '/app/tickets?priority=P1',
       description: 'High priority tickets (P1 and P2)',
     },
   ];

@@ -1,0 +1,61 @@
+# AWS Zabbix Infrastructure Configuration
+# Copy this to terraform.tfvars and fill in your values
+
+# AWS Region (choose closest to your Neon DB)
+# Options: ap-southeast-1 (Singapore), ap-southeast-2 (Sydney), us-east-1, etc.
+aws_region = "ap-southeast-1"
+
+# Your Vercel app URL
+app_url = "https://atlas.agrnetworks.com"
+
+# Secret token (must match CRON_SECRET_TOKEN in Vercel)
+cron_secret_token = "your-super-secret-token-here"
+
+# Your IP address for SSH access (get from https://ipinfo.io/ip)
+my_ip_cidr = "YOUR_IP/32"
+
+# SSH Key Pair name (must exist in AWS EC2)
+ssh_key_name = "your-key-pair-name"
+
+# Sync interval in milliseconds
+# 1000 = 1 second (fastest practical)
+# 5000 = 5 seconds
+# 10000 = 10 seconds (recommended for production)
+sync_interval_ms = "1000"
+
+# Organization ID (or "ALL" for all orgs)
+org_id = "ALL"
+
+# Zabbix server IP (for webhook access restriction)
+# Set to your Zabbix server IP or "0.0.0.0/0" for any (less secure)
+zabbix_server_cidr = "0.0.0.0/0"
+
+# Features
+use_elasticache = true
+use_webhook_relay = false
+
+# Note on Database:
+# This setup uses your EXISTING Neon PostgreSQL database.
+# The poller connects via HTTPS API calls to your Vercel app,
+# which then writes to Neon. No need to provision RDS.
+# The m7i-flex.large instance provides:
+# - More CPU for concurrent API calls
+# - More RAM for caching
+# - Better network performance for low latency
+
+# Optional: Webhook secret for verification
+webhook_secret = ""
+
+# EC2 Instance Type
+# m7i-flex.large = 2 vCPU, 8GB RAM, up to 12.5Gbps network (~$65/month on-demand, ~$38/month reserved)
+# t3.micro = 2 vCPU, 1GB RAM (~$8/month)
+# t3.small = 2 vCPU, 2GB RAM (~$16/month)
+ec2_instance_type = "m7i-flex.large"
+
+# ElastiCache Node Type
+# cache.t3.micro = 1 vCPU, 0.5GB RAM (~$12/month)
+# cache.t3.small = 1 vCPU, 1.5GB RAM (~$24/month)
+elasticache_node_type = "cache.t3.micro"
+
+# Project name prefix for resources
+project_name = "agr-zabbix"

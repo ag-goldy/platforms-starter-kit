@@ -100,7 +100,11 @@ run('security hardening', () => {
     return user;
   }
 
-  async function createMembership(userId: string, orgId: string, role = 'REQUESTER') {
+  async function createMembership(
+    userId: string,
+    orgId: string,
+    role: 'ADMIN' | 'AGENT' | 'READONLY' | 'CUSTOMER_ADMIN' | 'REQUESTER' | 'VIEWER' = 'REQUESTER'
+  ) {
     const [membership] = await db
       .insert(memberships)
       .values({

@@ -46,13 +46,13 @@ export default async function ForgotPasswordPage({
           text: `Reset your password by visiting: ${resetUrl}`,
         });
       }
-
-      // Always show success to prevent email enumeration
-      redirect('/forgot-password?success=true');
     } catch (err) {
       console.error('Password reset error:', err);
       redirect('/forgot-password?error=An error occurred. Please try again.');
     }
+
+    // Always show success to prevent email enumeration
+    redirect('/forgot-password?success=true');
   }
 
   if (success) {

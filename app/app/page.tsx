@@ -1,105 +1,56 @@
 import { requireInternalRole } from '@/lib/auth/permissions';
-import { getTickets, type TicketPriority, type TicketStatus } from '@/lib/tickets/queries';
-import { ticketPriorityEnum, ticketStatusEnum } from '@/db/schema';
-import { getOrganizations } from '@/lib/organizations/queries';
-import { getInternalUsers } from '@/lib/users/queries';
-import { TicketList } from '@/components/tickets/ticket-list';
-import { TicketFilters } from '@/components/tickets/ticket-filters';
-import { SavedViews } from '@/components/tickets/saved-views';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getDashboardMetrics, getTicketTrends } from '@/lib/analytics/queries';
+import { DashboardOverview } from '@/components/dashboard/dashboard-overview';
+import { MetricsCards } from '@/components/dashboard/metrics-cards';
+import { StatusDistribution } from '@/components/dashboard/status-distribution';
+import { PriorityDistribution } from '@/components/dashboard/priority-distribution';
+import { OrgDistribution } from '@/components/dashboard/org-distribution';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { TicketIcon, Plus } from 'lucide-react';
 
-export default async function TicketsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    status?: string;
-    orgId?: string;
-    priority?: string;
-    assigneeId?: string;
-    search?: string;
-    tagIds?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    searchInComments?: string;
-  }>;
-}) {
+export default async function DashboardPage() {
   await requireInternalRole();
-  const params = await searchParams;
-
-  const allowedStatuses = ticketStatusEnum.enumValues;
-  const allowedPriorities = ticketPriorityEnum.enumValues;
-
-  const statusValue =
-    params.status && allowedStatuses.includes(params.status as TicketStatus)
-      ? (params.status as TicketStatus)
-      : undefined;
-  const priorityValue =
-    params.priority && allowedPriorities.includes(params.priority as TicketPriority)
-      ? (params.priority as TicketPriority)
-      : undefined;
-
-  const filters = {
-    status: statusValue ? [statusValue] : undefined,
-    orgId: params.orgId,
-    priority: priorityValue ? [priorityValue] : undefined,
-    assigneeId: params.assigneeId === 'unassigned' ? null : params.assigneeId,
-    search: params.search,
-    tagIds: params.tagIds ? params.tagIds.split(',') : undefined,
-    dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
-    dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
-    searchInComments: params.searchInComments === 'true',
-  };
-
-  const [ticketList, organizations, internalUsers] = await Promise.all([
-    getTickets(filters),
-    getOrganizations(),
-    getInternalUsers(),
+  const [metrics, trends] = await Promise.all([
+    getDashboardMetrics(),
+    getTicketTrends(30),
   ]);
-
-  const user = await requireInternalRole();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Ticket Queue</h1>
-        <Link href="/app/tickets/new">
-          <Button>New Ticket</Button>
-        </Link>
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Overview of ticket metrics and activity
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/app/tickets">
+            <Button variant="outline">
+              <TicketIcon className="w-4 h-4 mr-2" />
+              View Tickets
+            </Button>
+          </Link>
+          <Link href="/app/tickets/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Ticket
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <SavedViews currentUserId={user.id} />
+      <MetricsCards metrics={metrics} />
+      <DashboardOverview metrics={metrics} trends={trends} />
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        <StatusDistribution data={metrics.ticketsByStatus} />
+        <PriorityDistribution data={metrics.ticketsByPriority} />
+      </div>
 
-      <TicketFilters
-        organizations={organizations}
-        internalUsers={internalUsers}
-        initialFilters={{
-          status: params.status,
-          priority: params.priority,
-          orgId: params.orgId,
-          assigneeId: params.assigneeId,
-          search: params.search,
-          tagIds: params.tagIds,
-          dateFrom: params.dateFrom,
-          dateTo: params.dateTo,
-          searchInComments: params.searchInComments,
-        }}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Tickets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TicketList
-            tickets={ticketList}
-            internalUsers={internalUsers}
-            searchTerm={params.search}
-            currentUserId={user.id}
-          />
-        </CardContent>
-      </Card>
+      <OrgDistribution data={metrics.ticketsByOrg} />
     </div>
   );
 }
+

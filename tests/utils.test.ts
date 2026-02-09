@@ -1,15 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { formatErrorMessage } from '@/lib/utils/errors';
 
 describe('Error Utilities', () => {
-  const originalEnv = process.env.NODE_ENV;
-
   beforeEach(() => {
-    process.env.NODE_ENV = 'production';
+    vi.stubEnv('NODE_ENV', 'production');
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   describe('formatErrorMessage', () => {
@@ -38,14 +36,14 @@ describe('Error Utilities', () => {
     });
 
     it('should return generic message for unknown errors in production', () => {
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
       const error = new Error('Something went wrong');
       const message = formatErrorMessage(error);
       expect(message).toBe('An unexpected error occurred. Please try again.');
     });
 
     it('should return error message in development', () => {
-      process.env.NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
       const error = new Error('Something went wrong');
       const message = formatErrorMessage(error);
       expect(message).toBe('Something went wrong');
@@ -63,4 +61,3 @@ describe('Error Utilities', () => {
     });
   });
 });
-

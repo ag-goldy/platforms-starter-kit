@@ -46,7 +46,7 @@ export default async function InternalGroupsPage() {
     scope: group.scope,
     roleType: group.roleType,
     orgId: group.orgId,
-    orgName: group.organization?.name ?? null,
+    orgName: (group.organization as { name?: string } | undefined)?.name ?? null,
     members: group.memberships
       .filter((membership) => membership.user)
       .map((membership) => ({

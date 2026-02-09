@@ -1,42 +1,60 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import NextAuth from 'next-auth';
-import { authConfig } from '@/auth.config';
 import { rootDomain } from '@/lib/utils';
 import { getCorrelationIdFromHeaders, addCorrelationIdHeader } from '@/lib/monitoring/correlation';
 
-const { auth } = NextAuth(authConfig);
+// Get the domain for cookies - in production, use the root domain for subdomain support
+const getCookieDomain = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!isProduction) return undefined;
+  
+  const domain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  if (!domain) return undefined;
+  
+  // If it's a subdomain like atlas.agrnetworks.com, set cookie on .agrnetworks.com
+  const parts = domain.split('.');
+  if (parts.length >= 2) {
+    return '.' + parts.slice(-2).join('.');
+  }
+  
+  return undefined;
+};
 
+const cookieDomain = getCookieDomain();
+
+/**
+ * Extract subdomain from request
+ */
 function extractSubdomain(request: NextRequest): string | null {
-  const url = request.url;
   const host = request.headers.get('host') || '';
   const hostname = host.split(':')[0];
 
-  // Local development environment
-  if (url.includes('localhost') || url.includes('127.0.0.1')) {
-    // Try to extract subdomain from the full URL
-    const fullUrlMatch = url.match(/http:\/\/([^.]+)\.localhost/);
-    if (fullUrlMatch && fullUrlMatch[1]) {
-      return fullUrlMatch[1];
-    }
-
-    // Fallback to host header approach
+  // Local development
+  if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
     if (hostname.includes('.localhost')) {
       return hostname.split('.')[0];
+    }
+    
+    const pathname = request.nextUrl.pathname;
+    if (pathname.startsWith('/s/')) {
+      const pathParts = pathname.split('/');
+      if (pathParts.length >= 3 && pathParts[2]) {
+        return pathParts[2];
+      }
     }
 
     return null;
   }
 
-  // Production environment
+  // Production
   const rootDomainFormatted = rootDomain.split(':')[0];
 
-  // Handle preview deployment URLs (tenant---branch-name.vercel.app)
+  // Vercel preview URLs
   if (hostname.includes('---') && hostname.endsWith('.vercel.app')) {
     const parts = hostname.split('---');
     return parts.length > 0 ? parts[0] : null;
   }
 
-  // Regular subdomain detection
+  // Regular subdomain
   const isSubdomain =
     hostname !== rootDomainFormatted &&
     hostname !== `www.${rootDomainFormatted}` &&
@@ -45,50 +63,103 @@ function extractSubdomain(request: NextRequest): string | null {
   return isSubdomain ? hostname.replace(`.${rootDomainFormatted}`, '') : null;
 }
 
+/**
+ * Clear all auth cookies
+ */
+function clearAuthCookies(response: NextResponse) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  const cookieConfigs = [
+    { name: 'authjs.session-token', secure: false },
+    { name: '__Secure-authjs.session-token', secure: true },
+    { name: 'next-auth.session-token', secure: false },
+    { name: '__Secure-next-auth.session-token', secure: true },
+    { name: 'authjs.callback-url', secure: false },
+    { name: '__Secure-authjs.callback-url', secure: true },
+    { name: 'authjs.csrf-token', secure: false },
+    { name: '__Secure-authjs.csrf-token', secure: true },
+  ];
+
+  cookieConfigs.forEach(({ name, secure }) => {
+    // Clear with domain (for production subdomain support)
+    if (cookieDomain) {
+      response.cookies.set(name, '', {
+        path: '/',
+        expires: new Date(0),
+        domain: cookieDomain,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: isProduction && secure,
+      });
+    }
+    
+    // Clear without domain (for localhost and direct access)
+    response.cookies.set(name, '', {
+      path: '/',
+      expires: new Date(0),
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProduction && secure,
+    });
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const subdomain = extractSubdomain(request);
   
-  // Add correlation ID for request tracing
+  // Add correlation ID
   const correlationId = getCorrelationIdFromHeaders(request.headers);
   const response = NextResponse.next();
   addCorrelationIdHeader(response.headers, correlationId);
 
-  // Protect internal console routes
+  // Check for auth cookie
+  const sessionCookie = 
+    request.cookies.get('authjs.session-token')?.value ||
+    request.cookies.get('__Secure-authjs.session-token')?.value ||
+    request.cookies.get('next-auth.session-token')?.value ||
+    request.cookies.get('__Secure-next-auth.session-token')?.value;
+
+  // Protect /app routes - redirect to login if no session cookie
   if (pathname.startsWith('/app')) {
-    const session = await auth();
-    if (!session) {
+    if (!sessionCookie) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(loginUrl);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      clearAuthCookies(redirectResponse);
+      return redirectResponse;
     }
-    // Note: Customer user redirect is handled in the page component (can't use DB in Edge runtime)
+    // Note: Actual session validation happens in the page/layout
+  }
+
+  // Protect /admin routes
+  if (pathname.startsWith('/admin')) {
+    if (!sessionCookie) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      clearAuthCookies(redirectResponse);
+      return redirectResponse;
+    }
   }
 
   if (subdomain) {
-    // Block access to admin/app pages from subdomains
+    // Block admin/app access from subdomains
     if (pathname.startsWith('/admin') || pathname.startsWith('/app')) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // For the root path on a subdomain, rewrite to the subdomain page
+    // Rewrite root to subdomain page
     if (pathname === '/') {
       return NextResponse.rewrite(new URL(`/s/${subdomain}`, request.url));
     }
   }
 
-  // On the root domain, allow normal access
   return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except for:
-     * 1. /api routes
-     * 2. /_next (Next.js internals)
-     * 3. all root files inside /public (e.g. /favicon.ico)
-     */
-    '/((?!api|_next|[\\w-]+\\.\\w+).*)'
-  ]
+    '/((?!api|_next|static|.*\..*).*)',
+  ],
 };

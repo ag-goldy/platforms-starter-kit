@@ -1,222 +1,169 @@
-# AGR Support - Testing Checklist
+# Atlas Support - Testing Checklist
 
-## ✅ Authentication & Access
+Use this checklist to verify all services are working correctly.
 
-### Login
-- [ ] Login with `admin@agr.com` / `admin123` - should work
-- [ ] Login with `customer@acme.com` / `customer123` - should work
-- [ ] Try wrong password - should show error
-- [ ] Try non-existent email - should show error
-- [ ] Logout button works
-- [ ] Session persists on page refresh
+## 1. Environment & Configuration
 
-### Authorization
-- [ ] `/app/*` routes require login (redirect to `/login`)
-- [ ] Internal users can access `/app`
-- [ ] Non-authenticated users cannot access `/app`
+- [ ] All required env vars set in `.env.local`
+- [ ] Database connection string is valid
+- [ ] Auth secret is configured (32+ characters)
+- [ ] Email service configured (Graph API or SMTP)
 
----
+## 2. Database Tests
 
-## 🎫 Internal Console (`/app`)
+Run: `npm run test:services`
 
-### Ticket Queue/List (`/app`)
+- [ ] Database connection successful
+- [ ] Users exist in database
+- [ ] Organizations exist
+- [ ] KB articles and categories load
+- [ ] Tickets table accessible
+
+## 3. Authentication Tests
+
+### Login Flow
+- [ ] Navigate to `/login`
+- [ ] Login with `ag@agrnetworks.com` / `Admin@AGR2025!`
+- [ ] Redirected to `/app` dashboard
+- [ ] Session persists across page refreshes
+- [ ] Logout works and clears session
+
+### CSRF Protection
+- [ ] No "MissingCSRF" errors in logs
+- [ ] Can perform POST actions (create ticket, etc.)
+
+## 4. Email Tests
+
+### Configuration
+- [ ] Microsoft Graph API configured OR
+- [ ] SMTP configured
+
+### Test Email Send
+Run the test script with your email:
+```bash
+TEST_EMAIL=your-email@example.com npm run test:services
+```
+
+- [ ] Test email received in inbox
+- [ ] No errors in console logs
+- [ ] Email content renders correctly
+
+### Ticket Notifications
+- [ ] Create ticket → Email sent to requester
+- [ ] Add comment → Email sent to watchers
+- [ ] Status change → Email notification sent
+
+## 5. Knowledge Base Tests
+
+### Public KB (`/kb`)
 - [ ] Page loads without errors
-- [ ] Shows list of tickets (if any exist)
-- [ ] Empty state shows when no tickets
-- [ ] Ticket cards display: key, subject, status, priority, org, assignee
-- [ ] Click ticket card navigates to detail page
-- [ ] "New Ticket" button opens the create ticket form
-- [ ] Filters and search update the list and URL query params
+- [ ] Categories display correctly
+- [ ] Articles list shows published articles
+- [ ] Article detail page loads
+- [ ] Search functionality works
 
-### Ticket Detail (`/app/tickets/[id]`)
-- [ ] Page loads for a ticket
-- [ ] Shows ticket key, subject, description
-- [ ] Shows status badge (can change status via dropdown)
-- [ ] Shows priority badge (can change priority via dropdown)
-- [ ] Shows requester and assignee info
-- [ ] Timeline shows comments (public)
-- [ ] Can add new comment
-- [ ] Can mark comment as internal (checkbox)
-- [ ] Internal notes section shows (if internal comments exist)
-- [ ] Status change persists
-- [ ] Priority change persists
-- [ ] Comments save successfully
-- [ ] Attachments upload and appear in the list
+### Admin KB (`/app/kb`)
+- [ ] Create new article
+- [ ] Edit existing article
+- [ ] Create category
+- [ ] Global articles visible (null orgId)
+- [ ] Org-specific articles visible
 
-### Organizations (`/app/organizations`)
-- [ ] Page loads
-- [ ] Shows list of organizations
-- [ ] Can click org to view details (if implemented)
-- [ ] "New Organization" button opens create form
-- [ ] Can invite user and change role on org detail page
+## 6. Ticket System Tests
 
----
+### Create Ticket
+- [ ] Navigate to `/app/tickets/new`
+- [ ] Fill form and submit
+- [ ] Ticket appears in list
+- [ ] Ticket key is generated (e.g., `AGR-1234`)
+- [ ] Creation date comment added automatically
 
-## 🌐 Customer Portal (`acme.localhost:3000` or subdomain)
+### Ticket Actions
+- [ ] Add public comment
+- [ ] Add internal note
+- [ ] Change status
+- [ ] Assign to user
+- [ ] Change priority
+- [ ] Upload attachment
 
-### Customer Tickets (`/s/[subdomain]/tickets`)
-- [ ] Access customer portal via subdomain
-- [ ] Requires login
-- [ ] Shows tickets for logged-in customer's org only
-- [ ] Cannot see other orgs' tickets
-- [ ] "New Ticket" button visible
+### Notifications
+- [ ] Comment triggers email notification
+- [ ] Status change triggers email
+- [ ] Assignment triggers notification
 
----
+## 7. Admin Pages
 
-## 📝 Public Ticket Intake (`/support`)
+- [ ] `/app/admin/health` - Accessible
+- [ ] `/app/admin/audit` - Audit logs visible
+- [ ] `/app/admin/compliance` - Data retention settings
+- [ ] `/app/admin/jobs` - Failed jobs visible (if any)
+- [ ] `/app/admin/ops` - Ops dashboard loads
+- [ ] `/app/admin/internal-groups` - Groups management
 
-### Submit Ticket
-- [ ] `/support` page loads (no login required)
-- [ ] Form fields: email, subject, description
-- [ ] Can submit ticket
-- [ ] Redirects to success page
-- [ ] Success page shows ticket number
-- [ ] Email sent (check console logs for email output)
-    - [ ] If SMTP configured, email is received
+## 8. Customer Portal
 
-### Magic Links
-- [ ] Email contains magic link
-- [ ] Magic link works to view ticket
-- [ ] Magic link is secure (can't access other tickets)
+- [ ] Navigate to `/s/acme` (or your org subdomain)
+- [ ] Create ticket as customer
+- [ ] View ticket status
+- [ ] Add comment to ticket
+- [ ] View KB articles
 
----
+## 9. Performance Tests
 
-## 🔒 Security & Data Isolation
+- [ ] Page load time < 2 seconds
+- [ ] No loading spinners stuck on navigation
+- [ ] Navigation loader appears briefly on page change
+- [ ] API responses < 500ms
 
-### Organization Isolation
-- [ ] Internal users can see all tickets
-- [ ] Customer users only see their org's tickets
-- [ ] Customer users cannot access other orgs' tickets via URL manipulation
-- [ ] Customer users cannot access `/app` (internal console)
+## 10. Error Handling
 
-### Authorization Checks
-- [ ] Status changes require internal role
-- [ ] Priority changes require internal role
-- [ ] Assignment requires internal role
-- [ ] Adding comments works for authorized users
-- [ ] Unauthorized actions show appropriate errors
+- [ ] 404 page shows correctly
+- [ ] 500 errors show friendly message
+- [ ] Form validation errors display correctly
+- [ ] Unauthorized access redirects to login
 
----
+## Running Automated Tests
 
-## 💾 Database & Data
+```bash
+# Test all services
+npm run test:services
 
-### Seed Data Verification
-- [ ] Admin user exists: `admin@agr.com`
-- [ ] Customer user exists: `customer@acme.com`
-- [ ] Organization "Acme Corporation" exists
-- [ ] Organization "Unassigned Intake" exists
-- [ ] Customer user has membership in Acme org
+# Test with specific email
+TEST_EMAIL=your-email@example.com npm run test:services
 
-### Data Persistence
-- [ ] Created tickets persist in database
-- [ ] Status changes persist
-- [ ] Comments persist
-- [ ] Data loads correctly on page refresh
+# Build and check for errors
+npm run build
 
----
+# Check TypeScript
+npm run type-check
+```
 
-## 🐛 Error Handling
+## Troubleshooting
 
-### Graceful Failures
-- [ ] Invalid ticket ID shows 404
-- [ ] Unauthorized access shows error (not crash)
-- [ ] Network errors handled gracefully
-- [ ] Form validation shows errors
-- [ ] Server errors don't expose sensitive info
+### MissingCSRF Error
+- Check `AUTH_TRUST_HOST=true` is set
+- Verify `trustHost: true` in auth config
 
----
+### Email Not Sending
+- Check Graph/SMTP credentials
+- Verify admin consent in Azure AD (for Graph)
+- Check Vercel logs for detailed error
 
-## 📧 Email (Console Fallback)
+### Database Connection Failed
+- Verify `DATABASE_URL` format
+- Check IP allowlist in database provider
+- Ensure SSL mode is correct
 
-### Email Notifications
-- [ ] Public ticket creation sends email (check console)
-- [ ] Email format is readable in console
-- [ ] Email includes relevant ticket info
+### KB Articles Not Showing
+- Check articles have `status = 'published'`
+- Verify `orgId` is null for global articles
+- Check browser console for API errors
 
----
+## Sign-Off
 
-## 🎨 UI/UX
+- [ ] All critical tests passed
+- [ ] No console errors
+- [ ] No build errors
+- [ ] Ready for production
 
-### Design
-- [ ] Pages load without layout shift
-- [ ] Colors/contrast are readable
-- [ ] Buttons are clearly clickable
-- [ ] Forms are usable
-- [ ] Error messages are visible
-- [ ] Success feedback is clear
-
-### Navigation
-- [ ] Internal console navigation works
-- [ ] Back button works
-- [ ] Links navigate correctly
-- [ ] No broken links
-
----
-
-## 🚀 Quick Test Flow
-
-### Happy Path Test
-1. ✅ Login as admin: `admin@agr.com` / `admin123`
-2. ✅ View ticket queue at `/app`
-3. ✅ Create a test ticket (via public form or manually if needed)
-4. ✅ View ticket detail
-5. ✅ Change ticket status
-6. ✅ Change ticket priority
-7. ✅ Add a comment (public)
-8. ✅ Add an internal note
-9. ✅ Logout
-10. ✅ Login as customer: `customer@acme.com` / `customer123`
-11. ✅ Access customer portal (subdomain)
-12. ✅ View customer tickets
-13. ✅ Submit public ticket at `/support`
-14. ✅ Verify email sent (console)
-
----
-
-## 📝 Known Limitations (Not Bugs)
-
-These are features not yet implemented (per IMPLEMENTATION_STATUS.md):
-
-- ❌ File attachments (schema exists, no UI)
-- ❌ Email provider integration (console fallback only)
-- ❌ Automated test suite
-
----
-
-## 🔧 Troubleshooting
-
-### If login doesn't work:
-1. Check server logs for `[Auth]` messages
-2. Verify user exists in database: run seed script again
-3. Check NEXTAUTH_SECRET is set
-4. Clear browser cookies/session
-
-### If tickets don't show:
-1. Check database connection
-2. Verify seed script ran successfully
-3. Check browser console for errors
-4. Verify user has correct permissions
-
-### If pages don't load:
-1. Check server is running: `pnpm dev`
-2. Check for TypeScript errors: `pnpm exec tsc --noEmit`
-3. Check browser console for errors
-4. Check server logs for errors
-
----
-
-## 🎯 Priority Tests for MVP
-
-**Must Work:**
-1. ✅ Admin login
-2. ✅ View ticket list
-3. ✅ View ticket detail
-4. ✅ Change ticket status
-5. ✅ Add comments
-6. ✅ Customer login
-7. ✅ Public ticket submission
-
-**Nice to Have:**
-- Customer portal access
-- Organization management
-- Email notifications
+**Tester:** _________________ **Date:** _________________

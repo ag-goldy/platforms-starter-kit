@@ -145,7 +145,7 @@ export default async function OrganizationAssetsPage({
 
       <AssetsManager
         orgId={orgId}
-        assets={assets}
+        assets={assets as any}
         sites={sites}
         areas={areas}
         scope="internal"

@@ -2,7 +2,6 @@ import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { notFound } from 'next/navigation';
 import { CustomerTicketForm } from '@/components/customer/ticket-form';
-import { CustomerPortalShell } from '@/components/customer/portal-shell';
 import { getRequestTypes } from '@/lib/request-types/queries';
 import { db } from '@/db';
 import { areas, assets, sites } from '@/db/schema';
@@ -39,18 +38,16 @@ export default async function CustomerNewTicketPage({
     const requestTypes = await getRequestTypes(org.id);
     if (requestTypes.length === 0) {
       return (
-        <CustomerPortalShell subdomain={subdomain}>
-          <div className="mx-auto max-w-2xl space-y-6">
-            <div>
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div>
             <h1 className="text-2xl font-bold">Create Request</h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Submit a new support request
-              </p>
-            </div>
-
-            <CustomerTicketForm subdomain={subdomain} services={services} defaultServiceId={defaultServiceId} />
+            <p className="mt-1 text-sm text-gray-600">
+              Submit a new support request
+            </p>
           </div>
-        </CustomerPortalShell>
+
+          <CustomerTicketForm subdomain={subdomain} services={services} defaultServiceId={defaultServiceId} />
+        </div>
       );
     }
 
@@ -76,44 +73,40 @@ export default async function CustomerNewTicketPage({
     );
 
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="mx-auto max-w-2xl space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Create Request</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Choose a request type and provide the required details.
-            </p>
-          </div>
-
-          <CustomerRequestCatalog
-            subdomain={subdomain}
-            requestTypes={requestTypes}
-            sites={orgSites}
-            areas={orgAreas}
-            assets={orgAssets}
-            services={services}
-            isAdmin={isAdmin}
-            criticalNotice={criticalNotice ? { title: criticalNotice.title, body: criticalNotice.body } : null}
-          />
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Create Request</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Choose a request type and provide the required details.
+          </p>
         </div>
-      </CustomerPortalShell>
+
+        <CustomerRequestCatalog
+          subdomain={subdomain}
+          requestTypes={requestTypes}
+          sites={orgSites}
+          areas={orgAreas}
+          assets={orgAssets}
+          services={services}
+          isAdmin={isAdmin}
+          criticalNotice={criticalNotice ? { title: criticalNotice.title, body: criticalNotice.body } : null}
+        />
+      </div>
     );
   } catch (error) {
     console.error('[CustomerNewTicketPage] Error:', error);
     // Not authenticated or not a member
     return (
-      <CustomerPortalShell subdomain={subdomain}>
-        <div className="flex items-center justify-center py-12">
-          <div className="w-full max-w-md text-center">
-            <p className="text-sm text-gray-600">
-              Please sign in to create a ticket.
-            </p>
-            <p className="text-xs text-red-500 mt-2">
-              Debug: {(error as Error).message}
-            </p>
-          </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="w-full max-w-md text-center">
+          <p className="text-sm text-gray-600">
+            Please sign in to create a ticket.
+          </p>
+          <p className="text-xs text-red-500 mt-2">
+            Debug: {(error as Error).message}
+          </p>
         </div>
-      </CustomerPortalShell>
+      </div>
     );
   }
 }
