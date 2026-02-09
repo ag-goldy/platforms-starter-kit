@@ -17,7 +17,7 @@ import { getAllOrganizationsAction } from '@/app/app/actions/organizations';
 import { getOrgServicesAction } from '@/app/app/actions/services';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { AlertCircle, CheckCircle, RefreshCw, Server, Link2, Activity } from 'lucide-react';
+import { AlertCircle, CheckCircle, RefreshCw, Server, Activity } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 interface Organization {
@@ -164,7 +164,7 @@ export default function ZabbixAdminPage() {
       if (data.hosts) {
         setZabbixHosts(data.hosts);
       }
-    } catch (error) {
+    } catch {
       showToast('Failed to load Zabbix hosts', 'error');
     }
   }, [selectedOrgId]);

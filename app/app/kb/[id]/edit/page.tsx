@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, X, Folder, Globe, Building2, RefreshCw, Eye, Code, FileText } from 'lucide-react';
+import { ArrowLeft, Loader2, X, Folder, RefreshCw, Eye, Code, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 interface Organization {

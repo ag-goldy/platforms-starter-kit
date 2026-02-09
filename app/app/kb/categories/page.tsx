@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +40,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
@@ -63,7 +62,6 @@ interface Category {
 }
 
 export default function CategoriesPage() {
-  const router = useRouter();
   const { showToast } = useToast();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

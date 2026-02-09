@@ -18,7 +18,6 @@ import {
   Bot,
   Loader2,
   ArrowRight,
-  BookOpen,
   Headphones,
   Activity
 } from 'lucide-react';

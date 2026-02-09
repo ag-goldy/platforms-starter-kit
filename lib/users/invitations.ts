@@ -99,11 +99,18 @@ export async function createInvitation(data: InvitationData): Promise<{
     .limit(1);
   const org = orgs[0];
 
-  await sendInvitationEmail({
-    email: data.email,
-    invitationLink,
-    orgName: org?.name || 'Organization',
-  });
+  try {
+    console.log(`[Invitation] Sending email to ${data.email}...`);
+    await sendInvitationEmail({
+      email: data.email,
+      invitationLink,
+      orgName: org?.name || 'Organization',
+    });
+    console.log(`[Invitation] Email sent successfully to ${data.email}`);
+  } catch (error: any) {
+    console.error(`[Invitation] Failed to send email to ${data.email}:`, error);
+    // Still return the invitation - user can resend later
+  }
 
   return { invitation, invitationLink };
 }

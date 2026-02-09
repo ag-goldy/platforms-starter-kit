@@ -31,6 +31,7 @@
     "db:apply-org-customization": "tsx scripts/apply-org-customization-migration.ts",
     "test": "vitest",
     "test:services": "tsx scripts/test-all-services.ts",
+    "check:emails": "tsx scripts/check-failed-emails.ts",
     "test:e2e": "playwright test tests/e2e",
     "test:e2e:ui": "playwright test tests/e2e --ui"
   },

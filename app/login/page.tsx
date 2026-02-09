@@ -7,7 +7,7 @@ import { signIn, signOut, getCsrfToken, useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Shield, Lock, Mail, ArrowRight, Ticket, BookOpen, Clock, Sparkles } from 'lucide-react';
+import { Loader2, Shield, Lock, Mail, ArrowRight, Ticket, BookOpen, Sparkles } from 'lucide-react';
 
 interface OrgBranding {
   name: string;
@@ -35,13 +35,11 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [hasAttemptedSignout, setHasAttemptedSignout] = useState(false);
   const [orgBranding, setOrgBranding] = useState<OrgBranding | null>(null);
-  const [loadingBranding, setLoadingBranding] = useState(true);
 
   // Fetch org branding
   useEffect(() => {
     async function fetchBranding() {
       if (!orgSlug || orgSlug === 'localhost' || orgSlug === 'www') {
-        setLoadingBranding(false);
         return;
       }
       
@@ -53,8 +51,6 @@ function LoginForm() {
         }
       } catch (error) {
         console.error('Failed to fetch branding:', error);
-      } finally {
-        setLoadingBranding(false);
       }
     }
 
