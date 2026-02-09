@@ -133,12 +133,46 @@ export default function SupportPage() {
     }, 1200);
   };
 
-  const handleTicketSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ticketData, setTicketData] = useState<any>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleTicketSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setTicketSubmitted(true);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      email: formData.get('email') as string,
+      name: formData.get('name') as string,
+      subject: formData.get('subject') as string,
+      description: formData.get('description') as string,
+    };
+
+    try {
+      const response = await fetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setTicketData(result);
+        setTicketSubmitted(true);
+      } else {
+        setSubmitError(result.error || 'Failed to submit ticket');
+      }
+    } catch (error) {
+      setSubmitError('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (ticketSubmitted) {
+  if (ticketSubmitted && ticketData) {
     return (
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-200">
@@ -170,20 +204,59 @@ export default function SupportPage() {
               <h1 className="text-2xl font-bold text-gray-900 mb-3">
                 Ticket Submitted Successfully!
               </h1>
-              <p className="text-gray-600 mb-8">
-                Thank you for contacting us. Our support team will review your request and get back to you within 2-4 hours.
+              
+              {/* Ticket Info */}
+              <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Ticket ID</p>
+                    <p className="font-semibold text-gray-900">{ticketData.ticket.key}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      {ticketData.ticket.status}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Subject</p>
+                  <p className="font-medium text-gray-900">{ticketData.ticket.subject}</p>
+                </div>
+              </div>
+
+              <p className="text-gray-600 mb-4">
+                A confirmation email has been sent to your inbox with your ticket details.
               </p>
+
+              {/* Ticket Link */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-700 mb-2">Track your ticket status:</p>
+                <a 
+                  href={ticketData.ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 font-medium break-all hover:underline"
+                >
+                  {ticketData.ticketUrl}
+                </a>
+              </div>
+
+              <p className="text-gray-500 text-sm mb-8">
+                Our support team will review your request and respond within 2-4 hours.
+              </p>
+
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link href="/">
                   <Button variant="outline" className="w-full sm:w-auto">
                     Return to Home
                   </Button>
                 </Link>
-                <Link href="/kb">
+                <a href={ticketData.ticketUrl} target="_blank" rel="noopener noreferrer">
                   <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white w-full sm:w-auto">
-                    Browse Knowledge Base
+                    View Ticket Status
                   </Button>
-                </Link>
+                </a>
               </div>
             </CardContent>
           </Card>
@@ -345,11 +418,28 @@ export default function SupportPage() {
 
                   <Button 
                     type="submit"
-                    className="w-full h-12 bg-[#F97316] hover:bg-[#EA580C] text-white font-semibold"
+                    disabled={isSubmitting}
+                    className="w-full h-12 bg-[#F97316] hover:bg-[#EA580C] text-white font-semibold disabled:opacity-50"
                   >
-                    <Ticket className="h-5 w-5 mr-2" />
-                    Submit Ticket
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Ticket className="h-5 w-5 mr-2" />
+                        Submit Ticket
+                      </>
+                    )}
                   </Button>
+
+                  {submitError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                      <p className="font-medium">Error submitting ticket:</p>
+                      <p>{submitError}</p>
+                    </div>
+                  )}
                 </form>
               </CardContent>
             </Card>
