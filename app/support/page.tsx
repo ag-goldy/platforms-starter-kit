@@ -162,7 +162,7 @@ export default function SupportPage() {
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
           ? `\n\n### Related Articles\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
-        content = (data.answer || 'I could not find a precise match in the knowledge base.') + suggestions;
+        content = (data.answer || '') + suggestions;
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error('[Chat] API error:', { status: res.status, error: errorData });

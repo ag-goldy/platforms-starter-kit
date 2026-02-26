@@ -38,6 +38,7 @@ import { CannedResponsePicker } from './canned-response-picker';
 import { TicketLinks } from './ticket-links';
 import { LinkedAssets } from '@/components/tickets/linked-assets';
 import { TicketWatchers } from './ticket-watchers';
+import { TicketAIInsight } from './ticket-ai-insight';
 import type { SLAMetrics } from '@/lib/tickets/sla';
 
 interface TicketDetailProps {
@@ -389,6 +390,8 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
         canEdit
         scope="internal"
       />
+
+      <TicketAIInsight ticketId={ticket.id} />
 
       <Card>
         <CardHeader>

@@ -19,6 +19,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { TicketAIInsight } from '@/components/tickets/ticket-ai-insight';
 import { getCachedOrFetch } from '@/lib/performance/cache';
 
 interface TicketDetailPageProps {
@@ -136,6 +137,9 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
               <p className="text-gray-700 whitespace-pre-wrap">{typedTicket.description || 'No description provided.'}</p>
             </div>
           </div>
+
+          {/* AI Analysis */}
+          <TicketAIInsight ticketId={typedTicket.id} />
 
           {/* Comments */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
