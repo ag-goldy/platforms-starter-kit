@@ -35,14 +35,14 @@ export function isTechnologyRelated(query: string): boolean {
 export function filterTechnologyContent(content: string): { isValid: boolean; reason?: string } {
   const lowerContent = content.toLowerCase();
   
-  // Block non-technology content
+  // Only block obvious non-technology content (strict matching)
   const blockedPatterns = [
-    /cooking|recipe|food|kitchen/i,
-    /medical|health|doctor|medicine/i,
-    /legal|lawyer|court|lawsuit/i,
-    /financial|investment|stock|crypto/i,
-    /dating|relationship|marriage/i,
-    /politic|government|election/i
+    /\brecipe\b|\bcooking\b|\bfood\b/i,
+    /\bdoctor\b|\bhospital\b|\bmedical\s+advice\b/i,
+    /\blawyer\b|\blawsuit\b|\bdivorce\b/i,
+    /\bstock\s+tip|\binvestment\s+advice|\btrading\s+tip/i,
+    /\bdating\s+app|\brelationship\s+advice/i,
+    /\belection\s+202|\bvote\s+for\b/i
   ];
   
   for (const pattern of blockedPatterns) {
@@ -54,6 +54,7 @@ export function filterTechnologyContent(content: string): { isValid: boolean; re
     }
   }
   
+  // Allow through - let the AI handle content filtering
   return { isValid: true };
 }
 
