@@ -75,9 +75,14 @@ export function resolveSLATargets(
  * Get SLA targets for an organization and priority
  */
 export async function getOrgSLATargets(
-  orgId: string,
+  orgId: string | null,
   priority: string
 ): Promise<{ responseHours: number; resolutionHours: number }> {
+  // Public tickets (no org) use default SLA targets
+  if (!orgId) {
+    return resolveSLATargets(priority, null);
+  }
+  
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, orgId),
     columns: {

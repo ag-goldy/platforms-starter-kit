@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
-import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getServerSession } from '@/lib/auth/session';
-import { signOut } from '@/auth';
+import { SignOutButton } from '@/components/auth/signout-button';
 import { db } from '@/db';
 import { memberships } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -128,17 +127,7 @@ export async function CustomerPortalShell({
               <span className="text-sm text-gray-600">{session.user.email}</span>
             )}
             {session ? (
-              <form
-                action={async () => {
-                  'use server';
-                  await signOut();
-                  redirect('/login');
-                }}
-              >
-                <Button type="submit" variant="ghost" size="sm">
-                  Sign out
-                </Button>
-              </form>
+              <SignOutButton variant="ghost" size="sm" />
             ) : (
               <Link href="/login">
                 <Button type="button" variant="ghost" size="sm">

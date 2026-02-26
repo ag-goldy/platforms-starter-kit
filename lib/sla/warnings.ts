@@ -63,7 +63,7 @@ export async function checkSLAWarnings(): Promise<{
         
         // Log audit event
         await logAudit({
-          orgId: ticket.orgId,
+          orgId: ticket.orgId ?? undefined,
           ticketId: ticket.id,
           action: 'TICKET_SLA_WARNING',
           details: JSON.stringify({
@@ -86,7 +86,7 @@ export async function checkSLAWarnings(): Promise<{
 }
 
 async function evaluateTicketSLA(
-  ticket: { id: string; orgId: string; assigneeId: string | null; key: string; subject: string },
+  ticket: { id: string; orgId: string | null; assigneeId: string | null; key: string; subject: string },
   metrics: SLAMetrics
 ): Promise<SLAWarning[]> {
   const warnings: SLAWarning[] = [];
@@ -155,9 +155,11 @@ async function getBusinessHoursElapsed(ticketId: string): Promise<number> {
 }
 
 async function sendSLAWarningNotification(
-  ticket: { id: string; orgId: string; assigneeId: string | null; key: string; subject: string },
+  ticket: { id: string; orgId: string | null; assigneeId: string | null; key: string; subject: string },
   warning: SLAWarning
 ): Promise<void> {
+  // Skip SLA warnings for public tickets (no org)
+  if (!ticket.orgId) return;
   const percentage = Math.round(warning.percentage * 100);
   const hoursRemaining = Math.max(0, warning.hoursTarget - warning.hoursElapsed);
 

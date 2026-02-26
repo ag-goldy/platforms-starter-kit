@@ -8,6 +8,7 @@ import { and, eq } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/lib/utils/date';
+import { AssetDetailActions } from '@/components/assets/asset-detail-actions';
 
 export default async function CustomerAssetDetailPage({
   params,
@@ -29,6 +30,13 @@ export default async function CustomerAssetDetailPage({
       with: {
         site: true,
         area: true,
+        archivedByUser: {
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -53,16 +61,32 @@ export default async function CustomerAssetDetailPage({
       },
     });
 
+    const linkedTicketCount = linkedTickets.length;
+
     return (
       <div className="mx-auto max-w-4xl space-y-6">
-        <div>
-          <Link
-            href={`/s/${subdomain}/assets`}
-            className="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block"
-          >
-            ← Back to assets
-          </Link>
-          <h1 className="text-2xl font-bold">{asset.name}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Link
+              href={`/s/${subdomain}/assets`}
+              className="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block"
+            >
+              ← Back to assets
+            </Link>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">{asset.name}</h1>
+              {asset.archived && (
+                <Badge variant="secondary">Archived</Badge>
+              )}
+            </div>
+          </div>
+          <AssetDetailActions
+            assetId={asset.id}
+            assetName={asset.name}
+            isArchived={asset.archived || false}
+            basePath={`/s/${subdomain}/assets`}
+            linkedTicketCount={linkedTicketCount}
+          />
         </div>
 
         <Card>
@@ -76,6 +100,14 @@ export default async function CustomerAssetDetailPage({
               {asset.site && <Badge variant="secondary">{(asset.site as { name: string }).name}</Badge>}
               {asset.area && <Badge variant="secondary">{(asset.area as { name: string }).name}</Badge>}
             </div>
+            {asset.archived && asset.archivedAt && (
+              <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm">
+                <span className="text-orange-800">
+                  <strong>Archived</strong> {formatDateTime(asset.archivedAt)}
+                  {asset.archivedByUser && ` by ${(asset.archivedByUser as { name?: string; email: string }).name || (asset.archivedByUser as { email: string }).email}`}
+                </span>
+              </div>
+            )}
             {asset.hostname && <p>Hostname: {asset.hostname}</p>}
             {asset.ipAddress && <p>IP Address: {asset.ipAddress}</p>}
             {asset.serialNumber && <p>Serial Number: {asset.serialNumber}</p>}

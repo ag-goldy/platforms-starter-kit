@@ -9,8 +9,8 @@ import { z } from 'zod';
 
 const assetSchema = z.object({
   name: z.string().min(1).max(200),
-  type: z.enum(['AP', 'SWITCH', 'FIREWALL', 'CAMERA', 'NVR', 'SERVER', 'ISP_CIRCUIT', 'OTHER']),
-  status: z.enum(['ACTIVE', 'RETIRED', 'MAINTENANCE']).default('ACTIVE'),
+  type: z.string().min(1).max(50), // Can be standard or custom type
+  status: z.string().min(1).max(50).default('ACTIVE'), // Can be standard or custom status
   siteId: z.string().uuid().optional().nullable(),
   areaId: z.string().uuid().optional().nullable(),
   hostname: z.string().optional().nullable(),
@@ -19,6 +19,7 @@ const assetSchema = z.object({
   vendor: z.string().optional().nullable(),
   ipAddress: z.string().optional().nullable(),
   macAddress: z.string().optional().nullable(),
+  accessUrls: z.string().optional().nullable(), // JSON string of {label, url}[]
   tags: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
@@ -30,6 +31,31 @@ function normalizeTags(input?: string | null): string[] | null {
     .map((tag) => tag.trim())
     .filter(Boolean);
   return tags.length > 0 ? tags : null;
+}
+
+function parseAccessUrls(input?: string | null): { label: string; url: string }[] | null {
+  if (!input) return null;
+  try {
+    const parsed = JSON.parse(input);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(item => item.label && item.url);
+    }
+  } catch {
+    // If not valid JSON, try comma-separated format: "Label:URL,Label2:URL2"
+    const urls = input
+      .split(',')
+      .map((pair) => {
+        const [label, ...urlParts] = pair.split(':');
+        const url = urlParts.join(':'); // Handle URLs with colons
+        if (label && url) {
+          return { label: label.trim(), url: url.trim() };
+        }
+        return null;
+      })
+      .filter((item): item is { label: string; url: string } => item !== null);
+    return urls.length > 0 ? urls : null;
+  }
+  return null;
 }
 
 async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId?: string | null) {
@@ -89,6 +115,7 @@ export async function createAssetAction(orgId: string, data: z.input<typeof asse
       vendor: validated.vendor || null,
       ipAddress: validated.ipAddress || null,
       macAddress: validated.macAddress || null,
+      accessUrls: parseAccessUrls(validated.accessUrls),
       tags: normalizeTags(validated.tags),
       notes: validated.notes || null,
       status: validated.status,
@@ -124,6 +151,7 @@ export async function updateAssetAction(
       vendor: validated.vendor || null,
       ipAddress: validated.ipAddress || null,
       macAddress: validated.macAddress || null,
+      accessUrls: parseAccessUrls(validated.accessUrls),
       tags: normalizeTags(validated.tags),
       notes: validated.notes || null,
       status: validated.status,

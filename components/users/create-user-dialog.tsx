@@ -39,7 +39,7 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
   const [loading, setLoading] = useState(false);
   const [createdUser, setCreatedUser] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -70,12 +70,11 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
           email: result.email,
           password: formData.password,
         });
-        showToast('User created successfully', 'success');
+        success('User created successfully');
       }
     } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : 'Failed to create user',
-        'error'
+      error(
+        err instanceof Error ? err.message : 'Failed to create user'
       );
     } finally {
       setLoading(false);

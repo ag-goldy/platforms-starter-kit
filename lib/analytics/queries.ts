@@ -135,6 +135,8 @@ async function getDashboardMetricsInternal(orgId?: string): Promise<DashboardMet
 
   const orgCounts = new Map<string, number>();
   ticketsByOrgResult.forEach((ticket) => {
+    // Skip public tickets without organization
+    if (!ticket.organization) return;
     const orgName = ticket.organization.name;
     orgCounts.set(orgName, (orgCounts.get(orgName) || 0) + 1);
   });

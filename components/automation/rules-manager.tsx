@@ -36,7 +36,7 @@ export function AutomationRulesManager({
   const [rules, setRules] = useState<AutomationRule[]>(initialRules);
   const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   const handleCreate = async (data: {
     name: string;
@@ -55,9 +55,9 @@ export function AutomationRulesManager({
         actions: data.actions 
       }]);
       setIsCreating(false);
-      showToast('Rule created successfully', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to create rule', 'error');
+      success('Rule created successfully');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to create rule');
     }
   };
 
@@ -88,9 +88,9 @@ export function AutomationRulesManager({
         )
       );
       setEditingRule(null);
-      showToast('Rule updated successfully', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update rule', 'error');
+      success('Rule updated successfully');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to update rule');
     }
   };
 
@@ -102,9 +102,9 @@ export function AutomationRulesManager({
     try {
       await deleteAutomationRuleAction(id, orgId);
       setRules(rules.filter((r) => r.id !== id));
-      showToast('Rule deleted successfully', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to delete rule', 'error');
+      success('Rule deleted successfully');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to delete rule');
     }
   };
 

@@ -168,7 +168,9 @@ export async function createCustomerTicketWithAttachmentsAction(formData: FormDa
   }
 
   const uniqueAssetIds = Array.from(new Set(assetIds));
-  if (uniqueAssetIds.length > 0 && membership.role !== 'CUSTOMER_ADMIN') {
+  // Internal users (no membership) are treated as admins; check membership role for customers
+  const isAdmin = !membership || membership.role === 'CUSTOMER_ADMIN';
+  if (uniqueAssetIds.length > 0 && !isAdmin) {
     return { ticketId: null, error: 'Only admins can link assets.' };
   }
 
@@ -351,6 +353,9 @@ export async function addCustomerTicketCommentAction(
   content: string
 ) {
   const result = await canEditTicket(ticketId);
+  if (!result.ticket.orgId) {
+    throw new Error('Public tickets cannot be accessed through customer portal');
+  }
   const { user } = await requireOrgMemberRole(result.ticket.orgId);
 
   // Customers can only add public comments (not internal notes)
@@ -386,6 +391,10 @@ export async function addCustomerTicketCommentAction(
 
 export async function updateCustomerTicketCcAction(ticketId: string, ccEmails: string[]) {
   const { ticket } = await canEditTicket(ticketId);
+  
+  if (!ticket.orgId) {
+    throw new Error('Public tickets cannot be accessed through customer portal');
+  }
 
   await db
     .update(tickets)
@@ -404,6 +413,9 @@ export async function updateCustomerTicketCcAction(ticketId: string, ccEmails: s
 
 export async function closeCustomerTicketAction(ticketId: string) {
   const { ticket } = await canEditTicket(ticketId);
+  if (!ticket.orgId) {
+    throw new Error('Public tickets cannot be accessed through customer portal');
+  }
   const { user } = await requireOrgMemberRole(ticket.orgId);
 
   if (ticket.status === 'CLOSED') {
@@ -431,13 +443,13 @@ export async function closeCustomerTicketAction(ticketId: string) {
 
   await logAudit({
     userId: user.id,
-    orgId: ticket.orgId,
+    orgId: ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_STATUS_CHANGED',
     details: JSON.stringify({ oldStatus: ticket.status, newStatus: 'CLOSED', closedByCustomer: true }),
   });
 
-  const fullTicket = await getTicketById(ticketId, ticket.orgId);
+  const fullTicket = await getTicketById(ticketId, ticket.orgId ?? undefined);
   if (fullTicket && 'requester' in fullTicket) {
     await sendTicketStatusChangedNotification(fullTicket as unknown as Ticket & {
       requester: { email: string; name: string | null } | null;

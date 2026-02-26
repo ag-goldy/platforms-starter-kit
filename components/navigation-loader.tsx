@@ -14,6 +14,17 @@ export function NavigationLoader() {
     setIsLoading(false);
   }, [pathname, searchParams]);
 
+  // Safety timeout: auto-hide loader after 5 seconds to prevent infinite loading
+  useEffect(() => {
+    if (!isLoading) return;
+    
+    const timeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 5000);
+    
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
   useEffect(() => {
     // Handle link clicks
     const handleClick = (e: MouseEvent) => {
@@ -32,7 +43,13 @@ export function NavigationLoader() {
         const url = new URL(anchor.href);
         // Only show loader for internal navigation
         if (url.origin === window.location.origin) {
-          setIsLoading(true);
+          // Don't show loader if navigating to the same URL (including pathname + search)
+          const currentUrl = new URL(window.location.href);
+          const isSameUrl = url.pathname === currentUrl.pathname && 
+                           url.search === currentUrl.search;
+          if (!isSameUrl) {
+            setIsLoading(true);
+          }
         }
       }
     };

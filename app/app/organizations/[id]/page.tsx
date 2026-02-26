@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { OrganizationTeamManager } from '@/components/organizations/organization-team-manager';
 import { Organization2FAPolicy } from '@/components/organizations/organization-2fa-policy';
 import { OrganizationSLAPolicy } from '@/components/organizations/organization-sla-policy';
+import { OrgDangerZone } from '@/components/organizations/org-danger-zone';
 import { getPendingInvitations } from '@/lib/users/invitations';
 import { getOrganizationMembersAction } from '@/app/app/actions/users';
 import Link from 'next/link';
@@ -167,6 +168,14 @@ export default async function OrganizationDetailPage({
           />
         </CardContent>
       </Card>
+
+      <OrgDangerZone
+        orgId={orgId}
+        orgName={org.name}
+        isActive={org.isActive ?? true}
+        disabledAt={org.disabledAt}
+        disabledBy={org.disabledBy}
+      />
     </div>
   );
 }

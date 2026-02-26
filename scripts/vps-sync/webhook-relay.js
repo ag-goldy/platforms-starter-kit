@@ -13,7 +13,6 @@
  * Zabbix → VPS Webhook → Vercel App → Database → Client
  */
 
-const http = require('http');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const CONFIG = {
@@ -104,54 +103,52 @@ function parseZabbixPayload(body) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
-  // Only accept POST requests
-  if (req.method !== 'POST') {
-    res.writeHead(405, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Method not allowed' }));
-    return;
-  }
-  
-  // Read body
-  let body = '';
-  req.on('data', chunk => {
-    body += chunk.toString();
-  });
-  
-  req.on('end', async () => {
-    stats.totalWebhooks++;
-    stats.lastWebhook = new Date();
-    
-    if (CONFIG.verbose) {
-      log('debug', 'Received webhook:', body);
-    }
-    
-    // Parse payload
-    const payload = parseZabbixPayload(body);
-    
-    if (!payload) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid payload' }));
-      return;
-    }
-    
-    log('info', `📨 Webhook received: ${payload.host} - ${payload.trigger} (${payload.status})`);
-    
-    // Forward to Vercel
-    const result = await forwardToVercel(payload);
-    
-    if (result.success) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ received: true, forwarded: true }));
-    } else {
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ received: true, forwarded: false, error: result.error }));
-    }
-  });
-});
+import('node:http')
+  .then((http) => {
+    const server = http.createServer(async (req, res) => {
+      if (req.method !== 'POST') {
+        res.writeHead(405, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+        return;
+      }
 
-server.listen(CONFIG.port, () => {
-  console.log(`
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+
+      req.on('end', async () => {
+        stats.totalWebhooks++;
+        stats.lastWebhook = new Date();
+
+        if (CONFIG.verbose) {
+          log('debug', 'Received webhook:', body);
+        }
+
+        const payload = parseZabbixPayload(body);
+
+        if (!payload) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid payload' }));
+          return;
+        }
+
+        log('info', `📨 Webhook received: ${payload.host} - ${payload.trigger} (${payload.status})`);
+
+        const result = await forwardToVercel(payload);
+
+        if (result.success) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ received: true, forwarded: true }));
+        } else {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ received: true, forwarded: false, error: result.error }));
+        }
+      });
+    });
+
+    server.listen(CONFIG.port, () => {
+      console.log(`
 ╔══════════════════════════════════════════╗
 ║      Zabbix Webhook Relay Started        ║
 ╚══════════════════════════════════════════╝
@@ -164,31 +161,34 @@ http://your-vps-ip:${CONFIG.port}/
   
 Make sure port ${CONFIG.port} is open in your firewall!
   `);
-});
+    });
 
-// Health check endpoint
-server.on('request', (req, res) => {
-  if (req.url === '/health' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      uptime: process.uptime(),
-      stats,
-    }));
-  }
-});
+    server.on('request', (req, res) => {
+      if (req.url === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'ok',
+          uptime: process.uptime(),
+          stats,
+        }));
+      }
+    });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  log('info', 'SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    process.exit(0);
+    process.on('SIGTERM', () => {
+      log('info', 'SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      log('info', 'SIGINT received, shutting down gracefully');
+      server.close(() => {
+        process.exit(0);
+      });
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to start webhook relay:', error);
+    process.exit(1);
   });
-});
-
-process.on('SIGINT', () => {
-  log('info', 'SIGINT received, shutting down gracefully');
-  server.close(() => {
-    process.exit(0);
-  });
-});

@@ -10,6 +10,7 @@ import { processRecalculateSLAJob } from './handlers/recalculate-sla';
 import { processAttachmentJob } from './handlers/process-attachment';
 import { processAuditCompactionJob } from './handlers/audit-compaction';
 import { processSLAWarningCheckJob } from './handlers/sla-warning-check';
+import { handleCleanupOrgStorage } from './handlers/cleanup-org-storage';
 
 /**
  * Process a single job
@@ -50,6 +51,9 @@ export async function processJob(job: Job): Promise<void> {
         break;
       case 'SLA_WARNING_CHECK':
         result = await processSLAWarningCheckJob(job);
+        break;
+      case 'CLEANUP_ORG_STORAGE':
+        result = await handleCleanupOrgStorage(job.data);
         break;
       default:
         throw new Error(`Unknown job type: ${(job as Job).type}`);
@@ -100,6 +104,7 @@ export async function processAllQueues(maxJobsPerType: number = 10): Promise<{
     'PROCESS_ATTACHMENT',
     'AUDIT_COMPACTION',
     'SLA_WARNING_CHECK',
+    'CLEANUP_ORG_STORAGE',
   ];
 
   const results: { [key in Job['type']]: number } = {
@@ -110,6 +115,7 @@ export async function processAllQueues(maxJobsPerType: number = 10): Promise<{
     PROCESS_ATTACHMENT: 0,
     AUDIT_COMPACTION: 0,
     SLA_WARNING_CHECK: 0,
+    CLEANUP_ORG_STORAGE: 0,
   };
 
   await Promise.all(

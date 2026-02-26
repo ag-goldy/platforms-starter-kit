@@ -78,13 +78,16 @@ async function syncService(
 
   try {
     // Get host info
+    console.log(`[Zabbix Sync] Fetching host ${service.zabbixHostId} from Zabbix`);
     const host = await client.getHostById(service.zabbixHostId);
     if (!host) {
       throw new Error('Host not found in Zabbix');
     }
+    console.log(`[Zabbix Sync] Found host: ${host.name}`);
 
     // Get triggers for the host
     const triggers = await client.getTriggersByHostId(service.zabbixHostId);
+    console.log(`[Zabbix Sync] Found ${triggers.length} triggers, ${triggers.filter(t => t.value === '1').length} problems`);
     
     // Calculate status
     const status = calculateStatus(triggers);
@@ -175,11 +178,14 @@ export async function syncOrgServices(orgId: string): Promise<SyncResult[]> {
 
   // Get all services for org
   const services = await getServicesWithMonitoring(orgId);
+  console.log(`[Zabbix Sync] Found ${services.length} services for org ${orgId}`);
   
   // Sync each service
   const results: SyncResult[] = [];
   for (const service of services) {
+    console.log(`[Zabbix Sync] Syncing service: ${service.name} (hostId: ${service.zabbixHostId}, enabled: ${service.monitoringEnabled})`);
     const result = await syncService(client, service);
+    console.log(`[Zabbix Sync] Result:`, result);
     results.push(result);
   }
 

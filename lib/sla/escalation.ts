@@ -77,7 +77,7 @@ export async function checkAndEscalateSLA(ticketId: string): Promise<EscalationA
           .where(eq(tickets.id, ticketId));
 
         await logAudit({
-          orgId: ticket.orgId,
+          orgId: ticket.orgId ?? undefined,
           ticketId,
           action: 'TICKET_PRIORITY_CHANGED',
           details: JSON.stringify({

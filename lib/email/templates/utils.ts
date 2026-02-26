@@ -40,7 +40,7 @@ export function renderBaseTemplate(options: {
   const logoUrl =
     options.logoUrl ||
     process.env.EMAIL_LOGO_URL ||
-    `${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'}/logo/agrn-logo.svg`;
+    `${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'}/logo/atlas-logo.png`;
 
   const supportLinks = [
     supportEmailValue

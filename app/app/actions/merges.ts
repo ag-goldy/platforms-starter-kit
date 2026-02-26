@@ -35,7 +35,7 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
   }
 
   // Prevent merging tickets from different organizations
-  if (sourceTicket.ticket.orgId !== targetTicket.ticket.orgId) {
+  if ((sourceTicket.ticket.orgId ?? null) !== (targetTicket.ticket.orgId ?? null)) {
     throw new Error('Cannot merge tickets from different organizations');
   }
 
@@ -106,7 +106,7 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
     // Audit log
     await logAudit({
       userId: user.id,
-      orgId: sourceTicket.ticket.orgId,
+      orgId: sourceTicket.ticket.orgId ?? undefined,
       ticketId: targetTicketId,
       action: 'TICKET_MERGED',
       details: JSON.stringify({
@@ -118,7 +118,7 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
 
     await logAudit({
       userId: user.id,
-      orgId: sourceTicket.ticket.orgId,
+      orgId: sourceTicket.ticket.orgId ?? undefined,
       ticketId: sourceTicketId,
       action: 'TICKET_MERGED',
       details: JSON.stringify({
@@ -134,8 +134,13 @@ export async function getMergeableTicketsAction(ticketId: string) {
   const { ticket } = await canViewTicket(ticketId);
 
   // Get all tickets from the same org that aren't already merged
+  // Public tickets (orgId is null) cannot be merged - return empty array
+  if (!ticket.orgId) {
+    return [];
+  }
+  
   const allTickets = await db.query.tickets.findMany({
-    where: eq(tickets.orgId, ticket.orgId),
+    where: eq(tickets.orgId, ticket.orgId!),
     columns: {
       id: true,
       key: true,

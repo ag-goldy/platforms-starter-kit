@@ -116,6 +116,12 @@ export async function requireOrgMemberRole(orgId?: string, allowedRoles?: Custom
     throw new AuthorizationError('Organization mismatch');
   }
 
+  // Internal users have access to all organizations
+  if (ctx.isInternal) {
+    // Cast to satisfy TypeScript - internal users don't need membership
+    return { user, membership: null as any, orgId: resolvedOrgId };
+  }
+
   const membership =
     (ctx.membership?.isActive ? ctx.membership : null) ||
     (await db.query.memberships.findFirst({
@@ -158,6 +164,11 @@ export async function canViewTicket(ticketId: string) {
   // Internal users can view all tickets
   if (ctx.isInternal) {
     return { ticket, user, membership: null };
+  }
+
+  // Public tickets (no org) can only be accessed by internal users
+  if (!ticket.orgId) {
+    throw new AuthorizationError('You do not have access to this ticket');
   }
 
   // External users must be members of the ticket's org
@@ -224,6 +235,11 @@ export async function canDownloadAttachment(attachmentId: string) {
 
   if (ctx.isInternal) {
     return { ...attachment, attachment, user, membership: null };
+  }
+
+  // Public attachments (no org) can only be accessed by internal users
+  if (!attachment.orgId) {
+    throw new AuthorizationError('You do not have access to this attachment');
   }
 
   let membership = ctx.membership?.isActive ? ctx.membership : null;

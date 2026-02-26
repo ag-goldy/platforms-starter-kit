@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { AlertCircle, CheckCircle, RefreshCw, Server, Activity } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { PageHeaderWithBack } from '@/components/navigation/back-button';
 
 interface Organization {
   id: string;
@@ -161,10 +162,23 @@ export default function ZabbixAdminPage() {
       const response = await fetch(`/api/zabbix/hosts?orgId=${selectedOrgId}`);
       const data = await response.json();
       
+      console.log('[Zabbix] Hosts response:', data);
+      
+      if (data.error) {
+        showToast(data.error, 'error');
+        return;
+      }
+      
       if (data.hosts) {
         setZabbixHosts(data.hosts);
+        if (data.hosts.length === 0) {
+          showToast('No hosts found in Zabbix', 'info');
+        } else {
+          showToast(`Loaded ${data.hosts.length} hosts`, 'success');
+        }
       }
-    } catch {
+    } catch (error) {
+      console.error('[Zabbix] Load hosts error:', error);
       showToast('Failed to load Zabbix hosts', 'error');
     }
   }, [selectedOrgId]);
@@ -193,10 +207,12 @@ export default function ZabbixAdminPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold">Zabbix Integration</h1>
-        <p className="text-gray-600">Configure monitoring integration with Zabbix</p>
-      </div>
+      <PageHeaderWithBack
+        title="Zabbix Integration"
+        description="Configure monitoring integration with Zabbix"
+        backHref="/app/admin/integrations"
+        backLabel="Back to Integrations"
+      />
 
       {/* Organization Selection */}
       <Card>
@@ -312,6 +328,33 @@ export default function ZabbixAdminPage() {
                 >
                   Load Zabbix Hosts
                 </Button>
+
+                {zabbixHosts.length > 0 && (
+                  <div className="mb-4 p-2 bg-gray-100 rounded text-sm">
+                    <strong>Loaded {zabbixHosts.length} hosts:</strong>
+                    <ul className="mt-1 max-h-32 overflow-y-auto">
+                      {zabbixHosts.map(h => (
+                        <li key={h.hostid}>{h.name} (ID: {h.hostid})</li>
+                      ))}
+                    </ul>
+                    
+                    {/* Test dropdown - using native select for debugging */}
+                    <div className="mt-2">
+                      <label className="text-xs text-gray-500">Test Host Selector (Native):</label>
+                      <select 
+                        className="w-full mt-1 p-2 border rounded bg-white"
+                        onChange={(e) => console.log('Selected:', e.target.value)}
+                      >
+                        <option value="">Select a host...</option>
+                        {zabbixHosts.map((host) => (
+                          <option key={host.hostid} value={host.hostid}>
+                            {host.name} (ID: {host.hostid})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   {services.map((service) => (

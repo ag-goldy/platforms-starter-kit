@@ -28,7 +28,7 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
   const [sessions, setSessions] = useState(initialSessions);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
 
   const handleRevokeSession = async (sessionToken: string, sessionId: string) => {
     if (!confirm('Are you sure you want to revoke this session? The user will need to log in again from that device.')) {
@@ -39,9 +39,9 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
     try {
       await revokeSessionAction(sessionToken);
       setSessions(sessions.filter((s) => s.id !== sessionId));
-      showToast('Session revoked successfully', 'success');
+      success('Session revoked successfully');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to revoke session', 'error');
+      showError(error instanceof Error ? error.message : 'Failed to revoke session');
     } finally {
       setRevokingSessionId(null);
     }
@@ -58,9 +58,9 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
       // Refresh sessions list
       const updatedSessions = await getUserSessionsAction();
       setSessions(updatedSessions);
-      showToast('All other sessions revoked successfully', 'success');
+      success('All other sessions revoked successfully');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to revoke sessions', 'error');
+      showError(error instanceof Error ? error.message : 'Failed to revoke sessions');
     } finally {
       setRevokingAll(false);
     }
@@ -92,13 +92,20 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Active Sessions</h2>
+        <p className="text-sm text-muted-foreground">
+          Manage your active sessions across different devices
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Active Sessions</CardTitle>
+              <CardTitle>Sessions</CardTitle>
               <CardDescription>
-                Manage your active sessions across different devices
+                {activeSessions.length} active session{activeSessions.length !== 1 ? 's' : ''}
               </CardDescription>
             </div>
             {activeSessions.length > 1 && (
@@ -114,7 +121,7 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
         </CardHeader>
         <CardContent>
           {activeSessions.length === 0 ? (
-            <p className="text-sm text-gray-500">No active sessions</p>
+            <p className="text-sm text-muted-foreground">No active sessions</p>
           ) : (
             <div className="space-y-4">
               {activeSessions.map((session) => {
@@ -138,14 +145,14 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
                           )}
                         </div>
                         {session.ipAddress && (
-                          <div className="text-sm text-gray-600 mt-1">
+                          <div className="text-sm text-muted-foreground mt-1">
                             IP: {session.ipAddress}
                           </div>
                         )}
-                        <div className="text-sm text-gray-500 mt-1">
+                        <div className="text-sm text-muted-foreground mt-1">
                           Last active: {formatLastActive(session.lastActiveAt)}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-xs text-muted-foreground/70 mt-1">
                           Created: {new Date(session.createdAt).toLocaleString()}
                         </div>
                       </div>
@@ -156,7 +163,7 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
                         size="sm"
                         onClick={() => handleRevokeSession(session.sessionToken, session.id)}
                         disabled={revokingSessionId === session.id}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-destructive hover:text-destructive/90"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         {revokingSessionId === session.id ? 'Revoking...' : 'Revoke'}
@@ -171,44 +178,53 @@ export function SessionsList({ initialSessions, currentSessionToken }: SessionsL
       </Card>
 
       {revokedSessions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Revoked Sessions</CardTitle>
-            <CardDescription>
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Revoked Sessions</h2>
+            <p className="text-sm text-muted-foreground">
               Sessions that have been revoked (shown for the last 30 days)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {revokedSessions.slice(0, 10).map((session) => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 opacity-60"
-                >
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="mt-1">
-                      {getDeviceIcon(session.deviceInfo)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {session.deviceInfo || 'Unknown Device'}
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>History</CardTitle>
+              <CardDescription>
+                {revokedSessions.length} revoked session{revokedSessions.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {revokedSessions.slice(0, 10).map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 opacity-60"
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-1">
+                        {getDeviceIcon(session.deviceInfo)}
                       </div>
-                      {session.ipAddress && (
-                        <div className="text-sm text-gray-600 mt-1">
-                          IP: {session.ipAddress}
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          {session.deviceInfo || 'Unknown Device'}
                         </div>
-                      )}
-                      <div className="text-sm text-gray-500 mt-1">
-                        Revoked: {session.revokedAt ? new Date(session.revokedAt).toLocaleString() : 'Unknown'}
+                        {session.ipAddress && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            IP: {session.ipAddress}
+                          </div>
+                        )}
+                        <div className="text-sm text-gray-500 mt-1">
+                          Revoked: {session.revokedAt ? new Date(session.revokedAt).toLocaleString() : 'Unknown'}
+                        </div>
                       </div>
                     </div>
+                    <Badge variant="outline">Revoked</Badge>
                   </div>
-                  <Badge variant="outline">Revoked</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

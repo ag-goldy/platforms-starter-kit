@@ -3,9 +3,12 @@ import { SmtpEmailService, isSmtpConfigured } from './smtp';
 import { isGraphEmailConfigured, sendEmailViaGraph } from './graph-client';
 import type { EmailService, EmailOptions } from './types';
 
-// Determine which email service to use
-// Priority: Microsoft Graph > SMTP > Console (fallback)
+/**
+ * Create email service with Microsoft Graph as priority
+ * Priority: Microsoft Graph > SMTP > Console (fallback)
+ */
 function createEmailService(): EmailService {
+  // Priority 1: Microsoft Graph (Office 365 / Azure AD)
   if (isGraphEmailConfigured()) {
     console.log('[Email] Using Microsoft Graph API');
     return {
@@ -26,20 +29,25 @@ function createEmailService(): EmailService {
             })),
           });
         } catch (error) {
-          console.error('[Email] Graph API failed, falling back to console:', error);
+          console.error('[Email] Graph API failed:', error);
           // Fall back to console so emails are still visible in logs
-          const consoleService = new ConsoleEmailService();
-          await consoleService.send(options);
+          console.log('[Email Fallback] Would have sent:', {
+            to: options.to,
+            subject: options.subject,
+          });
+          throw error; // Re-throw so caller knows it failed
         }
       },
     };
   }
 
+  // Priority 2: SMTP (if configured)
   if (isSmtpConfigured()) {
     console.log('[Email] Using SMTP');
     return new SmtpEmailService();
   }
 
+  // Priority 3: Console (fallback - for development)
   console.log('[Email] Using Console (fallback - no email service configured)');
   return new ConsoleEmailService();
 }
@@ -51,6 +59,15 @@ export const emailService: EmailService = createEmailService();
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   return emailService.send(options);
+}
+
+/**
+ * Get current email provider name
+ */
+export function getEmailProvider(): string {
+  if (isGraphEmailConfigured()) return 'microsoft-graph';
+  if (isSmtpConfigured()) return 'smtp';
+  return 'console';
 }
 
 export type { EmailOptions, EmailService } from './types';

@@ -62,6 +62,7 @@ export async function createTicketToken(params: {
   expiresAt.setDate(expiresAt.getDate() + (params.expiresInDays ?? DEFAULT_EXPIRY_DAYS));
 
   await db.insert(ticketTokens).values({
+    token,
     tokenHash,
     ticketId: params.ticketId,
     email: params.email,
@@ -69,7 +70,7 @@ export async function createTicketToken(params: {
     expiresAt,
     createdIp: params.createdIp ?? null,
     lastSentAt: params.lastSentAt ?? null,
-  });
+  } as any);
 
   return token;
 }

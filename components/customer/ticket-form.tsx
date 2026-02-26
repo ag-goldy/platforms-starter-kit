@@ -32,7 +32,7 @@ interface CustomerTicketFormProps {
 
 export function CustomerTicketForm({ subdomain, services = [], defaultServiceId }: CustomerTicketFormProps) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('P3');
@@ -84,15 +84,15 @@ export function CustomerTicketForm({ subdomain, services = [], defaultServiceId 
 
       if (result.error) {
         setError(result.error);
-        showToast(result.error, 'error');
+        error(result.error);
       } else {
-        showToast('Ticket created successfully', 'success');
+        success('Ticket created successfully');
         router.push(`/s/${subdomain}/tickets/${result.ticketId}`);
       }
     } catch (err) {
       const errorMessage = formatErrorMessage(err);
       setError(errorMessage);
-      showToast(errorMessage, 'error');
+      error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -141,6 +141,120 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT /api/kb/categories - Update a category
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      id,
+      name,
+      slug: slugInput,
+      description,
+      parentId,
+      isPublic,
+      sortOrder,
+    } = body as {
+      id?: string;
+      name?: string;
+      slug?: string;
+      description?: string | null;
+      parentId?: string | null;
+      isPublic?: boolean;
+      sortOrder?: number;
+    };
+
+    if (!id) {
+      return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+    }
+
+    const existing = await db.query.kbCategories.findFirst({
+      where: eq(kbCategories.id, id),
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    const resolvedName = typeof name === 'string' ? name.trim() : undefined;
+    if (resolvedName !== undefined && !resolvedName) {
+      return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+    }
+
+    const resolvedSlug =
+      typeof slugInput === 'string' && slugInput.trim()
+        ? slugInput
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .slice(0, 100)
+        : resolvedName
+          ? resolvedName
+              .toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .slice(0, 100)
+          : undefined;
+
+    const resolvedParentId =
+      parentId === undefined
+        ? undefined
+        : parentId && parentId !== 'none'
+          ? parentId
+          : null;
+
+    if (resolvedParentId !== undefined && resolvedParentId === id) {
+      return NextResponse.json({ error: 'Category cannot be its own parent' }, { status: 400 });
+    }
+
+    if (resolvedSlug) {
+      const duplicate = await db.query.kbCategories.findFirst({
+        where: and(
+          eq(kbCategories.slug, resolvedSlug),
+          existing.orgId ? eq(kbCategories.orgId, existing.orgId) : isNull(kbCategories.orgId)
+        ),
+      });
+
+      if (duplicate && duplicate.id !== id) {
+        return NextResponse.json(
+          { error: 'A category with this slug already exists' },
+          { status: 409 }
+        );
+      }
+    }
+
+    const updateValues: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (resolvedName !== undefined) updateValues.name = resolvedName;
+    if (resolvedSlug !== undefined) updateValues.slug = resolvedSlug;
+    if (description !== undefined) updateValues.description = description || null;
+    if (resolvedParentId !== undefined) updateValues.parentId = resolvedParentId;
+    if (typeof isPublic === 'boolean') updateValues.isPublic = isPublic;
+    if (typeof sortOrder === 'number' && Number.isFinite(sortOrder)) updateValues.sortOrder = sortOrder;
+
+    const [updated] = await db
+      .update(kbCategories)
+      .set(updateValues)
+      .where(eq(kbCategories.id, id))
+      .returning();
+
+    return NextResponse.json({ category: updated });
+  } catch (error) {
+    console.error('Failed to update category:', error);
+    return NextResponse.json(
+      { error: 'Failed to update category' },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/kb/categories?id=xxx - Delete a category
 export async function DELETE(request: NextRequest) {
   try {

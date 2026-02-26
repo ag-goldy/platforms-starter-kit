@@ -138,12 +138,13 @@ export async function processAttachmentJob(job: ProcessAttachmentJob): Promise<J
  */
 async function notifyAdminsOfInfectedFile(
   attachment: typeof attachments.$inferSelect & {
-    ticket: { key: string; organization: { name: string } };
+    ticket: { key: string; organization: { name: string } | null };
   },
   threatInfo: string
 ): Promise<void> {
   try {
     const admins = await getInternalUsers();
+    const orgName = attachment.ticket.organization?.name ?? 'Public Ticket';
     
     // Filter to only admins (for now, all internal users)
     // In a real system, you'd check for ADMIN role
@@ -151,7 +152,7 @@ async function notifyAdminsOfInfectedFile(
       // Send email notification
       // For now, just log - implement email notification later
       console.error(
-        `[SECURITY] Infected file detected: ${attachment.filename} in ticket ${attachment.ticket.key} (${attachment.ticket.organization.name}). Threat: ${threatInfo}. Notified: ${admin.email}`
+        `[SECURITY] Infected file detected: ${attachment.filename} in ticket ${attachment.ticket.key} (${orgName}). Threat: ${threatInfo}. Notified: ${admin.email}`
       );
     }
   } catch (error) {

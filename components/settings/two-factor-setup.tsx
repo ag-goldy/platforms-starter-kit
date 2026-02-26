@@ -136,7 +136,7 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             Two-Factor Authentication Enabled
           </CardTitle>
           <CardDescription>
@@ -144,8 +144,8 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md bg-green-50 border border-green-200 p-4">
-            <p className="text-sm text-green-800">
+          <div className="rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-4">
+            <p className="text-sm text-green-800 dark:text-green-300">
               ✓ Two-factor authentication is active on your account
             </p>
           </div>
@@ -153,7 +153,7 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium mb-2">Backup Codes</h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 Backup codes can be used to access your account if you lose access to your authenticator app.
               </p>
               <Button
@@ -165,9 +165,9 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
               </Button>
             </div>
             
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-medium mb-2 text-red-600">Disable 2FA</h3>
-              <p className="text-sm text-gray-600 mb-3">
+            <div className="border-t border-border pt-4">
+              <h3 className="text-sm font-medium mb-2 text-destructive">Disable 2FA</h3>
+              <p className="text-sm text-muted-foreground mb-3">
                 Disabling 2FA will make your account less secure. You&apos;ll need to enter your password to confirm.
               </p>
               <form onSubmit={handleDisable} className="space-y-3">
@@ -189,7 +189,7 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
           </div>
           
           {error && (
-            <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div className="rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3 text-sm text-red-800 dark:text-red-300">
               {error}
             </div>
           )}
@@ -210,16 +210,16 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
-            <p className="text-sm text-yellow-800 font-medium mb-2">
+          <div className="rounded-md bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 p-4">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300 font-medium mb-2">
               ⚠️ Save these codes now - you won&apos;t be able to see them again!
             </p>
-            <p className="text-sm text-yellow-700">
+            <p className="text-sm text-yellow-700 dark:text-yellow-400">
               Store them in a secure location like a password manager.
             </p>
           </div>
           
-          <div className="bg-gray-50 rounded-md p-4 font-mono text-sm space-y-1">
+          <div className="bg-muted rounded-md p-4 font-mono text-sm space-y-1">
             {backupCodes.map((code, i) => (
               <div key={i} className="flex items-center justify-between">
                 <span>{code}</span>
@@ -285,13 +285,13 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
                 required
                 autoFocus
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter the 6-digit code from your authenticator app
               </p>
             </div>
             
             {error && (
-              <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+              <div className="rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3 text-sm text-red-800 dark:text-red-300">
                 {error}
               </div>
             )}
@@ -326,12 +326,12 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
         <CardTitle className="flex items-center gap-2">
           {status.enabled ? (
             <>
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
               Two-Factor Authentication Enabled
             </>
           ) : (
             <>
-              <AlertCircle className="h-5 w-5 text-gray-400" />
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
               Two-Factor Authentication
             </>
           )}
@@ -342,14 +342,14 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
       </CardHeader>
       <CardContent>
         {status.enabled ? (
-          <div className="rounded-md bg-green-50 border border-green-200 p-4">
-            <p className="text-sm text-green-800">
+          <div className="rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-4">
+            <p className="text-sm text-green-800 dark:text-green-300">
               ✓ Two-factor authentication is active on your account
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Two-factor authentication adds an extra layer of security by requiring a code from your authenticator app in addition to your password.
             </p>
             <Button onClick={handleStartSetup} disabled={isProcessing}>
@@ -359,7 +359,7 @@ export function TwoFactorSetup({ initialStatus }: TwoFactorSetupProps) {
         )}
         
         {error && (
-          <div className="mt-4 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3 text-sm text-red-800 dark:text-red-300">
             {error}
           </div>
         )}

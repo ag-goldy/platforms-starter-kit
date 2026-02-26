@@ -221,7 +221,7 @@ async function generateReportInternal(filters: ReportFilters): Promise<ReportDat
     status: ticket.status,
     priority: ticket.priority,
     category: ticket.category,
-    organization: ticket.organization.name,
+    organization: ticket.organization?.name ?? 'Public',
     requester: ticket.requester?.name || null,
     requesterEmail: ticket.requesterEmail || ticket.requester?.email || null,
     assignee: ticket.assignee?.name || null,

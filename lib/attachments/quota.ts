@@ -21,7 +21,19 @@ export interface QuotaStatus {
 /**
  * Get current storage quota status for an organization
  */
-export async function getQuotaStatus(orgId: string): Promise<QuotaStatus> {
+export async function getQuotaStatus(orgId: string | null): Promise<QuotaStatus> {
+  // Public tickets (no org) have a default 100MB quota
+  if (!orgId) {
+    const PUBLIC_TICKET_QUOTA = 100 * 1024 * 1024; // 100MB
+    return {
+      usedBytes: 0,
+      quotaBytes: PUBLIC_TICKET_QUOTA,
+      availableBytes: PUBLIC_TICKET_QUOTA,
+      usagePercent: 0,
+      isExceeded: false,
+    };
+  }
+  
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, orgId),
     columns: {
@@ -52,11 +64,29 @@ export async function getQuotaStatus(orgId: string): Promise<QuotaStatus> {
 /**
  * Check if an organization has enough quota for a file upload
  */
-export async function checkQuota(orgId: string, fileSizeBytes: number): Promise<{
+export async function checkQuota(orgId: string | null, fileSizeBytes: number): Promise<{
   allowed: boolean;
   status: QuotaStatus;
   error?: string;
 }> {
+  // Public tickets (no org) have a default 100MB quota
+  if (!orgId) {
+    const PUBLIC_TICKET_QUOTA = 100 * 1024 * 1024; // 100MB
+    return {
+      allowed: fileSizeBytes <= PUBLIC_TICKET_QUOTA,
+      status: {
+        usedBytes: 0,
+        quotaBytes: PUBLIC_TICKET_QUOTA,
+        availableBytes: PUBLIC_TICKET_QUOTA,
+        usagePercent: 0,
+        isExceeded: false,
+      },
+      error: fileSizeBytes > PUBLIC_TICKET_QUOTA 
+        ? `File too large for public ticket. Max size: 100MB` 
+        : undefined,
+    };
+  }
+  
   const status = await getQuotaStatus(orgId);
 
   if (status.isExceeded) {
@@ -84,7 +114,10 @@ export async function checkQuota(orgId: string, fileSizeBytes: number): Promise<
 /**
  * Update storage usage after an attachment is uploaded
  */
-export async function incrementStorageUsage(orgId: string, sizeBytes: number): Promise<void> {
+export async function incrementStorageUsage(orgId: string | null, sizeBytes: number): Promise<void> {
+  // Skip for public tickets (no org)
+  if (!orgId) return;
+  
   await db
     .update(organizations)
     .set({
@@ -100,7 +133,10 @@ export async function incrementStorageUsage(orgId: string, sizeBytes: number): P
 /**
  * Update storage usage after an attachment is deleted
  */
-export async function decrementStorageUsage(orgId: string, sizeBytes: number): Promise<void> {
+export async function decrementStorageUsage(orgId: string | null, sizeBytes: number): Promise<void> {
+  // Skip for public tickets (no org)
+  if (!orgId) return;
+  
   await db
     .update(organizations)
     .set({
@@ -116,7 +152,10 @@ export async function decrementStorageUsage(orgId: string, sizeBytes: number): P
 /**
  * Recalculate storage usage from actual attachments (for accuracy)
  */
-export async function recalculateStorageUsage(orgId: string): Promise<number> {
+export async function recalculateStorageUsage(orgId: string | null): Promise<number> {
+  // Skip for public tickets (no org)
+  if (!orgId) return 0;
+  
   const result = await db
     .select({
       totalSize: sum(attachments.size),

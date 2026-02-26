@@ -6,7 +6,9 @@ import { getMonitoringHistory } from '@/lib/zabbix/queries';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Activity, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { Activity, TrendingUp, Clock, AlertCircle, Server } from 'lucide-react';
+import { ServicesRefresh } from '@/components/customer/services-refresh';
+import { Button } from '@/components/ui/button';
 
 interface ServiceWithMonitoring {
   id: string;
@@ -99,24 +101,49 @@ export default async function CustomerServicesPage({
     const operationalCount = monitoredServices.filter(s => s.monitoringStatus === 'OPERATIONAL').length;
 
     return (
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Services</h1>
-          <Link 
-            href={`/s/${subdomain}/tickets/new`}
-            className="text-sm text-primary hover:underline"
-          >
-            Report an Issue
-          </Link>
-        </div>
+      <ServicesRefresh refreshInterval={60000}>
+        <div className="mx-auto max-w-5xl space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm">
+                <Server className="h-3.5 w-3.5 text-orange-600" />
+                Monitoring & Coverage
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
+                Services
+              </h1>
+              <p className="text-sm md:text-base text-gray-600">
+                Live health, uptime, and alerts for your supported services
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link href={`/s/${subdomain}/status`}>
+                <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+                  View status
+                </Button>
+              </Link>
+              <Link href={`/s/${subdomain}/tickets/new`}>
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                  Report an issue
+                </Button>
+              </Link>
+            </div>
+          </div>
 
         {/* Overall Status Summary */}
         {monitoredServices.length > 0 && (
-          <Card className={criticalCount > 0 ? 'border-red-200 bg-red-50' : degradedCount > 0 ? 'border-yellow-200 bg-yellow-50' : 'border-green-200 bg-green-50'}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
+          <Card className={`rounded-3xl border shadow-sm animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-150 ${
+            criticalCount > 0
+              ? 'border-red-200 bg-red-50'
+              : degradedCount > 0
+                ? 'border-yellow-200 bg-yellow-50'
+                : 'border-green-200 bg-green-50'
+          }`}>
+            <CardContent className="p-6 md:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex-1">
-                  <h2 className="font-semibold">
+                  <h2 className="text-lg font-semibold text-gray-900">
                     {criticalCount > 0 
                       ? 'Some services are experiencing issues' 
                       : degradedCount > 0 
@@ -127,13 +154,13 @@ export default async function CustomerServicesPage({
                     {operationalCount} operational, {degradedCount} degraded, {criticalCount} critical
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold">
+                <div className="sm:text-right">
+                  <div className="text-3xl font-bold text-gray-900 leading-none">
                     {monitoredServices.length > 0 
                       ? Math.round((operationalCount / monitoredServices.length) * 100) 
                       : 100}%
                   </div>
-                  <div className="text-xs text-gray-500">Uptime</div>
+                  <div className="text-xs text-gray-500 mt-1">Uptime (24h)</div>
                 </div>
               </div>
             </CardContent>
@@ -141,17 +168,17 @@ export default async function CustomerServicesPage({
         )}
 
         {/* Services List */}
-        <div className="space-y-3">
+        <div className="space-y-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 delay-200">
           {servicesWithHistory.length === 0 ? (
             <p className="text-sm text-gray-600">No services available.</p>
           ) : (
             servicesWithHistory.map((svc) => (
-              <Card key={svc.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
+              <Card key={svc.id} className="overflow-hidden rounded-3xl border-gray-100 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <CardContent className="p-5 md:p-6">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-lg">{svc.name}</h3>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="font-semibold text-lg text-gray-900">{svc.name}</h3>
                         {svc.monitoringEnabled ? (
                           <Badge className={getStatusColor(svc.monitoringStatus)} variant="outline">
                             <span className="flex items-center gap-1">
@@ -171,12 +198,12 @@ export default async function CustomerServicesPage({
                       </div>
                       
                       {svc.description && (
-                        <p className="text-sm text-gray-600 mb-3">{svc.description}</p>
+                        <p className="text-sm text-gray-600 mt-2">{svc.description}</p>
                       )}
 
                       {/* Monitoring Metrics */}
                       {svc.monitoringEnabled && svc.monitoringStatus !== 'ERROR' && (
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-3">
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-4">
                           {svc.uptimePercentage && (
                             <div className="flex items-center gap-1">
                               <TrendingUp className="h-4 w-4 text-green-600" />
@@ -204,7 +231,7 @@ export default async function CustomerServicesPage({
                             .filter((t: any) => t.value === '1')
                             .slice(0, 3)
                             .map((trigger: any, idx: number) => (
-                              <div key={idx} className="flex items-center gap-2 text-sm text-red-600">
+                              <div key={idx} className="flex items-center gap-2 text-sm text-red-700">
                                 <AlertCircle className="h-4 w-4" />
                                 <span>{trigger.description}</span>
                               </div>
@@ -215,7 +242,7 @@ export default async function CustomerServicesPage({
 
                     <Link 
                       href={`/s/${subdomain}/tickets/new?serviceId=${svc.id}`}
-                      className="shrink-0 text-sm text-primary hover:underline whitespace-nowrap"
+                      className="shrink-0 text-sm font-medium text-orange-700 hover:text-orange-800 hover:underline whitespace-nowrap"
                     >
                       Create ticket
                     </Link>
@@ -227,10 +254,11 @@ export default async function CustomerServicesPage({
         </div>
 
         {/* Legend */}
-        <div className="text-xs text-gray-500 pt-4 border-t">
+        <div className="text-xs text-gray-500 pt-4 border-t border-gray-100 animate-in fade-in-0 duration-300 delay-300">
           <p>Status indicators show real-time monitoring data from our infrastructure monitoring system.</p>
         </div>
       </div>
+      </ServicesRefresh>
     );
   } catch {
     return (

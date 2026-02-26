@@ -104,6 +104,12 @@ export async function getRequestContext(): Promise<RequestContext> {
   if (subdomain) {
     const foundOrg = await getOrgBySubdomain(subdomain);
     org = foundOrg || null;
+    
+    // Check if organization is disabled and user is not internal
+    // Internal users can still access disabled orgs for management
+    if (org && !org.isActive && user && !user.isInternal) {
+      org = null; // Hide org from customer users
+    }
   }
 
   if (user && org) {

@@ -56,10 +56,10 @@ export async function completeLoginAfter2FA(
     path: '/',
   });
 
-  // Complete login using the 2FA token
+  // Complete login using the 2FA token - always redirect to dashboard
   await signIn('credentials', {
     email: user.email,
     loginToken,
-    redirectTo: callbackUrl || '/app',
+    redirectTo: '/app',
   });
 }

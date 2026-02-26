@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { rootDomain } from '@/lib/utils';
 import { getCorrelationIdFromHeaders, addCorrelationIdHeader } from '@/lib/monitoring/correlation';
+import { neon } from '@neondatabase/serverless';
 
 // Get the domain for cookies - in production, use the root domain for subdomain support
 const getCookieDomain = () => {
@@ -20,6 +21,23 @@ const getCookieDomain = () => {
 };
 
 const cookieDomain = getCookieDomain();
+
+/**
+ * Check if organization is disabled (edge-compatible)
+ */
+async function isOrgDisabled(subdomain: string): Promise<boolean> {
+  try {
+    const sql = neon(process.env.DATABASE_URL || '');
+    const result = await sql`SELECT is_active, deleted_at FROM organizations WHERE subdomain = ${subdomain} LIMIT 1`;
+    if (result.length === 0) return false; // Org not found, let it 404 elsewhere
+    const org = result[0] as { is_active: boolean; deleted_at: string | null };
+    // Disabled if is_active is false OR deleted_at is set
+    return !org.is_active || org.deleted_at !== null;
+  } catch {
+    // If we can't check, don't block (fail open for safety)
+    return false;
+  }
+}
 
 /**
  * Extract subdomain from request
@@ -144,9 +162,24 @@ export async function middleware(request: NextRequest) {
   }
 
   if (subdomain) {
+    // Check if organization is disabled
+    const orgDisabled = await isOrgDisabled(subdomain);
+    if (orgDisabled && !pathname.startsWith('/disabled')) {
+      return NextResponse.redirect(new URL('/disabled', request.url));
+    }
+
     // Block admin/app access from subdomains
     if (pathname.startsWith('/admin') || pathname.startsWith('/app')) {
       return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // Protect all /s/[subdomain]/* routes - require authentication
+    if (!sessionCookie) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      clearAuthCookies(redirectResponse);
+      return redirectResponse;
     }
 
     // Rewrite root to subdomain page

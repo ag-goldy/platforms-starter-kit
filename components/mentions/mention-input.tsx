@@ -4,7 +4,7 @@ import { useMentions } from '@/hooks/use-mentions';
 import { cn } from '@/lib/utils';
 
 interface MentionInputProps {
-  orgId: string;
+  orgId: string | null;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;

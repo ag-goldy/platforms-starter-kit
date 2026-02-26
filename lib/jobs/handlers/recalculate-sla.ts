@@ -40,7 +40,7 @@ export async function processRecalculateSLAJob(job: RecalculateSLAJob): Promise<
     });
 
     const orgIds = Array.from(
-      new Set(ticketsToUpdate.map((ticket) => ticket.orgId))
+      new Set(ticketsToUpdate.map((ticket) => ticket.orgId).filter((id): id is string => id !== null))
     );
     const orgPolicies = orgIds.length
       ? await db.query.organizations.findMany({
@@ -65,6 +65,12 @@ export async function processRecalculateSLAJob(job: RecalculateSLAJob): Promise<
     let skipped = 0;
 
     for (const ticket of ticketsToUpdate) {
+      // Skip public tickets (no org) - they don't have SLA policies
+      if (!ticket.orgId) {
+        skipped++;
+        continue;
+      }
+      
       const slaTargets = resolveSLATargets(
         ticket.priority,
         policyByOrgId.get(ticket.orgId)

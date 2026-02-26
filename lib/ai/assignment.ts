@@ -79,7 +79,7 @@ async function calculateAgentWorkload(userId: string): Promise<{
  * Find best agent for a ticket
  */
 export async function findBestAgent(
-  orgId: string,
+  orgId: string | null,
   options: {
     category?: string;
     priority?: string;
@@ -88,6 +88,17 @@ export async function findBestAgent(
   }
 ): Promise<AssignmentRecommendation> {
   const { category, priority, excludeUserIds = [] } = options;
+
+  // Cannot find agents for public tickets (no org)
+  if (!orgId) {
+    return {
+      recommendedAgentId: null,
+      recommendedAgentName: null,
+      confidence: 0,
+      alternatives: [],
+      reason: 'No organization specified',
+    };
+  }
 
   // Get all active internal users in the org
   let agents = await db
@@ -238,6 +249,11 @@ export async function autoAssignTicket(
     return { assigned: false, reason: 'Ticket already assigned' };
   }
 
+  // Cannot auto-assign public tickets (no org)
+  if (!ticket.orgId) {
+    return { assigned: false, reason: 'Public tickets cannot be auto-assigned' };
+  }
+  
   const recommendation = await findBestAgent(ticket.orgId, {
     category: ticket.category || undefined,
     priority: ticket.priority,

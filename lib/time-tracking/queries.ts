@@ -448,7 +448,7 @@ export async function autoPauseTicketTimers(ticketId: string) {
     .from(tickets)
     .where(eq(tickets.id, ticketId));
 
-  if (!ticket) return;
+  if (!ticket || !ticket.orgId) return;
 
   const [settings] = await db
     .select()

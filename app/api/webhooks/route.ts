@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import {
-  createWebhook,
-  getOrgWebhooks,
-  getOrgWebhookStats,
-  testWebhook,
-} from '@/lib/webhooks/queries';
-import { requireOrgAccess } from '@/lib/auth/permissions';
+import { db } from '@/db';
+import { webhookSubscriptions } from '@/db/schema-extensions';
+import { eq } from 'drizzle-orm';
+import { requireInternalRole } from '@/lib/auth/permissions';
 
+// GET - List webhooks
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -15,29 +13,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const orgId = searchParams.get('orgId');
+    await requireInternalRole();
+
+    const url = new URL(req.url);
+    const orgId = url.searchParams.get('orgId');
 
     if (!orgId) {
-      return NextResponse.json(
-        { error: 'Organization ID required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'orgId required' }, { status: 400 });
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const webhooks = await db.query.webhookSubscriptions.findMany({
+      where: eq(webhookSubscriptions.orgId, orgId),
+      orderBy: (webhooks, { desc }) => [desc(webhooks.createdAt)],
+    });
 
-    const includeStats = searchParams.get('stats') === 'true';
+    // Remove secrets from response
+    const sanitized = webhooks.map(w => ({
+      ...w,
+      secret: w.secret ? '***' : undefined,
+    }));
 
-    const [webhooks, stats] = await Promise.all([
-      getOrgWebhooks(orgId),
-      includeStats ? getOrgWebhookStats(orgId) : null,
-    ]);
-
-    return NextResponse.json({ webhooks, stats });
+    return NextResponse.json({ webhooks: sanitized });
   } catch (error) {
     console.error('Error fetching webhooks:', error);
     return NextResponse.json(
@@ -47,6 +43,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// POST - Create webhook
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -54,58 +51,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { action } = body;
+    await requireInternalRole();
 
-    if (action === 'test') {
-      const { webhookId } = body;
-      if (!webhookId) {
-        return NextResponse.json(
-          { error: 'Webhook ID required' },
-          { status: 400 }
-        );
-      }
-      const result = await testWebhook(webhookId);
-      return NextResponse.json(result);
-    }
-
-    // Create webhook
     const {
       orgId,
       name,
-      url,
+      url: webhookUrl,
       events,
       secret,
-      filterConditions,
+      retryCount,
+      timeoutSeconds,
       customHeaders,
-      maxRetries,
-    } = body;
+    } = await req.json();
 
-    if (!orgId || !name || !url || !events || !Array.isArray(events)) {
+    if (!orgId || !name || !webhookUrl || !events || events.length === 0) {
       return NextResponse.json(
-        { error: 'Required fields missing' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Validate URL
+    try {
+      new URL(webhookUrl);
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid URL' },
+        { status: 400 }
+      );
     }
 
-    const { webhook, secret: generatedSecret } = await createWebhook({
-      orgId,
-      name,
-      url,
-      events,
-      secret,
-      filterConditions,
-      customHeaders,
-      maxRetries,
-      createdBy: session.user.id,
-    });
+    const webhook = await db
+      .insert(webhookSubscriptions)
+      .values({
+        orgId,
+        name,
+        url: webhookUrl,
+        events,
+        secret,
+        retryCount: retryCount || 3,
+        timeoutSeconds: timeoutSeconds || 30,
+        customHeaders,
+        createdBy: session.user.id,
+      })
+      .returning();
 
-    return NextResponse.json({ webhook, secret: generatedSecret });
+    return NextResponse.json({ webhook: webhook[0] });
   } catch (error) {
     console.error('Error creating webhook:', error);
     return NextResponse.json(

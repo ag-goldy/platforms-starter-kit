@@ -11,6 +11,8 @@ import { formatDate } from '@/lib/utils/date';
 import { SearchHighlight } from './search-highlight';
 import { assignToMeAction, replyAndWaitingAction, closeAndSendCSATAction } from '@/app/app/actions/fast-actions';
 import { UserPlus, MessageSquare, CheckCircle } from 'lucide-react';
+import { EmptyTickets, EmptySearch, EmptyFilters } from '@/components/ui/empty-state';
+import { TicketListSkeleton } from '@/components/ui/skeleton';
 
 interface TicketListProps {
   tickets: (Ticket & {
@@ -25,9 +27,21 @@ interface TicketListProps {
   internalUsers?: { id: string; name: string | null; email: string }[];
   searchTerm?: string;
   currentUserId?: string;
+  isLoading?: boolean;
+  hasFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
-export function TicketList({ tickets, basePath = '/app/tickets', internalUsers, searchTerm, currentUserId }: TicketListProps) {
+export function TicketList({ 
+  tickets, 
+  basePath = '/app/tickets', 
+  internalUsers, 
+  searchTerm, 
+  currentUserId,
+  isLoading,
+  hasFilters,
+  onClearFilters
+}: TicketListProps) {
   const router = useRouter();
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
   const [processingTicketId, setProcessingTicketId] = useState<string | null>(null);
@@ -52,12 +66,25 @@ export function TicketList({ tickets, basePath = '/app/tickets', internalUsers, 
     }
   };
 
+  // Loading state
+  if (isLoading) {
+    return <TicketListSkeleton count={5} />;
+  }
+
+  // Empty states
   if (tickets.length === 0) {
-    return (
-      <div className="py-12 text-center text-gray-500">
-        No tickets found. Create a new ticket to get started.
-      </div>
-    );
+    // Search returned no results
+    if (searchTerm) {
+      return <EmptySearch query={searchTerm} onClear={() => router.push(basePath)} />;
+    }
+    
+    // Filters applied but no results
+    if (hasFilters) {
+      return <EmptyFilters onClear={onClearFilters || (() => router.push(basePath))} />;
+    }
+    
+    // Truly empty - no tickets at all
+    return <EmptyTickets onCreate={() => router.push(`${basePath}/new`)} />;
   }
 
   const getStatusColor = (status: string) => {
@@ -179,7 +206,7 @@ export function TicketList({ tickets, basePath = '/app/tickets', internalUsers, 
                 )}
               </p>
               <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span>{ticket.organization.name}</span>
+                <span>{ticket.organization?.name || 'Public'}</span>
                 <span>
                   {ticket.requester?.name || ticket.requester?.email || 'Unknown'}
                 </span>

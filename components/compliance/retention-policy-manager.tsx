@@ -35,21 +35,21 @@ export function RetentionPolicyManager({
   const [policy, setPolicy] = useState<RetentionPolicy>(initialPolicy.policy);
   const [days, setDays] = useState<string>(initialPolicy.days?.toString() || '365');
   const [isSaving, setIsSaving] = useState(false);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const daysNum = policy === 'KEEP_FOREVER' ? null : parseInt(days, 10);
       if (policy !== 'KEEP_FOREVER' && (!daysNum || daysNum < 1)) {
-        showToast('Days must be greater than 0', 'error');
+        error('Days must be greater than 0');
         return;
       }
 
       await updateAction(orgId, policy, daysNum);
-      showToast('Retention policy updated successfully', 'success');
+      success('Retention policy updated successfully');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update policy', 'error');
+      error(err instanceof Error ? err.message : 'Failed to update policy');
     } finally {
       setIsSaving(false);
     }

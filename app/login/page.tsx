@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Shield, Lock, Mail, ArrowRight, Ticket, BookOpen, Sparkles } from 'lucide-react';
+import { MFASetupPrompt } from '@/components/auth/mfa-setup-prompt';
 
 interface OrgBranding {
   name: string;
@@ -23,9 +24,10 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status } = useSession();
-  const callbackUrl = searchParams.get('callbackUrl') || '/app';
+  const callbackUrl = '/app'; // Always redirect to dashboard after login
   const urlError = searchParams.get('error');
   const isSessionExpired = urlError === 'SessionExpired';
+  const isSessionInvalid = urlError === 'SessionInvalid';
   const orgSlug = typeof window !== 'undefined' ? window.location.hostname.split('.')[0] : null;
   
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +37,8 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [hasAttemptedSignout, setHasAttemptedSignout] = useState(false);
   const [orgBranding, setOrgBranding] = useState<OrgBranding | null>(null);
+  const [showMFASetup, setShowMFASetup] = useState(false);
+  const [needsMFASetup, setNeedsMFASetup] = useState(false);
 
   // Fetch org branding
   useEffect(() => {
@@ -58,19 +62,22 @@ function LoginForm() {
   }, [orgSlug]);
 
   useEffect(() => {
-    if (isSessionExpired && !hasAttemptedSignout) {
+    if ((isSessionExpired || isSessionInvalid) && !hasAttemptedSignout) {
       setHasAttemptedSignout(true);
-      setError('Your session has expired. Please sign in again.');
+      setError(isSessionExpired 
+        ? 'Your session has expired. Please sign in again.' 
+        : 'Your session is no longer valid. Please sign in again.'
+      );
       signOut({ redirect: false });
     }
-  }, [isSessionExpired, hasAttemptedSignout]);
+  }, [isSessionExpired, isSessionInvalid, hasAttemptedSignout]);
 
   useEffect(() => {
     if (status === 'authenticated' && session && !isSessionExpired) {
-      const redirectTo = callbackUrl.startsWith('/login') ? '/app' : callbackUrl;
-      router.replace(redirectTo);
+      // Always redirect to dashboard
+      router.replace('/app');
     }
-  }, [status, session, callbackUrl, router, isSessionExpired]);
+  }, [status, session, router, isSessionExpired]);
 
   useEffect(() => {
     getCsrfToken().then((token) => {
@@ -127,7 +134,18 @@ function LoginForm() {
       }
 
       if (result?.ok && result?.url) {
-        window.location.href = result.url;
+        // Check if user needs MFA setup
+        const mfaRes = await fetch('/api/user/2fa-status');
+        const mfaData = await mfaRes.json();
+        
+        if (mfaData.enabled) {
+          // User has MFA enabled, proceed to dashboard
+          window.location.href = result.url;
+        } else {
+          // User doesn't have MFA, show setup prompt
+          setNeedsMFASetup(true);
+          setShowMFASetup(true);
+        }
         return;
       }
 
@@ -145,7 +163,7 @@ function LoginForm() {
 
   if (status === 'loading' && !isSessionExpired) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" style={{ color: primaryColor }} />
       </div>
     );
@@ -153,11 +171,17 @@ function LoginForm() {
 
   if (status === 'authenticated' && !isSessionExpired) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" style={{ color: primaryColor }} />
       </div>
     );
   }
+
+  const handleMFAComplete = () => {
+    setShowMFASetup(false);
+    // Redirect to dashboard after MFA setup
+    window.location.href = '/app';
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -177,15 +201,9 @@ function LoginForm() {
         <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-3">
             <img 
-              src="/logo/AGR_logo.png" 
-              alt="AGR Networks" 
-              className="h-10 w-auto"
-            />
-            <span className="text-gray-500">|</span>
-            <img 
               src="/logo/atlas-logo.png" 
-              alt="Atlas" 
-              className="h-9 w-auto"
+              alt="atlas.logo" 
+              className="h-10 w-auto"
             />
           </Link>
         </div>
@@ -232,7 +250,7 @@ function LoginForm() {
                 <Sparkles className="h-6 w-6" style={{ color: primaryColor }} />
               </div>
               <div>
-                <h3 className="text-white font-semibold">AI Assistant</h3>
+                <h3 className="text-white font-semibold">Zeus AI</h3>
                 <p className="text-gray-400 text-sm mt-1">Get instant answers with AI-powered support</p>
               </div>
             </div>
@@ -248,36 +266,30 @@ function LoginForm() {
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-white">
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-background">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8">
             <Link href="/" className="inline-flex items-center gap-2">
               <img 
-                src="/logo/AGR_logo.png" 
-                alt="AGR Networks" 
-                className="h-8 w-auto"
-              />
-              <span className="text-gray-300">|</span>
-              <img 
                 src="/logo/atlas-logo.png" 
-                alt="Atlas" 
-                className="h-7 w-auto"
+                alt="atlas.logo" 
+                className="h-8 w-auto"
               />
             </Link>
           </div>
 
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Sign in to your account</h1>
-            <p className="text-gray-500 mt-2">
+            <h1 className="text-2xl font-bold text-foreground">Sign in to your account</h1>
+            <p className="text-muted-foreground mt-2">
               Enter your credentials to access the {orgName} support portal
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
-              <Shield className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="mb-6 rounded-lg bg-destructive/10 border border-destructive/20 p-4 flex items-start gap-3">
+              <Shield className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 
@@ -285,11 +297,11 @@ function LoginForm() {
             <input type="hidden" name="csrfToken" value={csrfToken} />
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-900 font-medium">
+              <Label htmlFor="email" className="text-foreground font-medium">
                 Email Address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="email"
                   name="email"
@@ -301,14 +313,14 @@ function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="pl-10 h-12 border-gray-300 text-black placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+                  className="pl-10 h-12 border-input text-foreground placeholder:text-muted-foreground focus:border-orange-500 focus:ring-orange-500"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-gray-900 font-medium">
+                <Label htmlFor="password" className="text-foreground font-medium">
                   Password
                 </Label>
                 <Link 
@@ -319,7 +331,7 @@ function LoginForm() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
@@ -330,7 +342,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="pl-10 h-12 border-gray-300 text-black placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+                  className="pl-10 h-12 border-input text-foreground placeholder:text-muted-foreground focus:border-orange-500 focus:ring-orange-500"
                 />
               </div>
             </div>
@@ -354,8 +366,8 @@ function LoginForm() {
             </Button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-center text-sm text-gray-600">
+          <div className="mt-8 pt-6 border-t border-border">
+            <p className="text-center text-sm text-muted-foreground">
               Need help?{' '}
               <Link href="/support" className="font-medium text-orange-500 hover:text-orange-600 transition-colors">
                 Contact Support
@@ -364,6 +376,13 @@ function LoginForm() {
           </div>
         </div>
       </div>
+
+      {/* MFA Setup Prompt Modal */}
+      <MFASetupPrompt
+        isOpen={showMFASetup}
+        onClose={() => setShowMFASetup(false)}
+        onComplete={handleMFAComplete}
+      />
     </div>
   );
 }
@@ -371,7 +390,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-[#F97316]" />
       </div>
     }>

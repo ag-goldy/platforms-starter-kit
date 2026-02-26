@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { tickets, organizations, users, type Ticket } from '@/db/schema';
+import { tickets, organizations, users, ticketComments, type Ticket } from '@/db/schema';
 import { generateTicketKey } from '@/lib/tickets/keys';
 import { createTicketToken } from '@/lib/tickets/magic-links';
 import { sendWithOutbox } from '@/lib/email/outbox';
@@ -36,6 +36,7 @@ function extractTextFromHtml(html: string): string {
  */
 function parseInboundEmail(body: unknown): {
   from: string;
+  to?: string;
   subject: string;
   textBody: string;
   htmlBody?: string;
@@ -51,6 +52,7 @@ function parseInboundEmail(body: unknown): {
     if (data.type === 'email.received' && data.data) {
       const emailData = data.data as Record<string, unknown>;
       const from = emailData.from as string;
+      const to = (emailData.to as string[])?.[0] || (emailData.to as string);
       const subject = emailData.subject as string;
       const text = (emailData.text as string) || '';
       const html = (emailData.html as string) || '';
@@ -61,6 +63,7 @@ function parseInboundEmail(body: unknown): {
       if (from && subject) {
         return {
           from,
+          to,
           subject,
           textBody: text || extractTextFromHtml(html),
           htmlBody: html || undefined,
@@ -75,6 +78,7 @@ function parseInboundEmail(body: unknown): {
     if (data.from && data.subject) {
       return {
         from: data.from as string,
+        to: data.to as string,
         subject: data.subject as string,
         textBody: (data.text as string) || (data['text-body'] as string) || extractTextFromHtml((data.html as string) || (data['html-body'] as string) || ''),
         htmlBody: (data.html as string) || (data['html-body'] as string) || undefined,
@@ -88,6 +92,7 @@ function parseInboundEmail(body: unknown): {
     if (data['sender'] && data.subject) {
       return {
         from: data['sender'] as string,
+        to: data['recipient'] as string,
         subject: data.subject as string,
         textBody: (data['body-plain'] as string) || extractTextFromHtml((data['body-html'] as string) || ''),
         htmlBody: (data['body-html'] as string) || undefined,
@@ -102,12 +107,20 @@ function parseInboundEmail(body: unknown): {
 }
 
 /**
- * Try to find organization by sender email - check if user exists and has org membership
+ * Try to find organization by sender email domain or recipient email
+ * 1. Check if user exists and has org membership
+ * 2. Check if email domain matches any organization's subdomain pattern
+ * 3. Check if recipient email matches org's intake email (if configured)
+ * 4. Return null for public ticket if no match
  */
-async function findOrganizationForEmail(email: string) {
-  // Try to find user by email
+async function findOrganizationForEmail(senderEmail: string, recipientEmail?: string) {
+  // Extract domain from sender email
+  const domain = senderEmail.split('@')[1]?.toLowerCase();
+  if (!domain) return null;
+  
+  // Step 1: Try to find user by email
   const user = await db.query.users.findFirst({
-    where: eq(users.email, email),
+    where: eq(users.email, senderEmail),
     with: {
       memberships: {
         with: {
@@ -119,10 +132,59 @@ async function findOrganizationForEmail(email: string) {
   
   // If user exists and has memberships, use their first org
   if (user?.memberships && user.memberships.length > 0) {
+    console.log(`[Inbound Email] Matched user ${senderEmail} to org ${user.memberships[0].organization.name}`);
     return user.memberships[0].organization;
   }
   
-  // Fallback: return null to use unassigned intake org
+  // Step 2: Try to match by domain pattern against organization subdomains
+  // Get all organizations that allow public intake
+  const allOrgs = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.allowPublicIntake, true));
+  
+  for (const org of allOrgs) {
+    // Match by subdomain pattern (e.g., acme.example.com matches org with subdomain "acme")
+    if (org.subdomain && domain.startsWith(org.subdomain + '.')) {
+      console.log(`[Inbound Email] Matched domain ${domain} to org ${org.name} via subdomain`);
+      return org;
+    }
+    
+    // Match exact subdomain (e.g., org with subdomain "acme" and domain is "acme.com")
+    const domainParts = domain.split('.');
+    if (org.subdomain && domainParts[0] === org.subdomain) {
+      console.log(`[Inbound Email] Matched domain ${domain} to org ${org.name} via exact subdomain match`);
+      return org;
+    }
+  }
+  
+  // Step 3: If recipient email is provided, try to match by intake address
+  // Format: support+org-slug@domain.com or org-slug@domain.com
+  if (recipientEmail) {
+    const recipientLocal = recipientEmail.split('@')[0]?.toLowerCase();
+    if (recipientLocal) {
+      // Check for support+slug format
+      const slugMatch = recipientLocal.match(/^support\+(.+)$/);
+      if (slugMatch) {
+        const slug = slugMatch[1];
+        const org = allOrgs.find(o => o.slug === slug || o.subdomain === slug);
+        if (org) {
+          console.log(`[Inbound Email] Matched recipient ${recipientEmail} to org ${org.name} via slug`);
+          return org;
+        }
+      }
+      
+      // Check if local part matches org slug/subdomain directly
+      const org = allOrgs.find(o => o.slug === recipientLocal || o.subdomain === recipientLocal);
+      if (org) {
+        console.log(`[Inbound Email] Matched recipient ${recipientEmail} to org ${org.name} via local part`);
+        return org;
+      }
+    }
+  }
+  
+  // No matching org - return null for public ticket
+  console.log(`[Inbound Email] No org match for ${senderEmail}, creating public ticket`);
   return null;
 }
 
@@ -151,6 +213,20 @@ async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
   return signature === webhookSecret;
 }
 
+/**
+ * Add a system comment to a ticket
+ */
+async function addTicketComment(
+  ticketId: string,
+  content: string
+) {
+  await db.insert(ticketComments).values({
+    ticketId,
+    content,
+    isInternal: false, // Public comment visible to requester
+  } as any);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -173,7 +249,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const { from, subject, textBody } = emailData;
+    const { from, subject, textBody, to } = emailData;
     
     // Validate required fields
     if (!from || !subject || !textBody) {
@@ -210,49 +286,25 @@ export async function POST(request: NextRequest) {
     }
     
     // No matching ticket found, create a new ticket
-    // Find or create unassigned intake org
-    let org = await findOrganizationForEmail(senderEmail);
-    
-    if (!org) {
-      const foundOrg = await db.query.organizations.findFirst({
-        where: eq(organizations.slug, 'unassigned-intake'),
-      });
-      
-      if (foundOrg) {
-        org = foundOrg;
-      } else {
-        [org] = await db
-          .insert(organizations)
-          .values({
-            name: 'Unassigned Intake',
-            slug: 'unassigned-intake',
-            subdomain: 'intake',
-          })
-          .returning();
-      }
-    }
-    
-    if (!org.allowPublicIntake) {
-      return NextResponse.json(
-        { error: 'Intake disabled' },
-        { status: 403 }
-      );
-    }
+    // Find organization by sender email domain or recipient email
+    const org = await findOrganizationForEmail(senderEmail, to);
     
     // Generate ticket key
     const ticketKey = await generateTicketKey();
-    const slaTargets = await getOrgSLATargets(org.id, 'P3');
+    
+    // Get SLA targets if org exists, otherwise use defaults
+    const slaTargets = org ? await getOrgSLATargets(org.id, 'P3') : { responseHours: 4, resolutionHours: 24 };
     
     // Get IP for token creation (use a default if not available)
     const headersList = await headers();
     const ip = getClientIP(headersList) || 'unknown';
     
-    // Create ticket
+    // Create ticket (public if no org, assigned if org found)
     const [ticket] = await db
       .insert(tickets)
       .values({
         key: ticketKey,
-        orgId: org.id,
+        orgId: org?.id || null,
         subject: subject.trim(),
         description: textBody.trim(),
         requesterEmail: senderEmail,
@@ -261,8 +313,14 @@ export async function POST(request: NextRequest) {
         category: 'INCIDENT',
         slaResponseTargetHours: slaTargets.responseHours,
         slaResolutionTargetHours: slaTargets.resolutionHours,
-      })
+      } as any)
       .returning();
+    
+    // Add a comment to track the source
+    await addTicketComment(
+      ticket.id,
+      `Ticket created from email sent by ${senderEmail}${to ? ` to ${to}` : ''} on ${new Date().toLocaleString()}.`
+    );
     
     // Generate magic link token for sender
     const token = await createTicketToken({
@@ -279,6 +337,15 @@ export async function POST(request: NextRequest) {
       ticketKey,
       subject: subject.trim(),
       magicLink,
+      senderEmail,
+      createdAt: new Date().toLocaleString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
     });
     
     await sendWithOutbox({
@@ -289,19 +356,25 @@ export async function POST(request: NextRequest) {
       text: emailContent.text,
     });
     
-    // Send notification to internal support queue
-    const fullTicket = await getTicketById(ticket.id, org.id);
-    if (fullTicket && 'requester' in fullTicket && 'organization' in fullTicket) {
-      await sendCustomerTicketCreatedNotification(fullTicket as unknown as Ticket & {
-        requester: { email: string; name: string | null } | null;
-        organization: { name: string };
-      });
+    // Send notification to internal support queue (only if org exists)
+    if (org?.id) {
+      const fullTicket = await getTicketById(ticket.id, org.id);
+      if (fullTicket && 'requester' in fullTicket && 'organization' in fullTicket) {
+        await sendCustomerTicketCreatedNotification(fullTicket as unknown as Ticket & {
+          requester: { email: string; name: string | null } | null;
+          organization: { name: string };
+        });
+      }
+    } else {
+      // Public ticket - notify internal team differently or log for manual assignment
+      console.log(`[Inbound Email] Public ticket created: ${ticketKey} from ${senderEmail}`);
     }
     
     return NextResponse.json({
       success: true,
       ticketId: ticket.id,
       ticketKey,
+      orgId: org?.id || null,
       isReply: false,
     });
   } catch (error) {

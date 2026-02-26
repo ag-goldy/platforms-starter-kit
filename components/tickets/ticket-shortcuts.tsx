@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CommandPalette, type Command } from '@/components/ui/command-palette';
 import { ShortcutsHelp } from '@/components/ui/shortcuts-help';
 import { matchesShortcut, SHORTCUT_KEYS } from '@/lib/utils/shortcuts';
 
@@ -21,7 +20,6 @@ interface TicketShortcutsProps {
 
 export function TicketShortcuts(props: TicketShortcutsProps) {
   const { onStatusChange, onPriorityChange } = props;
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
   // Expose help function globally for button click
@@ -31,90 +29,6 @@ export function TicketShortcuts(props: TicketShortcutsProps) {
       delete window.__openShortcutsHelp;
     };
   }, []);
-
-  // Build commands for command palette
-  const commands: Command[] = [
-    {
-      id: 'status-new',
-      label: 'Set Status: New',
-      description: 'Change ticket status to New',
-      category: 'Status',
-      shortcut: '⌘1',
-      action: () => onStatusChange('NEW'),
-    },
-    {
-      id: 'status-open',
-      label: 'Set Status: Open',
-      description: 'Change ticket status to Open',
-      category: 'Status',
-      shortcut: '⌘2',
-      action: () => onStatusChange('OPEN'),
-    },
-    {
-      id: 'status-in-progress',
-      label: 'Set Status: In Progress',
-      description: 'Change ticket status to In Progress',
-      category: 'Status',
-      shortcut: '⌘3',
-      action: () => onStatusChange('IN_PROGRESS'),
-    },
-    {
-      id: 'status-resolved',
-      label: 'Set Status: Resolved',
-      description: 'Change ticket status to Resolved',
-      category: 'Status',
-      shortcut: '⌘4',
-      action: () => onStatusChange('RESOLVED'),
-    },
-    {
-      id: 'status-closed',
-      label: 'Set Status: Closed',
-      description: 'Change ticket status to Closed',
-      category: 'Status',
-      shortcut: '⌘5',
-      action: () => onStatusChange('CLOSED'),
-    },
-    {
-      id: 'priority-p1',
-      label: 'Set Priority: P1 (Critical)',
-      description: 'Change ticket priority to P1',
-      category: 'Priority',
-      shortcut: '⌘⇧1',
-      action: () => onPriorityChange('P1'),
-    },
-    {
-      id: 'priority-p2',
-      label: 'Set Priority: P2 (High)',
-      description: 'Change ticket priority to P2',
-      category: 'Priority',
-      shortcut: '⌘⇧2',
-      action: () => onPriorityChange('P2'),
-    },
-    {
-      id: 'priority-p3',
-      label: 'Set Priority: P3 (Medium)',
-      description: 'Change ticket priority to P3',
-      category: 'Priority',
-      shortcut: '⌘⇧3',
-      action: () => onPriorityChange('P3'),
-    },
-    {
-      id: 'priority-p4',
-      label: 'Set Priority: P4 (Low)',
-      description: 'Change ticket priority to P4',
-      category: 'Priority',
-      shortcut: '⌘⇧4',
-      action: () => onPriorityChange('P4'),
-    },
-    {
-      id: 'help',
-      label: 'Show Keyboard Shortcuts',
-      description: 'View all available keyboard shortcuts',
-      category: 'General',
-      shortcut: '⌘?',
-      action: () => setShortcutsHelpOpen(true),
-    },
-  ];
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -129,15 +43,8 @@ export function TicketShortcuts(props: TicketShortcutsProps) {
         // Allow Cmd+K to open command palette even in inputs
         if (matchesShortcut(e, SHORTCUT_KEYS.OPEN_COMMAND_PALETTE.key, { meta: true })) {
           e.preventDefault();
-          setCommandPaletteOpen(true);
+          // Command palette is handled globally
         }
-        return;
-      }
-
-      // Command palette (Cmd+K)
-      if (matchesShortcut(e, SHORTCUT_KEYS.OPEN_COMMAND_PALETTE.key, { meta: true })) {
-        e.preventDefault();
-        setCommandPaletteOpen(true);
         return;
       }
 
@@ -221,17 +128,10 @@ export function TicketShortcuts(props: TicketShortcutsProps) {
   ];
 
   return (
-    <>
-      <CommandPalette
-        commands={commands}
-        open={commandPaletteOpen}
-        onOpenChange={setCommandPaletteOpen}
-      />
-      <ShortcutsHelp
-        open={shortcutsHelpOpen}
-        onOpenChange={setShortcutsHelpOpen}
-        shortcuts={shortcutsForHelp}
-      />
-    </>
+    <ShortcutsHelp
+      open={shortcutsHelpOpen}
+      onOpenChange={setShortcutsHelpOpen}
+      shortcuts={shortcutsForHelp}
+    />
   );
 }

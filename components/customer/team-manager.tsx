@@ -46,7 +46,7 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
   const [teamMembers, setTeamMembers] = useState(members);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [togglingMemberId, setTogglingMemberId] = useState<string | null>(null);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,9 +73,9 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
       setInvitations([...invitations, data.invitation]);
       setInviteEmail('');
       setShowInviteForm(false);
-      showToast('Invitation sent!', 'success');
+      success('Invitation sent!');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to invite', 'error');
+      error(err instanceof Error ? err.message : 'Failed to invite');
     } finally {
       setIsInviting(false);
     }
@@ -94,9 +94,9 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
       }
 
       setInvitations(invitations.filter(i => i.id !== invitationId));
-      showToast('Invitation cancelled', 'success');
+      success('Invitation cancelled');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to cancel', 'error');
+      error(err instanceof Error ? err.message : 'Failed to cancel');
     }
   };
 
@@ -125,9 +125,9 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
           member.membershipId === membershipId ? { ...member, role } : member
         )
       );
-      showToast('Role updated', 'success');
+      success('Role updated');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update role', 'error');
+      error(err instanceof Error ? err.message : 'Failed to update role');
     } finally {
       setUpdatingMemberId(null);
     }
@@ -165,9 +165,9 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
             : member
         )
       );
-      showToast(nextActive ? 'Member reactivated' : 'Member deactivated', 'success');
+      success(nextActive ? 'Member reactivated' : 'Member deactivated');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update member', 'error');
+      error(err instanceof Error ? err.message : 'Failed to update member');
     } finally {
       setTogglingMemberId(null);
     }

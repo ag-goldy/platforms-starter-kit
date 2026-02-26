@@ -97,7 +97,7 @@ export async function assignTagToTicketAction(ticketId: string, tagId: string) {
 
   await logAudit({
     userId: user.id,
-    orgId: ticket.orgId,
+    orgId: ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_TAG_ADDED',
     details: JSON.stringify({ tagId }),
@@ -122,7 +122,7 @@ export async function removeTagFromTicketAction(ticketId: string, tagId: string)
 
   await logAudit({
     userId: user.id,
-    orgId: ticket.orgId,
+    orgId: ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_TAG_REMOVED',
     details: JSON.stringify({ tagId }),

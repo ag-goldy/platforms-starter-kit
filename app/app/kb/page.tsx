@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Plus, Edit, Eye, ThumbsUp, Calendar, FolderTree } from 'lucide-react';
+import { BookOpen, Plus, Edit, Eye, ThumbsUp, Calendar, FolderTree, Trash2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils/date';
+import { DeleteArticleButton } from '@/components/kb/delete-article-button';
 
 export default async function KBAdminPage() {
   await requireInternalRole();
@@ -47,6 +48,10 @@ export default async function KBAdminPage() {
     internal: 'bg-yellow-100 text-yellow-800',
     agents_only: 'bg-purple-100 text-purple-800',
   };
+
+  const pendingArticles = articles.filter(a => a.article.status === 'pending_review');
+  const publishedArticles = articles.filter(a => a.article.status === 'published');
+  const draftArticles = articles.filter(a => a.article.status === 'draft');
 
   return (
     <div className="space-y-6">
@@ -134,6 +139,70 @@ export default async function KBAdminPage() {
         </CardContent>
       </Card>
 
+      {/* Pending Review */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Review</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pendingArticles.length === 0 ? (
+            <p className="text-sm text-gray-500">No articles pending review</p>
+          ) : (
+            <div className="space-y-3">
+              {pendingArticles.map(({ article, category, author, org }) => (
+                <div
+                  key={article.id}
+                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-medium truncate">{article.title}</h3>
+                      <Badge className={statusColors[article.status] || 'bg-gray-100'}>
+                        {article.status}
+                      </Badge>
+                      <Badge className={visibilityColors[article.visibility] || 'bg-gray-100'}>
+                        {article.visibility}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                      {article.excerpt || article.content.substring(0, 150)}...
+                    </p>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        {category?.name || 'Uncategorized'}
+                      </span>
+                      <span className="text-gray-400">• {org?.name || 'Global'}</span>
+                      {author && (
+                        <span className="text-gray-400">by {author.name || author.email}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Link
+                      href={org?.subdomain ? `/s/${org.subdomain}/kb/${article.slug}` : `/kb/${article.slug}`}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      View
+                    </Link>
+                    <Link
+                      href={`/app/kb/${article.id}/edit`}
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Review
+                    </Link>
+                    <DeleteArticleButton 
+                      articleId={article.id} 
+                      articleTitle={article.title} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Articles */}
       <Card>
         <CardHeader>
@@ -153,7 +222,7 @@ export default async function KBAdminPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {articles.map(({ article, category, author, org }) => (
+              {publishedArticles.concat(draftArticles).map(({ article, category, author, org }) => (
                 <div
                   key={article.id}
                   className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -196,7 +265,7 @@ export default async function KBAdminPage() {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <Link
-                      href={`/app/kb/category/${category?.slug}/${article.slug}`}
+                      href={org?.subdomain ? `/s/${org.subdomain}/kb/${article.slug}` : `/kb/${article.slug}`}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       View
@@ -207,6 +276,10 @@ export default async function KBAdminPage() {
                     >
                       <Edit className="h-4 w-4" />
                     </Link>
+                    <DeleteArticleButton 
+                      articleId={article.id} 
+                      articleTitle={article.title} 
+                    />
                   </div>
                 </div>
               ))}

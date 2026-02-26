@@ -8,7 +8,7 @@ interface MentionUser {
   email: string;
 }
 
-export function useMentions(orgId: string) {
+export function useMentions(orgId: string | null) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionSuggestions, setMentionSuggestions] = useState<MentionUser[]>([]);
   const [showMentions, setShowMentions] = useState(false);
@@ -30,8 +30,8 @@ export function useMentions(orgId: string) {
       setMentionQuery(query);
       mentionStartRef.current = cursorPosition - afterAt[0].length;
 
-      // Fetch suggestions
-      if (query.length >= 1) {
+      // Fetch suggestions (skip for public tickets without org)
+      if (query.length >= 1 && orgId) {
         try {
           const response = await fetch(`/api/users/mentions?orgId=${orgId}&q=${encodeURIComponent(query)}`);
           if (response.ok) {

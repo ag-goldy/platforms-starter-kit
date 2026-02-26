@@ -82,7 +82,7 @@ export function OrganizationTeamManager({
     currentManagerId?: string | null;
     isInternal?: boolean;
   } | null>(null);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const customerRoleSet = new Set<CustomerRole>(['CUSTOMER_ADMIN', 'REQUESTER', 'VIEWER']);
   const isCustomerRole = (role: UserRole): role is CustomerRole =>
     customerRoleSet.has(role as CustomerRole);
@@ -99,7 +99,7 @@ export function OrganizationTeamManager({
           email: data.email,
           role: data.role,
         });
-        showToast('Invitation sent successfully', 'success');
+        success('Invitation sent successfully');
       } else {
         const result = await createInvitationLinkAction({
           orgId,
@@ -107,13 +107,13 @@ export function OrganizationTeamManager({
           role: data.role,
         });
         await navigator.clipboard.writeText(result.invitationLink);
-        showToast('Invitation link created and copied to clipboard', 'success');
+        success('Invitation link created and copied to clipboard');
       }
       setShowInviteDialog(false);
       // Refresh invitations
       window.location.reload();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to send invitation', 'error');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to send invitation');
     }
   };
 
@@ -125,18 +125,18 @@ export function OrganizationTeamManager({
     try {
       await cancelInvitationAction(invitationId, orgId);
       setInvitations(invitations.filter((i) => i.id !== invitationId));
-      showToast('Invitation cancelled', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to cancel invitation', 'error');
+      success('Invitation cancelled');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to cancel invitation');
     }
   };
 
   const handleResendInvitation = async (invitationId: string) => {
     try {
       await resendInvitationAction(invitationId);
-      showToast('Invitation email resent', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to resend invitation', 'error');
+      success('Invitation email resent');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to resend invitation');
     }
   };
 
@@ -148,9 +148,9 @@ export function OrganizationTeamManager({
     try {
       await removeUserFromOrgAction(userId, orgId);
       setMembers(members.filter((m) => m.id !== membershipId));
-      showToast('Member removed', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to remove member', 'error');
+      success('Member removed');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to remove member');
     }
   };
 
@@ -167,9 +167,9 @@ export function OrganizationTeamManager({
         )
       );
       setShowRoleDialog(null);
-      showToast('Role updated', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update role', 'error');
+      success('Role updated');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to update role');
     }
   };
 
@@ -215,9 +215,9 @@ export function OrganizationTeamManager({
         )
       );
       setShowEditDialog(null);
-      showToast('User information updated', 'success');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update user information', 'error');
+      success('User information updated');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to update user information');
     }
   };
 

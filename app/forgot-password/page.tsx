@@ -46,7 +46,11 @@ export default async function ForgotPasswordPage({
           text: `Reset your password by visiting: ${resetUrl}`,
         });
       }
-    } catch (err) {
+    } catch (err: any) {
+      // Don't catch redirect errors - re-throw them
+      if (err?.message?.includes('NEXT_REDIRECT') || err?.digest?.includes('NEXT_REDIRECT')) {
+        throw err;
+      }
       console.error('Password reset error:', err);
       redirect('/forgot-password?error=An error occurred. Please try again.');
     }

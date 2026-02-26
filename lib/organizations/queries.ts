@@ -11,7 +11,10 @@ export async function getOrganizations() {
 /**
  * Get all customer admin email addresses for an organization
  */
-export async function getCustomerAdminEmails(orgId: string): Promise<string[]> {
+export async function getCustomerAdminEmails(orgId: string | null): Promise<string[]> {
+  // Public tickets (no org) have no customer admins
+  if (!orgId) return [];
+  
   const adminMemberships = await db.query.memberships.findMany({
     where: and(
       eq(memberships.orgId, orgId),

@@ -15,7 +15,7 @@ import type { Ticket } from '@/db/schema';
 export interface RuleEvaluationContext {
   ticket: Ticket;
   triggerOn: TriggerOn;
-  orgId: string;
+  orgId: string | null;
   userId?: string;
 }
 
@@ -48,6 +48,10 @@ export async function getEnabledRules(orgId: string, triggerOn: TriggerOn) {
 export async function evaluateAndExecuteRules(
   context: RuleEvaluationContext
 ): Promise<{ matched: number; executed: number }> {
+  // Public tickets (no org) don't have automation rules
+  if (!context.orgId) {
+    return { matched: 0, executed: 0 };
+  }
   const rules = await getEnabledRules(context.orgId, context.triggerOn);
   let matched = 0;
   let executed = 0;

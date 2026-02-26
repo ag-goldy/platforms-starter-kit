@@ -23,7 +23,7 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [isAnonymizing, setIsAnonymizing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -69,10 +69,10 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
           link.click();
         });
         
-        showToast('Export files downloaded successfully', 'success');
+        success('Export files downloaded successfully');
       }
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to export data', 'error');
+      error(err instanceof Error ? err.message : 'Failed to export data');
     } finally {
       setIsExporting(false);
     }
@@ -80,7 +80,7 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
 
   const handleAnonymize = async () => {
     if (!email.trim()) {
-      showToast('Please enter an email address', 'error');
+      error('Please enter an email address');
       return;
     }
 
@@ -91,10 +91,10 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
     setIsAnonymizing(true);
     try {
       const result = await anonymizeUserDataAction(email.trim(), orgId);
-      showToast(`Anonymized ${result.anonymized} tickets for ${email}`, 'success');
+      success(`Anonymized ${result.anonymized} tickets for ${email}`);
       setEmail('');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to anonymize data', 'error');
+      error(err instanceof Error ? err.message : 'Failed to anonymize data');
     } finally {
       setIsAnonymizing(false);
     }
@@ -102,7 +102,7 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
 
   const handleDelete = async () => {
     if (!email.trim()) {
-      showToast('Please enter an email address', 'error');
+      error('Please enter an email address');
       return;
     }
 
@@ -113,10 +113,10 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
     setIsDeleting(true);
     try {
       const result = await deleteUserDataAction(email.trim(), orgId);
-      showToast(`Deleted ${result.deleted} tickets for ${email}`, 'success');
+      success(`Deleted ${result.deleted} tickets for ${email}`);
       setEmail('');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to delete data', 'error');
+      error(err instanceof Error ? err.message : 'Failed to delete data');
     } finally {
       setIsDeleting(false);
     }

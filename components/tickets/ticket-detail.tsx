@@ -103,7 +103,7 @@ const getPriorityColor = (priority: string) => {
 
 export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAssets }: TicketDetailProps) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const [comment, setComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,11 +162,11 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       await addTicketCommentAction(ticket.id, comment, isInternal);
       setComment('');
       setIsInternal(false);
-      showToast('Comment added successfully', 'success');
+      success('Comment added successfully');
       router.refresh();
     } catch (err) {
       const errorMessage = formatErrorMessage(err);
-      showToast(errorMessage, 'error');
+      error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -191,12 +191,12 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       });
       await addTicketAttachmentAction(formData);
       input.value = '';
-      showToast('Attachment uploaded successfully', 'success');
+      success('Attachment uploaded successfully');
       router.refresh();
     } catch (err) {
       const errorMessage = formatErrorMessage(err);
       setAttachmentError(errorMessage);
-      showToast(errorMessage, 'error');
+      error(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -223,7 +223,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{ticket.key}</h1>
-          <p className="mt-1 text-gray-600">{ticket.organization.name}</p>
+          <p className="mt-1 text-gray-600">{ticket.organization?.name || 'Public Ticket'}</p>
           {ticket.mergedIntoId && (
             <p className="mt-1 text-sm text-orange-600">
               This ticket has been merged into another ticket.

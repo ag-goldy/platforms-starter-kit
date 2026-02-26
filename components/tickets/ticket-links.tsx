@@ -65,7 +65,7 @@ const linkTypeColors: Record<LinkType, string> = {
 };
 
 export function TicketLinks({ ticketId, ticketKey }: TicketLinksProps) {
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const [outgoing, setOutgoing] = useState<LinkedTicket[]>([]);
   const [incoming, setIncoming] = useState<LinkedTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,11 +85,11 @@ export function TicketLinks({ ticketId, ticketKey }: TicketLinksProps) {
       setOutgoing(result.outgoing.filter((item) => item.ticket !== null) as LinkedTicket[]);
       setIncoming(result.incoming.filter((item) => item.ticket !== null) as LinkedTicket[]);
     } catch {
-      showToast('Failed to load ticket links', 'error');
+      error('Failed to load ticket links');
     } finally {
       setIsLoading(false);
     }
-  }, [showToast, ticketId]);
+  }, [error, ticketId]);
 
   useEffect(() => {
     loadLinks();
@@ -106,28 +106,28 @@ export function TicketLinks({ ticketId, ticketKey }: TicketLinksProps) {
       const tickets = await searchTicketsForLinkingAction(searchQuery, ticketId);
       setSearchResults(tickets);
     } catch {
-      showToast('Failed to search tickets', 'error');
+      error('Failed to search tickets');
     }
   }
 
   async function handleCreateLink() {
     if (!selectedTicketId || !selectedLinkType) {
-      showToast('Please select a ticket and link type', 'error');
+      error('Please select a ticket and link type');
       return;
     }
 
     setIsCreating(true);
     try {
       await createTicketLinkAction(ticketId, selectedTicketId, selectedLinkType);
-      showToast('Ticket link created successfully', 'success');
+      success('Ticket link created successfully');
       setIsDialogOpen(false);
       setSearchQuery('');
       setSearchResults([]);
       setSelectedTicketId('');
       setSelectedLinkType('related');
       await loadLinks();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to create link', 'error');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to create link');
     } finally {
       setIsCreating(false);
     }
@@ -149,10 +149,10 @@ export function TicketLinks({ ticketId, ticketKey }: TicketLinksProps) {
       } else {
         await removeTicketLinkAction(ticketId, targetTicketId, linkType);
       }
-      showToast('Link removed successfully', 'success');
+      success('Link removed successfully');
       await loadLinks();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to remove link', 'error');
+      error(err instanceof Error ? err.message : 'Failed to remove link');
     }
   }
 

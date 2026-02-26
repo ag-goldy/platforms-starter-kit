@@ -9,7 +9,8 @@ export type JobType =
   | 'RECALCULATE_SLA'
   | 'PROCESS_ATTACHMENT'
   | 'AUDIT_COMPACTION'
-  | 'SLA_WARNING_CHECK';
+  | 'SLA_WARNING_CHECK'
+  | 'CLEANUP_ORG_STORAGE';
 
 export type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -87,6 +88,13 @@ export interface SLAWarningCheckJob extends BaseJob {
   };
 }
 
+export interface CleanupOrgStorageJob extends BaseJob {
+  type: 'CLEANUP_ORG_STORAGE';
+  data: {
+    orgId: string;
+  };
+}
+
 export type Job =
   | SendEmailJob
   | GenerateExportJob
@@ -94,7 +102,8 @@ export type Job =
   | RecalculateSLAJob
   | ProcessAttachmentJob
   | AuditCompactionJob
-  | SLAWarningCheckJob;
+  | SLAWarningCheckJob
+  | CleanupOrgStorageJob;
 
 export interface JobResult {
   success: boolean;

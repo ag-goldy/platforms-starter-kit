@@ -14,6 +14,9 @@ export async function linkCustomerAssetToTicketAction(ticketId: string, assetId:
     throw new Error('Ticket not found');
   }
 
+  if (!ticket.orgId) {
+    throw new Error('Public tickets cannot have assets linked');
+  }
   await requireOrgMemberRole(ticket.orgId, ['CUSTOMER_ADMIN']);
 
   const asset = await db.query.assets.findFirst({
@@ -23,7 +26,7 @@ export async function linkCustomerAssetToTicketAction(ticketId: string, assetId:
     throw new Error('Asset not found');
   }
 
-  if (asset.orgId !== ticket.orgId) {
+  if ((asset.orgId ?? null) !== (ticket.orgId ?? null)) {
     throw new Error('Asset does not belong to this organization');
   }
 
@@ -36,6 +39,9 @@ export async function linkCustomerAssetToTicketAction(ticketId: string, assetId:
     })
     .onConflictDoNothing();
 
+  if (!ticket.orgId) {
+    throw new Error('Ticket has no organization');
+  }
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, ticket.orgId),
     columns: { subdomain: true },
@@ -54,6 +60,10 @@ export async function unlinkCustomerAssetFromTicketAction(ticketId: string, asse
   if (!ticket) {
     throw new Error('Ticket not found');
   }
+  
+  if (!ticket.orgId) {
+    throw new Error('Public tickets cannot have assets');
+  }
 
   await requireOrgMemberRole(ticket.orgId, ['CUSTOMER_ADMIN']);
 
@@ -64,7 +74,7 @@ export async function unlinkCustomerAssetFromTicketAction(ticketId: string, asse
     throw new Error('Asset not found');
   }
 
-  if (asset.orgId !== ticket.orgId) {
+  if ((asset.orgId ?? null) !== (ticket.orgId ?? null)) {
     throw new Error('Asset does not belong to this organization');
   }
 
@@ -77,6 +87,9 @@ export async function unlinkCustomerAssetFromTicketAction(ticketId: string, asse
       )
     );
 
+  if (!ticket.orgId) {
+    throw new Error('Ticket has no organization');
+  }
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, ticket.orgId),
     columns: { subdomain: true },

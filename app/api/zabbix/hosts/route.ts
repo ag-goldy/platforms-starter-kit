@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
       apiToken: config.apiToken,
     });
 
+    console.log('[Zabbix Hosts API] Fetching hosts from:', config.apiUrl);
     const hosts = await client.getHosts(search);
+    console.log('[Zabbix Hosts API] Found hosts:', hosts.length);
 
     return NextResponse.json({ hosts });
   } catch (error) {

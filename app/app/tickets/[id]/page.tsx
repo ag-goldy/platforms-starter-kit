@@ -35,14 +35,17 @@ export default async function TicketDetailPage({
     notFound();
   }
 
-  const availableAssets = await db.query.assets.findMany({
-    where: eq(assets.orgId, ticket.orgId),
-    orderBy: (table, { asc }) => [asc(table.name)],
-    with: {
-      site: true,
-      area: true,
-    },
-  });
+  // Only load assets if ticket has an org (public tickets have no assets)
+  const availableAssets = ticket.orgId 
+    ? await db.query.assets.findMany({
+        where: eq(assets.orgId, ticket.orgId),
+        orderBy: (table, { asc }) => [asc(table.name)],
+        with: {
+          site: true,
+          area: true,
+        },
+      })
+    : [];
 
   return (
     <div className="space-y-6">

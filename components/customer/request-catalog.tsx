@@ -49,7 +49,7 @@ export function CustomerRequestCatalog({
   isAdmin,
   criticalNotice,
 }: CustomerRequestCatalogProps) {
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const router = useRouter();
   const [selectedRequestTypeId, setSelectedRequestTypeId] = useState<string | null>(
     requestTypes[0]?.id || null
@@ -151,15 +151,15 @@ export function CustomerRequestCatalog({
       const result = await createCustomerTicketWithAttachmentsAction(formData);
       if (result.error) {
         setError(result.error);
-        showToast(result.error, 'error');
+        error(result.error);
       } else {
-        showToast('Request submitted successfully', 'success');
+        success('Request submitted successfully');
         router.push(`/s/${subdomain}/tickets/${result.ticketId}`);
       }
     } catch (submitError) {
       const message = formatErrorMessage(submitError);
       setError(message);
-      showToast(message, 'error');
+      error(message);
     } finally {
       setIsSubmitting(false);
     }

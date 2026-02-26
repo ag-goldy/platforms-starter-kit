@@ -24,6 +24,7 @@ import { checkQuota, incrementStorageUsage } from '@/lib/attachments/quota';
 import { enqueueJob } from '@/lib/jobs/queue';
 import { triggerOnTicketCreate, triggerOnTicketUpdate } from '@/lib/automation/rules';
 import { processMentions } from '@/lib/mentions';
+import { invalidateStatusSummary } from '@/lib/cache-invalidation';
 
 const ticketStatusSchema = z.enum(['NEW', 'OPEN', 'WAITING_ON_CUSTOMER', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
 const ticketPrioritySchema = z.enum(['P1', 'P2', 'P3', 'P4']);
@@ -82,37 +83,37 @@ export async function updateTicketStatusAction(
   await updateResolutionTime(ticketId, validatedStatus);
 
   // Trigger automation rules for ticket update
-  const updatedTicket = await getTicketById(ticketId, result.ticket.orgId);
+  const updatedTicket = await getTicketById(ticketId, result.ticket.orgId ?? undefined);
   if (updatedTicket) {
     await triggerOnTicketUpdate(updatedTicket, user.id);
   }
 
   // Update SLA pause status based on new status
-  // Get organization's business hours config
-  const org = await db.query.organizations.findFirst({
-    where: eq(organizations.id, result.ticket.orgId),
-    columns: {
-      businessHours: true,
-    },
-  });
-
+  // For public tickets (no org), skip business hours config
   let businessHoursConfig = null;
-  if (org?.businessHours) {
-    // businessHours is already parsed by Drizzle's $type
-    businessHoursConfig = org.businessHours;
+  if (result.ticket.orgId) {
+    const org = await db.query.organizations.findFirst({
+      where: eq(organizations.id, result.ticket.orgId),
+      columns: {
+        businessHours: true,
+      },
+    });
+    if (org?.businessHours) {
+      businessHoursConfig = org.businessHours;
+    }
   }
 
   await updateSLAPauseStatus(ticketId, validatedStatus, businessHoursConfig);
 
   await logAudit({
     userId: user.id,
-    orgId: result.ticket.orgId,
+    orgId: result.ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_STATUS_CHANGED',
     details: JSON.stringify({ oldStatus, newStatus: validatedStatus }),
   });
 
-    const fullTicket = await getTicketById(ticketId, result.ticket.orgId);
+    const fullTicket = await getTicketById(ticketId, result.ticket.orgId ?? undefined);
     if (fullTicket && 'requester' in fullTicket) {
       await sendTicketStatusChangedNotification(fullTicket as unknown as Ticket & {
         requester: { email: string; name: string | null } | null;
@@ -121,6 +122,11 @@ export async function updateTicketStatusAction(
 
   revalidatePath(`/app/tickets/${ticketId}`);
   revalidatePath('/app');
+  
+  // Invalidate status summary cache
+  if (result.ticket.orgId) {
+    await invalidateStatusSummary(result.ticket.orgId);
+  }
 }
 
 export async function assignTicketAction(
@@ -137,7 +143,7 @@ export async function assignTicketAction(
 
   await logAudit({
     userId: user.id,
-    orgId: result.ticket.orgId,
+    orgId: result.ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_ASSIGNED',
     details: JSON.stringify({ assigneeId }),
@@ -163,7 +169,7 @@ export async function updateTicketPriorityAction(
 
   await logAudit({
     userId: user.id,
-    orgId: result.ticket.orgId,
+    orgId: result.ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_PRIORITY_CHANGED',
     details: JSON.stringify({ priority: validatedPriority }),
@@ -193,7 +199,7 @@ export async function addTicketCommentAction(
 
   await logAudit({
     userId: user.id,
-    orgId: result.ticket.orgId,
+    orgId: result.ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_COMMENT_ADDED',
     details: JSON.stringify({ isInternal }),
@@ -360,6 +366,10 @@ export async function createTicketAction(data: {
   }
 
   revalidatePath('/app');
+  
+  // Invalidate status summary cache
+  await invalidateStatusSummary(orgId);
+  
   return { ticketId: ticket.id, error: null };
 }
 
@@ -392,7 +402,7 @@ export async function addTicketAttachmentAction(formData: FormData) {
     const uploaded = await uploadAttachment(ticketId, file);
     attachmentValues.push({
       ticketId,
-      orgId: ticket.orgId,
+      orgId: ticket.orgId ?? undefined,
       filename: uploaded.filename,
       contentType: uploaded.contentType,
       size: uploaded.size,
@@ -421,7 +431,7 @@ export async function addTicketAttachmentAction(formData: FormData) {
 
   await logAudit({
     userId: user.id,
-    orgId: ticket.orgId,
+    orgId: ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_UPDATED',
     details: JSON.stringify({

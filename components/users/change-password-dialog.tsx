@@ -27,18 +27,18 @@ export function ChangePasswordDialog({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { showToast } = useToast();
+  const { error } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password.length < 8) {
-      showToast('Password must be at least 8 characters', 'error');
+      error('Password must be at least 8 characters');
       return;
     }
 
     if (password !== confirmPassword) {
-      showToast('Passwords do not match', 'error');
+      error('Passwords do not match');
       return;
     }
 
@@ -47,7 +47,7 @@ export function ChangePasswordDialog({
       await adminChangePasswordAction(userId, password);
       onSuccess();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to change password', 'error');
+      error(err instanceof Error ? err.message : 'Failed to change password');
     } finally {
       setIsLoading(false);
     }

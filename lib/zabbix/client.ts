@@ -52,23 +52,31 @@ export class ZabbixClient {
   private apiToken: string;
 
   constructor(config: ZabbixApiConfig) {
-    this.apiUrl = config.apiUrl.replace(/\/$/, ''); // Remove trailing slash
+    // Remove trailing slash and /api_jsonrpc.php if present
+    this.apiUrl = config.apiUrl
+      .replace(/\/$/, '')
+      .replace(/\/api_jsonrpc\.php$/, '');
     this.apiToken = config.apiToken;
   }
 
   private async request<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
-    const response = await fetch(`${this.apiUrl}/api_jsonrpc.php`, {
+    const url = `${this.apiUrl}/api_jsonrpc.php`;
+    const body = JSON.stringify({
+      jsonrpc: '2.0',
+      method,
+      params,
+      id: 1,
+    });
+    
+    console.log(`[ZabbixClient] Request to ${url}:`, { method, params });
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json-rpc',
         'Authorization': `Bearer ${this.apiToken}`,
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method,
-        params,
-        id: 1,
-      }),
+      body,
     });
 
     if (!response.ok) {
@@ -76,6 +84,7 @@ export class ZabbixClient {
     }
 
     const data = await response.json();
+    console.log(`[ZabbixClient] Response for ${method}:`, data);
 
     if (data.error) {
       throw new Error(`Zabbix API error: ${data.error.message} (code: ${data.error.code})`);
@@ -170,10 +179,45 @@ export class ZabbixClient {
 
   /**
    * Test API connectivity
+   * 
+   * Note: Zabbix 7.x requires apiinfo.version to be called WITHOUT auth header,
+   * while user.checkAuthentication requires the auth header.
    */
   async testConnection(): Promise<{ success: boolean; version?: string; error?: string }> {
     try {
-      const version = await this.request<string>('apiinfo.version', {});
+      // Step 1: Get version WITHOUT auth header (Zabbix 7.x requirement)
+      const versionResponse = await fetch(`${this.apiUrl}/api_jsonrpc.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json-rpc',
+          // NO Authorization header for apiinfo.version
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'apiinfo.version',
+          params: {},
+          id: 1,
+        }),
+      });
+
+      if (!versionResponse.ok) {
+        throw new Error(`HTTP error: ${versionResponse.status} ${versionResponse.statusText}`);
+      }
+
+      const versionData = await versionResponse.json();
+
+      if (versionData.error) {
+        throw new Error(`Zabbix API error: ${versionData.error.message}`);
+      }
+
+      const version = versionData.result as string;
+
+      // Step 2: Verify authentication WITH auth header (using host.get with limit 1)
+      await this.request('host.get', {
+        output: ['hostid'],
+        limit: 1,
+      });
+
       return { success: true, version };
     } catch (error) {
       return { 

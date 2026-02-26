@@ -4,6 +4,7 @@ import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { CustomerExportManager } from '@/components/customer/export-manager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getOrgExportRequestsAction } from '@/app/s/[subdomain]/actions/exports';
+import { Download, Shield, Clock, FileText } from 'lucide-react';
 
 export default async function CustomerExportsPage({
   params,
@@ -22,11 +23,17 @@ export default async function CustomerExportsPage({
     const requests = await getOrgExportRequestsAction(org.id);
 
     return (
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Data Exports</h1>
-          <p className="text-sm text-gray-600">
-            Request and download organization data exports.
+      <div className="mx-auto max-w-4xl space-y-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
+              <Download className="w-6 h-6 text-orange-500" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Data Exports</h1>
+          </div>
+          <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+            Request and download organization data exports
           </p>
         </div>
 
@@ -36,14 +43,15 @@ export default async function CustomerExportsPage({
   } catch {
     return (
       <div className="flex items-center justify-center py-12">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Access Required</CardTitle>
+        <Card className="w-full max-w-md border-gray-100 rounded-2xl shadow-sm">
+          <CardHeader className="text-center pb-2">
+            <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-orange-500" />
+            </div>
+            <CardTitle className="text-xl font-bold text-gray-900">Access Required</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Customer admins can request data exports.
-            </p>
+          <CardContent className="pt-0">
+            <p className="text-gray-500 text-center mb-4">Customer admins can request data exports.</p>
           </CardContent>
         </Card>
       </div>

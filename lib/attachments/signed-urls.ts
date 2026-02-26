@@ -17,7 +17,7 @@ const SIGNED_URL_SECRET = process.env.ATTACHMENT_SIGNED_URL_SECRET || 'change-me
 
 export interface SignedUrlParams {
   attachmentId: string;
-  orgId: string;
+  orgId: string | null;
   ticketId: string;
   expiresAt?: Date;
 }

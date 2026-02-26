@@ -27,7 +27,7 @@ interface ReportBuilderProps {
 }
 
 export function ReportBuilder({ organizations, internalUsers }: ReportBuilderProps) {
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const [filters, setFilters] = useState<ReportFilters>({
     sortBy: 'created',
     sortOrder: 'desc',
@@ -44,9 +44,9 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
     try {
       const data = await generateReportAction(filters);
       setReportData(data);
-      showToast(`Report generated: Found ${data.summary.total} tickets`, 'success');
+      success(`Report generated: Found ${data.summary.total} tickets`);
     } catch {
-      showToast('Failed to generate report', 'error');
+      error('Failed to generate report');
     } finally {
       setIsGenerating(false);
     }
@@ -66,11 +66,11 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
         if (status.status === 'COMPLETED' && status.downloadUrl) {
           setExportDownloadUrl(status.downloadUrl);
           setIsExporting(false);
-          showToast('Export ready for download', 'success');
+          success('Export ready for download');
           clearInterval(pollInterval);
         } else if (status.status === 'FAILED') {
           setIsExporting(false);
-          showToast(status.error || 'Export failed', 'error');
+          error(status.error || 'Export failed');
           clearInterval(pollInterval);
         }
       } catch (error) {
@@ -79,7 +79,7 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
     }, 2000); // Poll every 2 seconds
 
     return () => clearInterval(pollInterval);
-  }, [exportJobId, exportStatus, showToast]);
+  }, [exportJobId, exportStatus]);
 
   const handleExportCSV = async () => {
     if (!reportData) return;
@@ -92,14 +92,14 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
       if (result.jobId) {
         setExportJobId(result.jobId);
         setExportStatus('PENDING');
-        showToast('Export started. You will be notified when ready.', 'success');
+        success('Export started. You will be notified when ready.');
       } else {
         throw new Error('Failed to start export job');
       }
     } catch {
       setIsExporting(false);
       setExportStatus(null);
-      showToast('Failed to start CSV export', 'error');
+      error('Failed to start CSV export');
     }
   };
 
@@ -114,14 +114,14 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
       if (result.jobId) {
         setExportJobId(result.jobId);
         setExportStatus('PENDING');
-        showToast('Export started. You will be notified when ready.', 'success');
+        success('Export started. You will be notified when ready.');
       } else {
         throw new Error('Failed to start export job');
       }
     } catch {
       setIsExporting(false);
       setExportStatus(null);
-      showToast('Failed to start JSON export', 'error');
+      error('Failed to start JSON export');
     }
   };
 

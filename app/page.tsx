@@ -3,15 +3,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   Search, 
-  Folder, 
-  CreditCard, 
-  Settings, 
-  Shield, 
-  User, 
-  Wifi, 
-  HelpCircle,
+  Folder,
   Sparkles,
   X,
   Send,
@@ -19,36 +16,40 @@ import {
   Loader2,
   ArrowRight,
   Headphones,
-  Activity
+  Activity,
+  Ticket,
+  BookOpen,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Icon mapping for common category names
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  'Account & Billing': CreditCard,
-  'Account': CreditCard,
-  'Billing': CreditCard,
-  'Payment': CreditCard,
-  'Technical Issues': Settings,
-  'Technical': Settings,
-  'Troubleshooting': Settings,
-  'Bug': Settings,
-  'Network Setup': Wifi,
-  'Network': Wifi,
-  'Connectivity': Wifi,
-  'VPN': Wifi,
-  'Security & Access': Shield,
-  'Security': Shield,
-  'Access': Shield,
-  'Authentication': Shield,
-  'User Guides': User,
-  'Guides': User,
-  'Tutorial': User,
-  'How-to': User,
-  'FAQs': HelpCircle,
-  'FAQ': HelpCircle,
-  'Questions': HelpCircle,
-  'Help': HelpCircle,
+  'Account & Billing': Ticket,
+  'Account': Ticket,
+  'Billing': Ticket,
+  'Payment': Ticket,
+  'Technical Issues': Bot,
+  'Technical': Bot,
+  'Troubleshooting': Bot,
+  'Bug': Bot,
+  'Network Setup': Activity,
+  'Network': Activity,
+  'Connectivity': Activity,
+  'VPN': Activity,
+  'Security & Access': Sparkles,
+  'Security': Sparkles,
+  'Access': Sparkles,
+  'Authentication': Sparkles,
+  'User Guides': BookOpen,
+  'Guides': BookOpen,
+  'Tutorial': BookOpen,
+  'How-to': BookOpen,
+  'FAQs': Folder,
+  'FAQ': Folder,
+  'Questions': Folder,
+  'Help': Folder,
 };
 
 interface Category {
@@ -74,8 +75,6 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-
-
 const quickSuggestions = [
   'How do I reset my password?',
   'How to set up VPN?',
@@ -95,7 +94,6 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Stats State
   const [stats, setStats] = useState<Stats>({
     articleCount: 500,
     ticketCount: 0,
@@ -106,19 +104,36 @@ export default function HomePage() {
   });
   const [statsLoading, setStatsLoading] = useState(true);
   
-  // AI Assistant State
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       type: 'ai',
-      content: 'Hello! I\'m your AI assistant. How can I help you today?',
+      content: 'Hello! I\'m Zeus AI. How can I help you today?',
       timestamp: new Date(),
     },
   ]);
   const [aiInput, setAiInput] = useState('');
   const [isAITyping, setIsAITyping] = useState(false);
+  const [aiSessionId] = useState<string>(() => {
+    // Prefer browser crypto.randomUUID if available
+    // eslint-disable-next-line no-restricted-globals
+    const hasCrypto = typeof self !== 'undefined' && (self as any).crypto && (self as any).crypto.randomUUID;
+    if (hasCrypto) {
+      // eslint-disable-next-line no-restricted-globals
+      return (self as any).crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  });
+  const [showSupportForm, setShowSupportForm] = useState(false);
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportName, setSupportName] = useState('');
+  const [supportPhone, setSupportPhone] = useState('');
+  const [supportIssue, setSupportIssue] = useState('');
+  const [supportPriority, setSupportPriority] = useState<'P1' | 'P2' | 'P3' | 'P4'>('P3');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [panelWidth, setPanelWidth] = useState(0);
+  const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -156,6 +171,26 @@ export default function HomePage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+  useEffect(() => {
+    if (!isAIModalOpen) return;
+    const vw = window.innerWidth;
+    setPanelWidth(vw >= 1024 ? Math.round(vw * 0.5) : vw);
+  }, [isAIModalOpen]);
+  useEffect(() => {
+    if (!isResizing) return;
+    const onMouseMove = (e: MouseEvent) => {
+      const vw = window.innerWidth;
+      const w = Math.min(Math.max(vw - e.clientX, 320), Math.floor(vw * 0.9));
+      setPanelWidth(w);
+    };
+    const onMouseUp = () => setIsResizing(false);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isResizing]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,8 +199,14 @@ export default function HomePage() {
     }
   };
 
-  const handleAIAsk = () => {
+  const handleAIAsk = async () => {
     if (!aiInput.trim()) return;
+    const intent = /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
+    if (intent.test(aiInput)) {
+      setShowSupportForm(true);
+      setSupportIssue(aiInput);
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -178,27 +219,93 @@ export default function HomePage() {
     setAiInput('');
     setIsAITyping(true);
 
-    setTimeout(() => {
-      const lowerInput = userMessage.content.toLowerCase();
-      let responseText = 'I understand your question. Let me help you find the right information. You can also browse our knowledge base or submit a support ticket for more assistance.';
-
-      for (const [key, value] of Object.entries(mockAIResponses)) {
-        if (lowerInput.includes(key)) {
-          responseText = value;
-          break;
-        }
+    try {
+      const res = await fetch('/api/ai/kb-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMessage.content, sessionId: aiSessionId }),
+      });
+      let content = 'Sorry, I can only assist with technology-related questions.';
+      if (res.ok) {
+        const data = await res.json();
+        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
+          ? `\n\n### Related Articles\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          : '';
+        content = (data.answer || 'I could not find a precise match in the knowledge base.') + suggestions;
       }
-
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: responseText,
+        content,
         timestamp: new Date(),
       };
-
       setChatMessages((prev) => [...prev, aiMessage]);
+    } catch {
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: 'Something went wrong fetching the AI response.',
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, aiMessage]);
+    } finally {
       setIsAITyping(false);
-    }, 1500);
+    }
+  };
+
+  const handleSupportSubmit = async () => {
+    if (!supportEmail.trim() || !supportName.trim() || !supportPhone.trim() || !supportIssue.trim()) return;
+    setIsAITyping(true);
+    try {
+      const res = await fetch('/api/ai/kb-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: supportIssue,
+          sessionId: aiSessionId,
+          email: supportEmail,
+          name: supportName,
+          phone: supportPhone,
+          issue: supportIssue,
+          priority: supportPriority,
+        }),
+      });
+      let content = 'Ticket created. Check your email for the tracking link.';
+      if (res.ok) {
+        const data = await res.json();
+        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
+          ? `\n\n### Recommendations\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          : '';
+        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
+        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
+        const base = data.ticketKey
+          ? 'Ticket created. Check your email to stay updated.'
+          : (data.answer || 'Ticket created. Check your email to stay updated.');
+        content = base + created + (track ? `\n${track}` : '') + suggestions;
+      }
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content,
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, aiMessage]);
+      setShowSupportForm(false);
+      setSupportEmail('');
+      setSupportName('');
+      setSupportPhone('');
+      setSupportIssue('');
+    } catch {
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: 'Failed to create ticket. Please try again.',
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, aiMessage]);
+    } finally {
+      setIsAITyping(false);
+    }
   };
 
   const getCategoryIcon = (categoryName: string) => {
@@ -212,177 +319,137 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Navigation */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2">
               <img 
-                src="/logo/AGR_logo.png" 
-                alt="AGR Networks" 
+                src="/logo/atlas-logo.png" 
+                alt="atlas.logo" 
                 className="h-8 w-auto"
               />
-              <span className="text-gray-300">|</span>
-              <img 
-                src="/logo/atlas-logo.png" 
-                alt="Atlas" 
-                className="h-7 w-auto"
-              />
             </Link>
-
-            <div className="flex items-center gap-6">
+            <nav className="flex items-center gap-6">
               <Button
                 variant="ghost"
-                className="text-slate-600 hover:text-orange-600 gap-2"
+                size="sm"
+                className="hidden md:inline-flex gap-2"
                 onClick={() => setIsAIModalOpen(true)}
               >
                 <Sparkles className="h-4 w-4 text-orange-500" />
                 Ask AI
               </Button>
-              <Link 
-                href="/support" 
-                className="text-sm font-medium text-slate-600 hover:text-slate-900"
-              >
+              <Link href="/support" className="text-sm text-gray-600 hover:text-gray-900">
                 Support
               </Link>
-              <Link 
-                href="/kb" 
-                className="text-sm font-medium text-slate-600 hover:text-slate-900"
-              >
+              <Link href="/kb" className="text-sm text-gray-600 hover:text-gray-900">
                 Knowledge Base
               </Link>
               <Link href="/login">
-                <Button 
-                  className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-5"
-                >
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
                   Login
                 </Button>
               </Link>
-            </div>
+            </nav>
           </div>
         </div>
-      </nav>
+      </header>
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 overflow-hidden">
-        {/* Abstract shapes */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-orange-500/5 rounded-full blur-3xl" />
-        </div>
-
-        <div className="relative max-w-4xl mx-auto px-6 lg:px-8 py-20 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-orange-400 text-sm font-medium mb-6">
-            <Sparkles className="h-4 w-4" />
-            AI-Powered Support Portal
-          </div>
-          
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
-            How can we{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-500">
-              help you?
-            </span>
-          </h1>
-          
-          <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-10">
-            Search our knowledge base, ask our AI assistant, or browse topics below. 
-            We&apos;re here to help you succeed.
-          </p>
-          
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto">
-            <div className="flex shadow-2xl shadow-orange-500/10 rounded-xl overflow-hidden">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+      <section className="bg-gray-900 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500/20 rounded-full text-orange-400 text-sm mb-4">
+              <Sparkles className="h-4 w-4" />
+              AI-Powered Support
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              How can we help you?
+            </h1>
+            <p className="text-lg text-gray-400 mb-8">
+              Search our knowledge base, ask our AI assistant, or submit a support ticket.
+            </p>
+            
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="flex gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search knowledge base, tickets, or FAQs..."
+                  placeholder="Search for answers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-14 text-base border-0 rounded-none bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="pl-10 h-12 bg-white border-0"
                 />
               </div>
               <Button 
                 type="submit"
-                className="h-14 px-8 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-none"
+                className="h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white"
               >
                 Search
               </Button>
-            </div>
-          </form>
+            </form>
 
-          {/* AI Assistant Button */}
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <Button
-              variant="outline"
-              className="gap-2 border-white/20 text-white hover:bg-white/10 bg-white/5"
-              onClick={() => setIsAIModalOpen(true)}
-            >
-              <Bot className="h-4 w-4" />
-              Or ask our AI Assistant
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            {/* AI Button */}
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+                onClick={() => setIsAIModalOpen(true)}
+              >
+                <Bot className="h-4 w-4" />
+                Or ask Zeus AI
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8 py-8">
+      {/* Stats */}
+      <section className="border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="p-4">
-              <div className="text-3xl font-bold text-slate-900">24/7</div>
-              <div className="text-sm text-slate-500 mt-1">Support Available</div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">24/7</div>
+              <div className="text-sm text-gray-500">Support Available</div>
             </div>
-            <div className="p-4">
-              <div className="flex items-center justify-center gap-2">
-                <div className="text-3xl font-bold text-slate-900">
-                  {statsLoading ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                  ) : (
-                    stats.responseTimeDisplay
-                  )}
-                </div>
-                {stats.isLive && (
-                  <Activity className="h-5 w-5 text-green-500 animate-pulse" />
-                )}
-              </div>
-              <div className="text-sm text-slate-500 mt-1">
-                Avg. Response Time
-                {stats.isLive && (
-                  <span className="block text-xs text-green-600 font-medium">Live Data</span>
-                )}
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="text-3xl font-bold text-slate-900">
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
                 {statsLoading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-orange-500 mx-auto" />
+                  <Loader2 className="h-6 w-6 animate-spin text-orange-500 mx-auto" />
+                ) : (
+                  stats.responseTimeDisplay
+                )}
+              </div>
+              <div className="text-sm text-gray-500">Avg. Response</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
+                {statsLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-orange-500 mx-auto" />
                 ) : (
                   `${stats.articleCount}+`
                 )}
               </div>
-              <div className="text-sm text-slate-500 mt-1">Knowledge Articles</div>
+              <div className="text-sm text-gray-500">Articles</div>
             </div>
-            <div className="p-4">
-              <div className="text-3xl font-bold text-slate-900">99%</div>
-              <div className="text-sm text-slate-500 mt-1">Satisfaction Rate</div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">99%</div>
+              <div className="text-sm text-gray-500">Satisfaction</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Categories Grid */}
-      <section className="max-w-6xl mx-auto px-6 lg:px-8 py-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Browse by Category</h2>
-            <p className="text-slate-500 mt-1">Find help organized by topic</p>
-          </div>
+      {/* Categories */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Browse by Category</h2>
           <Link href="/kb">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2">
               View All
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -390,103 +457,82 @@ export default function HomePage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div 
-                key={i} 
-                className="p-6 bg-white border border-slate-200 rounded-xl animate-pulse"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-slate-100 rounded-lg w-12 h-12" />
-                  <div className="flex-1">
-                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-2" />
-                    <div className="h-3 bg-slate-200 rounded w-full" />
-                  </div>
-                </div>
-              </div>
+              <div key={i} className="p-4 bg-gray-100 rounded-lg animate-pulse h-24" />
             ))}
           </div>
         ) : categories.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {categories.map((category) => {
               const Icon = getCategoryIcon(category.name);
               return (
                 <Link
                   key={category.id}
                   href={`/kb?category=${encodeURIComponent(category.name)}`}
-                  className="group p-6 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:shadow-lg hover:shadow-orange-500/5 transition-all"
+                  className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-orange-300 hover:shadow-sm transition-all group"
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-slate-100 to-slate-50 rounded-xl group-hover:from-orange-50 group-hover:to-orange-100 transition-colors">
-                      <Icon className="h-6 w-6 text-slate-600 group-hover:text-orange-500 transition-colors" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-slate-500 mt-1">
-                        {category.description || 'Browse articles in this category'}
-                      </p>
-                    </div>
+                  <div className="p-3 bg-gray-100 rounded-lg group-hover:bg-orange-50 transition-colors">
+                    <Icon className="h-5 w-5 text-gray-600 group-hover:text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors">
+                      {category.name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {category.description || 'Browse articles'}
+                    </p>
                   </div>
                 </Link>
               );
             })}
           </div>
         ) : (
-          <div className="text-center py-12 text-slate-500 bg-white rounded-xl border border-slate-200">
+          <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
             No categories available at the moment.
           </div>
         )}
       </section>
 
-      {/* Submit Ticket CTA */}
-      <section className="max-w-6xl mx-auto px-6 lg:px-8 py-16">
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 rounded-2xl p-10 flex flex-col sm:flex-row items-center justify-between gap-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-orange-500/10" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <Headphones className="h-6 w-6 text-orange-400" />
-              <span className="text-orange-400 font-medium">Still need help?</span>
+      {/* CTA */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <Card className="bg-gray-900 text-white">
+          <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Headphones className="h-5 w-5 text-orange-500" />
+                <span className="text-orange-400 text-sm font-medium">Still need help?</span>
+              </div>
+              <h2 className="text-xl font-bold mb-1">Can&apos;t find what you&apos;re looking for?</h2>
+              <p className="text-gray-400">
+                Our support team is here to help you with any questions.
+              </p>
             </div>
-            <h2 className="text-2xl font-bold text-white">
-              Can&apos;t find what you&apos;re looking for?
-            </h2>
-            <p className="text-slate-400 mt-2 max-w-md">
-              Our support team is here to help you with any questions or issues you may have.
-            </p>
-          </div>
-          <Link href="/support" className="relative z-10">
-            <Button 
-              size="lg"
-              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 shadow-lg shadow-orange-500/25"
-            >
-              Submit a Ticket
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </Link>
-        </div>
+            <Link href="/support">
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white px-6">
+                Submit a Ticket
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-12">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+      <footer className="border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center">
-              <img 
-                src="/logo/atlas-logo.png" 
-                alt="Atlas" 
-                className="h-10 w-auto"
-              />
-            </div>
-            <p className="text-sm text-slate-500">
-              © 2026 Atlas Support Portal. All rights reserved.
+            <p className="text-sm text-gray-500">
+              © {new Date().getFullYear()} AGR Networks. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <Link href="/support" className="text-sm text-slate-500 hover:text-slate-900">
+              <Link href="/kb" className="text-sm text-gray-500 hover:text-gray-900">
+                Knowledge Base
+              </Link>
+              <Link href="/support" className="text-sm text-gray-500 hover:text-gray-900">
                 Contact Support
               </Link>
-              <Link href="/login" className="text-sm text-slate-500 hover:text-slate-900">
+              <Link href="/login" className="text-sm text-gray-500 hover:text-gray-900">
                 Staff Login
               </Link>
             </div>
@@ -494,73 +540,75 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* AI Assistant Modal */}
       {isAIModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl">
-                  <Bot className="h-5 w-5 text-orange-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Atlas AI Assistant</h3>
-                  <p className="text-xs text-slate-500 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full" />
-                    Online
-                  </p>
+        <div
+          className="fixed right-0 top-0 z-50 h-screen w-full bg-white shadow-xl border-l flex flex-col"
+          style={panelWidth ? { width: `${panelWidth}px` } : undefined}
+        >
+          <div
+            onMouseDown={() => setIsResizing(true)}
+            className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-orange-200/50 hidden lg:block"
+          />
+          <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                <Bot className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Zeus AI</h3>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Online
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setIsAIModalOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {chatMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    msg.type === 'user'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setIsAIModalOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-xl p-3 ${
-                      msg.type === 'user'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-slate-100 text-slate-800'
-                    }`}
-                  >
-                    <p className="text-sm">{msg.content}</p>
-                  </div>
+            ))}
+            {isAITyping && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 rounded-lg px-4 py-2 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                  <span className="text-sm text-gray-500">Thinking...</span>
                 </div>
-              ))}
-              {isAITyping && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-100 rounded-xl p-3 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
-                    <span className="text-sm text-slate-500">AI is thinking...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Quick Suggestions */}
+              </div>
+            )}
+            <div ref={chatEndRef} />
             {chatMessages.length < 3 && (
-              <div className="px-4 pb-2">
-                <p className="text-xs text-slate-500 mb-2">Quick suggestions:</p>
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Quick suggestions:</p>
                 <div className="flex flex-wrap gap-2">
                   {quickSuggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => setAiInput(suggestion)}
-                      className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-full transition-colors"
+                      className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 rounded-full transition-colors"
                     >
                       {suggestion}
                     </button>
@@ -568,30 +616,61 @@ export default function HomePage() {
                 </div>
               </div>
             )}
-
-            {/* Input */}
-            <div className="p-4 border-t border-slate-100">
+          </div>
+          <div className="p-4 border-t">
+            <div className="space-y-2">
               <div className="flex gap-2">
-                <Input
-                  placeholder="Ask anything..."
+                <Textarea
+                  placeholder="Ask anything... (Shift+Enter for newline)"
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAIAsk();
+                    if (
+                      e.key === 'Enter' &&
+                      !e.shiftKey &&
+                      !e.altKey &&
+                      !e.ctrlKey &&
+                      !e.metaKey
+                    ) {
+                      e.preventDefault();
+                      handleAIAsk();
+                    }
                   }}
-                  className="flex-1 border-slate-200 focus:border-orange-500 focus:ring-orange-500"
+                  className="flex-1 min-h-[80px]"
+                  rows={3}
                 />
                 <Button
                   onClick={handleAIAsk}
                   disabled={!aiInput.trim() || isAITyping}
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                  className="bg-orange-600 hover:bg-orange-700"
                 >
                   <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>Need help from our support team?</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSupportSubmit}
+                  className="h-7 px-2"
+                >
+                  Create Ticket
                 </Button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {!isAIModalOpen && (
+        <button
+          onClick={() => setIsAIModalOpen(true)}
+          aria-label="Open Zeus AI"
+          className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-orange-600 text-white shadow-lg flex items-center justify-center hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          <Sparkles className="h-5 w-5" />
+        </button>
       )}
     </div>
   );

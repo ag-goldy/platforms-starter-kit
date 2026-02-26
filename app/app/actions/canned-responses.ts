@@ -17,8 +17,9 @@ const cannedResponseSchema = z.object({
 /**
  * Get all canned responses for an organization
  */
-export async function getCannedResponsesAction(orgId: string) {
+export async function getCannedResponsesAction(orgId: string | null) {
   await requireInternalRole();
+  if (!orgId) return []; // Public tickets have no canned responses
   return getCannedResponses(orgId);
 }
 

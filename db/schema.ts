@@ -138,6 +138,9 @@ export const auditActionEnum = pgEnum('audit_action', [
   'USER_2FA_BACKUP_CODES_REGENERATED',
   'ORG_CREATED',
   'ORG_UPDATED',
+  'ORG_DISABLED',
+  'ORG_ENABLED',
+  'ORG_DELETED',
   'EXPORT_REQUESTED',
   'MEMBERSHIP_DEACTIVATED',
 ]);
@@ -207,6 +210,11 @@ export const organizations = pgTable('organizations', {
   slaResolutionHoursP2: integer('sla_resolution_hours_p2'),
   slaResolutionHoursP3: integer('sla_resolution_hours_p3'),
   slaResolutionHoursP4: integer('sla_resolution_hours_p4'),
+  // Organization status
+  isActive: boolean('is_active').default(true).notNull(),
+  disabledAt: timestamp('disabled_at'),
+  disabledBy: text('disabled_by'),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -341,7 +349,8 @@ export const assets = pgTable('assets', {
     .references(() => organizations.id, { onDelete: 'cascade' }),
   siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
   areaId: uuid('area_id').references(() => areas.id, { onDelete: 'set null' }),
-  type: assetTypeEnum('type').default('OTHER').notNull(),
+  // Type: can be from enum or custom org type
+  type: text('type').default('OTHER').notNull(),
   name: text('name').notNull(),
   hostname: text('hostname'),
   serialNumber: text('serial_number'),
@@ -349,9 +358,57 @@ export const assets = pgTable('assets', {
   vendor: text('vendor'),
   ipAddress: text('ip_address'),
   macAddress: text('mac_address'),
+  // Access URLs (can store multiple URLs as JSON array)
+  accessUrls: jsonb('access_urls').$type<{ label: string; url: string }[] | null>(),
   tags: jsonb('tags').$type<string[] | null>(),
   notes: text('notes'),
-  status: assetStatusEnum('status').default('ACTIVE').notNull(),
+  // Status: can be from enum or custom org status
+  status: text('status').default('ACTIVE').notNull(),
+  // Zabbix monitoring fields
+  zabbixHostId: text('zabbix_host_id'),
+  zabbixHostName: text('zabbix_host_name'),
+  zabbixTriggers: jsonb('zabbix_triggers').$type<ZabbixTrigger[]>().default([]),
+  monitoringEnabled: boolean('monitoring_enabled').default(false),
+  monitoringStatus: text('monitoring_status').default('UNKNOWN'),
+  lastSyncedAt: timestamp('last_synced_at'),
+  uptimePercentage: decimal('uptime_percentage', { precision: 5, scale: 2 }),
+  // Archive fields
+  archived: boolean('archived').default(false),
+  archivedAt: timestamp('archived_at'),
+  archivedBy: uuid('archived_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Custom asset types per organization
+export const orgAssetTypes = pgTable('org_asset_types', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  label: text('label').notNull(),
+  description: text('description'),
+  color: text('color').default('#6B7280'),
+  icon: text('icon'),
+  isActive: boolean('is_active').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Custom asset statuses per organization
+export const orgAssetStatuses = pgTable('org_asset_statuses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  label: text('label').notNull(),
+  description: text('description'),
+  color: text('color').default('#6B7280'),
+  isActive: boolean('is_active').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -438,7 +495,6 @@ export const tickets = pgTable('tickets', {
   id: uuid('id').defaultRandom().primaryKey(),
   key: text('key').notNull().unique(),
   orgId: uuid('org_id')
-    .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
   serviceId: uuid('service_id').references(() => services.id, { onDelete: 'set null' }),
   requestTypeId: uuid('request_type_id').references(() => requestTypes.id, {
@@ -500,7 +556,6 @@ export const attachments = pgTable('attachments', {
     .notNull()
     .references(() => tickets.id, { onDelete: 'cascade' }),
   orgId: uuid('org_id')
-    .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
   commentId: uuid('comment_id').references(() => ticketComments.id, {
     onDelete: 'cascade',
@@ -598,6 +653,7 @@ export const auditLogs = pgTable('audit_logs', {
 
 export const ticketTokens = pgTable('ticket_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
+  token: text('token').notNull().unique(),
   tokenHash: text('token_hash').notNull().unique(),
   ticketId: uuid('ticket_id')
     .notNull()
@@ -847,7 +903,25 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
     fields: [assets.areaId],
     references: [areas.id],
   }),
+  archivedByUser: one(users, {
+    fields: [assets.archivedBy],
+    references: [users.id],
+  }),
   ticketAssets: many(ticketAssets),
+}));
+
+export const orgAssetTypesRelations = relations(orgAssetTypes, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgAssetTypes.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+export const orgAssetStatusesRelations = relations(orgAssetStatuses, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgAssetStatuses.orgId],
+    references: [organizations.id],
+  }),
 }));
 
 export const servicesRelations = relations(services, ({ one, many }) => ({
@@ -1124,6 +1198,10 @@ export type Area = typeof areas.$inferSelect;
 export type NewArea = typeof areas.$inferInsert;
 export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
+export type OrgAssetType = typeof orgAssetTypes.$inferSelect;
+export type NewOrgAssetType = typeof orgAssetTypes.$inferInsert;
+export type OrgAssetStatus = typeof orgAssetStatuses.$inferSelect;
+export type NewOrgAssetStatus = typeof orgAssetStatuses.$inferInsert;
 export type Service = typeof services.$inferSelect;
 export type NewService = typeof services.$inferInsert;
 export type ZabbixConfig = typeof zabbixConfigs.$inferSelect;
@@ -1307,11 +1385,17 @@ export const kbArticles = pgTable('kb_articles', {
   content: text('content').notNull(),
   contentType: text('content_type').default('markdown').notNull(), // markdown, html
   excerpt: text('excerpt'),
-  status: text('status').default('draft').notNull(), // draft, published, archived
-  visibility: text('visibility').default('public').notNull(), // public, internal, agents_only
+  status: text('status').default('draft').notNull(), // draft, published, archived, pending_review
+  visibility: text('visibility').default('public').notNull(), // public, internal, agents_only, org_only
   authorId: uuid('author_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  // For customer-created articles
+  isAnonymous: boolean('is_anonymous').default(false), // Hide author identity for public articles
+  submittedById: uuid('submitted_by_id').references(() => users.id, { onDelete: 'set null' }), // Track actual submitter if anonymous
+  approvedById: uuid('approved_by_id').references(() => users.id, { onDelete: 'set null' }), // Admin who approved
+  approvedAt: timestamp('approved_at'),
+  rejectionReason: text('rejection_reason'),
   publishedAt: timestamp('published_at'),
   viewCount: integer('view_count').default(0).notNull(),
   helpfulCount: integer('helpful_count').default(0).notNull(),
@@ -1333,6 +1417,336 @@ export const kbArticleFeedback = pgTable('kb_article_feedback', {
   helpful: boolean('helpful').notNull(),
   comment: text('comment'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Knowledge Base Article Versions (for versioning)
+export const kbArticleVersions = pgTable('kb_article_versions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  articleId: uuid('article_id')
+    .notNull()
+    .references(() => kbArticles.id, { onDelete: 'cascade' }),
+  versionNumber: integer('version_number').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  contentType: text('content_type').default('markdown').notNull(),
+  excerpt: text('excerpt'),
+  categoryId: uuid('category_id').references(() => kbCategories.id, { onDelete: 'set null' }),
+  changeSummary: text('change_summary'), // Brief description of changes
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueArticleVersion: unique().on(table.articleId, table.versionNumber),
+}));
+
+// Knowledge Base Article Templates
+export const kbArticleTemplates = pgTable('kb_article_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  titleTemplate: text('title_template'), // Default title pattern
+  contentTemplate: text('content_template').notNull(), // Markdown/HTML template
+  categoryId: uuid('category_id').references(() => kbCategories.id, { onDelete: 'set null' }),
+  defaultTags: jsonb('default_tags').$type<string[]>().default([]),
+  defaultVisibility: text('default_visibility').default('public'), // public, internal, org_only
+  isActive: boolean('is_active').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0),
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Ticket Auto-Assignment Rules
+export const ticketAssignmentRules = pgTable('ticket_assignment_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  priority: integer('priority').default(0).notNull(), // Higher = evaluated first
+  
+  // Conditions (all must match)
+  conditions: jsonb('conditions').$type<{
+    requestTypeIds?: string[];
+    category?: ('INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST')[];
+    priority?: ('P1' | 'P2' | 'P3' | 'P4')[];
+    siteId?: string;
+    keywords?: string[]; // In subject/description
+  }>().notNull(),
+  
+  // Assignment strategy
+  strategy: text('strategy').notNull(), // round_robin, load_balance, specific_user, group
+  assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }), // For specific_user
+  internalGroupId: uuid('internal_group_id').references(() => internalGroups.id, { onDelete: 'set null' }), // For group assignment
+  
+  // For round-robin/load balance
+  lastAssignedUserId: uuid('last_assigned_user_id').references(() => users.id, { onDelete: 'set null' }),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Escalation Rules
+export const escalationRules = pgTable('escalation_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  
+  // Trigger conditions
+  triggerType: text('trigger_type').notNull(), // no_response, no_resolution, sla_warning, sla_breach
+  timeThreshold: integer('time_threshold').notNull(), // Minutes
+  
+  // Scope
+  applicablePriorities: jsonb('applicable_priorities').$type<('P1' | 'P2' | 'P3' | 'P4')[]>().default(['P1', 'P2', 'P3', 'P4']),
+  applicableCategories: jsonb('applicable_categories').$type<('INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST')[]>().default(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST']),
+  
+  // Actions
+  actions: jsonb('actions').$type<{
+    notifyUserIds?: string[];
+    notifyGroupIds?: string[];
+    changePriority?: 'P1' | 'P2' | 'P3' | 'P4';
+    addTags?: string[];
+    assignToUserId?: string;
+    addComment?: string;
+  }>().notNull(),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Scheduled Maintenance Windows
+export const maintenanceWindows = pgTable('maintenance_windows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  
+  // Timing
+  startsAt: timestamp('starts_at').notNull(),
+  endsAt: timestamp('ends_at').notNull(),
+  timezone: text('timezone').default('UTC').notNull(),
+  
+  // Recurrence
+  recurrencePattern: text('recurrence_pattern'), // cron expression or 'daily', 'weekly', 'monthly'
+  recurrenceEndDate: timestamp('recurrence_end_date'),
+  
+  // Affected services/assets
+  affectedServiceIds: jsonb('affected_service_ids').$type<string[]>().default([]),
+  affectedAssetIds: jsonb('affected_asset_ids').$type<string[]>().default([]),
+  
+  // Auto-create ticket
+  autoCreateTicket: boolean('auto_create_ticket').default(true).notNull(),
+  ticketTemplate: jsonb('ticket_template').$type<{
+    subject: string;
+    description: string;
+    priority: 'P1' | 'P2' | 'P3' | 'P4';
+    category: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST';
+  }>(),
+  createdTicketId: uuid('created_ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  
+  // Status
+  status: text('status').default('scheduled').notNull(), // scheduled, in_progress, completed, cancelled
+  
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Custom Fields Definition
+export const customFields = pgTable('custom_fields', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), // Internal name (e.g., "department_code")
+  label: text('label').notNull(), // Display label (e.g., "Department Code")
+  description: text('description'),
+  
+  // Applies to
+  entityType: text('entity_type').notNull(), // ticket, asset, user, organization
+  
+  // Field type
+  fieldType: text('field_type').notNull(), // text, number, date, select, multi_select, checkbox, url, email
+  
+  // Options (for select/multi_select)
+  options: jsonb('options').$type<{ label: string; value: string; color?: string }[]>(),
+  
+  // Validation
+  isRequired: boolean('is_required').default(false).notNull(),
+  validationRegex: text('validation_regex'),
+  validationMessage: text('validation_message'),
+  minValue: integer('min_value'), // For numbers
+  maxValue: integer('max_value'), // For numbers
+  minLength: integer('min_length'), // For text
+  maxLength: integer('max_length'), // For text
+  
+  // Display
+  placeholder: text('placeholder'),
+  defaultValue: text('default_value'),
+  sortOrder: integer('sort_order').default(0),
+  isActive: boolean('is_active').default(true).notNull(),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueOrgEntityName: unique().on(table.orgId, table.entityType, table.name),
+}));
+
+// Custom Field Values
+export const customFieldValues = pgTable('custom_field_values', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  fieldId: uuid('field_id')
+    .notNull()
+    .references(() => customFields.id, { onDelete: 'cascade' }),
+  entityId: text('entity_id').notNull(), // Ticket ID, Asset ID, etc.
+  entityType: text('entity_type').notNull(), // ticket, asset, user, organization
+  value: text('value').notNull(), // JSON stringified for complex types
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueFieldEntity: unique().on(table.fieldId, table.entityId),
+}));
+
+// IP Allowlist
+export const ipAllowlist = pgTable('ip_allowlist', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // IP or CIDR range
+  ipAddress: text('ip_address').notNull(), // Single IP or CIDR (e.g., "192.168.1.1" or "10.0.0.0/24")
+  
+  // Scope
+  scope: text('scope').default('organization').notNull(), // organization, global
+  
+  // Description
+  description: text('description'),
+  
+  // Status
+  isActive: boolean('is_active').default(true).notNull(),
+  
+  // Usage tracking
+  lastUsedAt: timestamp('last_used_at'),
+  useCount: integer('use_count').default(0),
+  
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// User Sessions for Session Management
+export const userSessionsExtended = pgTable('user_sessions_extended', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  
+  // Session info
+  sessionToken: text('session_token').notNull().unique(),
+  
+  // Device/Location info
+  deviceType: text('device_type'), // desktop, mobile, tablet
+  browser: text('browser'),
+  os: text('os'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  location: text('location'), // City, Country
+  
+  // Status
+  isActive: boolean('is_active').default(true).notNull(),
+  revokedAt: timestamp('revoked_at'),
+  revokedReason: text('revoked_reason'),
+  
+  // Timestamps
+  lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// GDPR/Data Export Requests
+export const dataExportRequests = pgTable('data_export_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Request type
+  requestType: text('request_type').notNull(), // export, delete
+  entityType: text('entity_type').default('user').notNull(), // user, organization
+  
+  // Status
+  status: text('status').default('pending').notNull(), // pending, processing, completed, failed
+  
+  // Data range (for exports)
+  dateFrom: timestamp('date_from'),
+  dateTo: timestamp('date_to'),
+  
+  // Result
+  fileUrl: text('file_url'),
+  fileSize: integer('file_size'),
+  expiresAt: timestamp('expires_at'),
+  
+  // Processing info
+  processedAt: timestamp('processed_at'),
+  processedById: uuid('processed_by_id').references(() => users.id, { onDelete: 'set null' }),
+  error: text('error'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Data Retention Policies
+export const dataRetentionPolicies = pgTable('data_retention_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  name: text('name').notNull(),
+  description: text('description'),
+  
+  // Target entity
+  entityType: text('entity_type').notNull(), // tickets, attachments, audit_logs, sessions
+  
+  // Retention rule
+  retentionDays: integer('retention_days').notNull(),
+  
+  // Conditions
+  conditions: jsonb('conditions').$type<{
+    status?: string[];
+    olderThanDays?: number;
+  }>().default({}),
+  
+  // Action
+  action: text('action').default('archive').notNull(), // archive, delete, anonymize
+  
+  // Schedule
+  isActive: boolean('is_active').default(true).notNull(),
+  lastRunAt: timestamp('last_run_at'),
+  nextRunAt: timestamp('next_run_at'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Relations for new tables
@@ -1412,6 +1826,133 @@ export const kbArticlesRelations = relations(kbArticles, ({ one, many }) => ({
     references: [users.id],
   }),
   feedback: many(kbArticleFeedback),
+  versions: many(kbArticleVersions),
+}));
+
+export const kbArticleVersionsRelations = relations(kbArticleVersions, ({ one }) => ({
+  article: one(kbArticles, {
+    fields: [kbArticleVersions.articleId],
+    references: [kbArticles.id],
+  }),
+  category: one(kbCategories, {
+    fields: [kbArticleVersions.categoryId],
+    references: [kbCategories.id],
+  }),
+  createdBy: one(users, {
+    fields: [kbArticleVersions.createdById],
+    references: [users.id],
+  }),
+}));
+
+export const kbArticleTemplatesRelations = relations(kbArticleTemplates, ({ one }) => ({
+  org: one(organizations, {
+    fields: [kbArticleTemplates.orgId],
+    references: [organizations.id],
+  }),
+  category: one(kbCategories, {
+    fields: [kbArticleTemplates.categoryId],
+    references: [kbCategories.id],
+  }),
+  createdBy: one(users, {
+    fields: [kbArticleTemplates.createdById],
+    references: [users.id],
+  }),
+}));
+
+export const ticketAssignmentRulesRelations = relations(ticketAssignmentRules, ({ one }) => ({
+  org: one(organizations, {
+    fields: [ticketAssignmentRules.orgId],
+    references: [organizations.id],
+  }),
+  assignee: one(users, {
+    fields: [ticketAssignmentRules.assigneeId],
+    references: [users.id],
+  }),
+  internalGroup: one(internalGroups, {
+    fields: [ticketAssignmentRules.internalGroupId],
+    references: [internalGroups.id],
+  }),
+  lastAssignedUser: one(users, {
+    fields: [ticketAssignmentRules.lastAssignedUserId],
+    references: [users.id],
+  }),
+}));
+
+export const escalationRulesRelations = relations(escalationRules, ({ one }) => ({
+  org: one(organizations, {
+    fields: [escalationRules.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+export const maintenanceWindowsRelations = relations(maintenanceWindows, ({ one }) => ({
+  org: one(organizations, {
+    fields: [maintenanceWindows.orgId],
+    references: [organizations.id],
+  }),
+  createdBy: one(users, {
+    fields: [maintenanceWindows.createdById],
+    references: [users.id],
+  }),
+  createdTicket: one(tickets, {
+    fields: [maintenanceWindows.createdTicketId],
+    references: [tickets.id],
+  }),
+}));
+
+export const customFieldsRelations = relations(customFields, ({ one, many }) => ({
+  org: one(organizations, {
+    fields: [customFields.orgId],
+    references: [organizations.id],
+  }),
+  values: many(customFieldValues),
+}));
+
+export const customFieldValuesRelations = relations(customFieldValues, ({ one }) => ({
+  field: one(customFields, {
+    fields: [customFieldValues.fieldId],
+    references: [customFields.id],
+  }),
+}));
+
+export const ipAllowlistRelations = relations(ipAllowlist, ({ one }) => ({
+  org: one(organizations, {
+    fields: [ipAllowlist.orgId],
+    references: [organizations.id],
+  }),
+  createdBy: one(users, {
+    fields: [ipAllowlist.createdById],
+    references: [users.id],
+  }),
+}));
+
+export const userSessionsExtendedRelations = relations(userSessionsExtended, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessionsExtended.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dataExportRequestsRelations = relations(dataExportRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [dataExportRequests.userId],
+    references: [users.id],
+  }),
+  org: one(organizations, {
+    fields: [dataExportRequests.orgId],
+    references: [organizations.id],
+  }),
+  processedBy: one(users, {
+    fields: [dataExportRequests.processedById],
+    references: [users.id],
+  }),
+}));
+
+export const dataRetentionPoliciesRelations = relations(dataRetentionPolicies, ({ one }) => ({
+  org: one(organizations, {
+    fields: [dataRetentionPolicies.orgId],
+    references: [organizations.id],
+  }),
 }));
 
 // Type exports
@@ -1427,6 +1968,28 @@ export type KbArticle = typeof kbArticles.$inferSelect;
 export type NewKbArticle = typeof kbArticles.$inferInsert;
 export type KbArticleFeedback = typeof kbArticleFeedback.$inferSelect;
 export type NewKbArticleFeedback = typeof kbArticleFeedback.$inferInsert;
+export type KbArticleVersion = typeof kbArticleVersions.$inferSelect;
+export type NewKbArticleVersion = typeof kbArticleVersions.$inferInsert;
+export type KbArticleTemplate = typeof kbArticleTemplates.$inferSelect;
+export type NewKbArticleTemplate = typeof kbArticleTemplates.$inferInsert;
+export type TicketAssignmentRule = typeof ticketAssignmentRules.$inferSelect;
+export type NewTicketAssignmentRule = typeof ticketAssignmentRules.$inferInsert;
+export type EscalationRule = typeof escalationRules.$inferSelect;
+export type NewEscalationRule = typeof escalationRules.$inferInsert;
+export type MaintenanceWindow = typeof maintenanceWindows.$inferSelect;
+export type NewMaintenanceWindow = typeof maintenanceWindows.$inferInsert;
+export type CustomField = typeof customFields.$inferSelect;
+export type NewCustomField = typeof customFields.$inferInsert;
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+export type NewCustomFieldValue = typeof customFieldValues.$inferInsert;
+export type IpAllowlistEntry = typeof ipAllowlist.$inferSelect;
+export type NewIpAllowlistEntry = typeof ipAllowlist.$inferInsert;
+export type UserSessionExtended = typeof userSessionsExtended.$inferSelect;
+export type NewUserSessionExtended = typeof userSessionsExtended.$inferInsert;
+export type DataExportRequest = typeof dataExportRequests.$inferSelect;
+export type NewDataExportRequest = typeof dataExportRequests.$inferInsert;
+export type DataRetentionPolicy = typeof dataRetentionPolicies.$inferSelect;
+export type NewDataRetentionPolicy = typeof dataRetentionPolicies.$inferInsert;
 
 
 // ============================================

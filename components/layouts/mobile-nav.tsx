@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { NavLink } from '@/components/ui/nav-link';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 
@@ -32,7 +32,7 @@ export function MobileNav({ links, userEmail }: MobileNavProps) {
       </div>
 
       {isOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white">
+        <div className="lg:hidden fixed inset-0 z-50 bg-background">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <span className="text-lg font-semibold">AGR Support</span>
@@ -47,19 +47,19 @@ export function MobileNav({ links, userEmail }: MobileNavProps) {
             </div>
             <nav className="flex-1 overflow-y-auto p-4 space-y-2">
               {links.map((link) => (
-                <Link
+                <NavLink
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md"
+                  className="block px-4 py-3 text-foreground hover:bg-accent rounded-md"
                 >
                   {link.label}
-                </Link>
+                </NavLink>
               ))}
             </nav>
             <div className="border-t p-4 space-y-2">
               {userEmail && (
-                <div className="px-4 py-2 text-sm text-gray-600">{userEmail}</div>
+                <div className="px-4 py-2 text-sm text-muted-foreground">{userEmail}</div>
               )}
             </div>
           </div>

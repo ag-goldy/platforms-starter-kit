@@ -7,16 +7,6 @@ export default async function SecuritySettingsPage() {
   const status = await get2FAStatusAction();
   
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Security Settings</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your two-factor authentication and security preferences
-        </p>
-      </div>
-      
-      <TwoFactorSetup initialStatus={status} />
-    </div>
+    <TwoFactorSetup initialStatus={status} />
   );
 }
-

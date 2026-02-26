@@ -2,14 +2,23 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Server, Mail, Webhook, Cloud, Database, Shield, Zap, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  ZabbixLogo,
+  SlackLogo,
+  AWSS3Logo,
+  DatadogLogo,
+  OktaLogo,
+  TeamsLogo,
+  EmailLogo,
+  WebhookLogo,
+} from './integration-logos';
 
 export interface IntegrationType {
   id: string;
   name: string;
   description: string;
-  icon: React.ReactNode;
+  logo: React.ComponentType<{ className?: string }>;
   category: 'monitoring' | 'communication' | 'storage' | 'security' | 'other';
   status: 'available' | 'coming_soon' | 'beta';
   popular?: boolean;
@@ -20,7 +29,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'zabbix',
     name: 'Zabbix',
     description: 'Monitor infrastructure and service health with Zabbix integration',
-    icon: <Server className="h-8 w-8" />,
+    logo: ZabbixLogo,
     category: 'monitoring',
     status: 'available',
     popular: true,
@@ -29,7 +38,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'email',
     name: 'Email (SMTP)',
     description: 'Send notifications and updates via your SMTP server',
-    icon: <Mail className="h-8 w-8" />,
+    logo: EmailLogo,
     category: 'communication',
     status: 'available',
   },
@@ -37,7 +46,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'webhook',
     name: 'Custom Webhook',
     description: 'Integrate with any service using custom webhooks',
-    icon: <Webhook className="h-8 w-8" />,
+    logo: WebhookLogo,
     category: 'other',
     status: 'available',
   },
@@ -45,7 +54,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 's3',
     name: 'AWS S3',
     description: 'Store attachments and exports in S3 buckets',
-    icon: <Cloud className="h-8 w-8" />,
+    logo: AWSS3Logo,
     category: 'storage',
     status: 'coming_soon',
   },
@@ -53,7 +62,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'datadog',
     name: 'Datadog',
     description: 'Send metrics and events to Datadog for monitoring',
-    icon: <Database className="h-8 w-8" />,
+    logo: DatadogLogo,
     category: 'monitoring',
     status: 'coming_soon',
   },
@@ -61,7 +70,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'okta',
     name: 'Okta SSO',
     description: 'Single sign-on with Okta identity provider',
-    icon: <Shield className="h-8 w-8" />,
+    logo: OktaLogo,
     category: 'security',
     status: 'beta',
   },
@@ -69,7 +78,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'slack',
     name: 'Slack',
     description: 'Get notifications and create tickets from Slack',
-    icon: <Zap className="h-8 w-8" />,
+    logo: SlackLogo,
     category: 'communication',
     status: 'coming_soon',
     popular: true,
@@ -78,7 +87,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
     id: 'teams',
     name: 'Microsoft Teams',
     description: 'Collaborate on tickets within Microsoft Teams',
-    icon: <Globe className="h-8 w-8" />,
+    logo: TeamsLogo,
     category: 'communication',
     status: 'coming_soon',
   },
@@ -153,6 +162,7 @@ function IntegrationCard({ integration, isSelected, onClick }: IntegrationCardPr
   };
 
   const isDisabled = integration.status === 'coming_soon';
+  const LogoComponent = integration.logo;
 
   return (
     <Card
@@ -181,13 +191,9 @@ function IntegrationCard({ integration, isSelected, onClick }: IntegrationCardPr
 
       <CardContent className="p-6">
         <div className="flex flex-col items-center text-center space-y-4">
-          {/* Icon */}
-          <div className={cn(
-            'p-4 rounded-xl',
-            isSelected ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600',
-            'transition-colors'
-          )}>
-            {integration.icon}
+          {/* Official Logo */}
+          <div className="relative">
+            <LogoComponent className="w-12 h-12" />
           </div>
 
           {/* Name */}

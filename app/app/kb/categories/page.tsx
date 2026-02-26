@@ -26,7 +26,8 @@ import {
   ChevronDown,
   Loader2,
   MoreHorizontal,
-  Globe
+  Globe,
+  Pencil
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -72,6 +73,16 @@ export default function CategoriesPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editCategory, setEditCategory] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    parentId: '',
+    isPublic: true,
+    sortOrder: 0,
+  });
   
   // New category form state
   const [newCategory, setNewCategory] = useState({
@@ -180,6 +191,54 @@ export default function CategoriesPage() {
       showToast(err instanceof Error ? err.message : 'Failed to delete category', 'error');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const openEditCategory = (category: Category) => {
+    setCategoryToEdit(category);
+    setEditCategory({
+      name: category.name || '',
+      slug: category.slug || '',
+      description: category.description || '',
+      parentId: category.parentId || 'none',
+      isPublic: category.isPublic,
+      sortOrder: category.sortOrder || 0,
+    });
+  };
+
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryToEdit) return;
+    if (!editCategory.name.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch('/api/kb/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: categoryToEdit.id,
+          name: editCategory.name,
+          slug: editCategory.slug,
+          description: editCategory.description,
+          parentId: editCategory.parentId && editCategory.parentId !== 'none' ? editCategory.parentId : null,
+          isPublic: editCategory.isPublic,
+          sortOrder: editCategory.sortOrder,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to update category');
+      }
+
+      showToast('Category updated successfully', 'success');
+      setCategoryToEdit(null);
+      loadCategories();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update category', 'error');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -305,6 +364,10 @@ export default function CategoriesPage() {
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Add Subfolder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditCategory(category)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
@@ -459,6 +522,123 @@ export default function CategoriesPage() {
               Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!categoryToEdit}
+        onOpenChange={(open) => {
+          if (!open) setCategoryToEdit(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+            <DialogDescription>
+              Update category name, slug, description, and structure.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateCategory} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-category-name">Name *</Label>
+              <Input
+                id="edit-category-name"
+                value={editCategory.name}
+                onChange={(e) => setEditCategory((prev) => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-category-slug">Slug</Label>
+              <Input
+                id="edit-category-slug"
+                value={editCategory.slug}
+                onChange={(e) => setEditCategory((prev) => ({ ...prev, slug: e.target.value }))}
+                placeholder="e.g., getting-started"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-category-description">Description</Label>
+              <Textarea
+                id="edit-category-description"
+                value={editCategory.description}
+                onChange={(e) => setEditCategory((prev) => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-parent-category">Parent Category</Label>
+              <Select
+                value={editCategory.parentId}
+                onValueChange={(value) => setEditCategory((prev) => ({ ...prev, parentId: value }))}
+              >
+                <SelectTrigger id="edit-parent-category">
+                  <SelectValue placeholder="None (Top Level)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
+                  {categories
+                    .filter((c) => c.id !== categoryToEdit?.id)
+                    .map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-sort-order">Sort Order</Label>
+              <Input
+                id="edit-sort-order"
+                type="number"
+                value={editCategory.sortOrder}
+                onChange={(e) =>
+                  setEditCategory((prev) => ({
+                    ...prev,
+                    sortOrder: parseInt(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-visibility">Visibility</Label>
+              <Select
+                value={editCategory.isPublic ? 'public' : 'private'}
+                onValueChange={(value) => setEditCategory((prev) => ({ ...prev, isPublic: value === 'public' }))}
+              >
+                <SelectTrigger id="edit-visibility">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Internal Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCategoryToEdit(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isUpdating || !editCategory.name.trim()}>
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save changes'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

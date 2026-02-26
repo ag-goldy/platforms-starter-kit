@@ -47,7 +47,7 @@ export default async function CustomerActivityPage({
 
   const filters = await searchParams;
 
-  const { membership } = await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
+  const { user, membership } = await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
 
   const whereClauses = [eq(auditLogs.orgId, org.id)];
 
@@ -167,7 +167,7 @@ export default async function CustomerActivityPage({
                 <p className="text-xs text-gray-600">
                   {(log.user as { name?: string; email?: string } | undefined)?.name || 
                    (log.user as { name?: string; email?: string } | undefined)?.email || 'System'}
-                  {membership.userId === log.userId ? ' (You)' : ''}
+                  {user.id === log.userId ? ' (You)' : ''}
                 </p>
                 {(log.ticket as { key?: string } | undefined)?.key && (
                   <p className="text-xs text-gray-600">Ticket: {(log.ticket as { key?: string } | undefined)?.key}</p>

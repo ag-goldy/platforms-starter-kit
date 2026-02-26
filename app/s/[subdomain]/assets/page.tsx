@@ -3,7 +3,7 @@ import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { AssetsManager } from '@/components/assets/assets-manager';
 import { db } from '@/db';
-import { areas, assets, sites, requestTypes, exportRequests, ticketAssets } from '@/db/schema';
+import { areas, assets, sites, ticketAssets } from '@/db/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -28,29 +28,20 @@ export default async function CustomerAssetsPage({
     });
     const siteIds = orgSites.map((site) => site.id);
 
-    const [orgAssets, orgAreas, requestTypeCountRows, exportCountRows] =
-      await Promise.all([
-        db.query.assets.findMany({
-          where: eq(assets.orgId, org.id),
-          orderBy: (table, { asc }) => [asc(table.name)],
-          with: {
-            site: true,
-            area: true,
-          },
-        }),
-        db.query.areas.findMany({
-          where: siteIds.length > 0 ? inArray(areas.siteId, siteIds) : undefined,
-          orderBy: (table, { asc }) => [asc(table.name)],
-        }),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(requestTypes)
-          .where(eq(requestTypes.orgId, org.id)),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(exportRequests)
-          .where(eq(exportRequests.orgId, org.id)),
-      ]);
+    const [orgAssets, orgAreas] = await Promise.all([
+      db.query.assets.findMany({
+        where: eq(assets.orgId, org.id),
+        orderBy: (table, { asc }) => [asc(table.name)],
+        with: {
+          site: true,
+          area: true,
+        },
+      }),
+      db.query.areas.findMany({
+        where: siteIds.length > 0 ? inArray(areas.siteId, siteIds) : undefined,
+        orderBy: (table, { asc }) => [asc(table.name)],
+      }),
+    ]);
 
     const assetIds = orgAssets.map((asset) => asset.id);
     const assetStatsRows =
@@ -77,37 +68,6 @@ export default async function CustomerAssetsPage({
       {}
     );
 
-    const requestTypeCount = Number(requestTypeCountRows[0]?.count ?? 0);
-    const exportCount = Number(exportCountRows[0]?.count ?? 0);
-
-    const modules = [
-      {
-        title: 'Create Request',
-        description: 'Service catalog and dynamic forms.',
-        href: `/s/${subdomain}/tickets/new`,
-        badge: 'New',
-        count: requestTypeCount,
-      },
-      {
-        title: 'Exports',
-        description: 'Download customer export history.',
-        href: `/s/${subdomain}/exports`,
-        count: exportCount,
-        footer: 'Admin only',
-      },
-      {
-        title: 'Team',
-        description: 'Manage users and offboarding.',
-        href: `/s/${subdomain}/team`,
-      },
-      {
-        title: 'Assets',
-        description: 'Linked infrastructure inventory.',
-        badge: 'Current',
-        count: orgAssets.length,
-      },
-    ];
-
     return (
       <div className="mx-auto max-w-5xl space-y-6">
         <div>
@@ -125,7 +85,6 @@ export default async function CustomerAssetsPage({
           scope="customer"
           basePath={`/s/${subdomain}/assets`}
           assetStats={assetStats}
-          modules={modules}
         />
       </div>
     );

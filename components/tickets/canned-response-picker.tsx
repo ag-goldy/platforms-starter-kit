@@ -14,7 +14,7 @@ import type { cannedResponses } from '@/db/schema';
 type CannedResponse = typeof cannedResponses.$inferSelect;
 
 interface CannedResponsePickerProps {
-  orgId: string;
+  orgId: string | null;
   onSelect: (content: string) => void;
   className?: string;
 }

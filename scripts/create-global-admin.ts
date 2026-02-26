@@ -1,34 +1,41 @@
+// Force postgres-js driver for script compatibility (must be before any imports)
+process.env.DB_DRIVER = 'postgres';
+
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+
+// Load env after setting DB_DRIVER
+dotenv.config({ path: '.env.local' });
+
+// Now import db
 import { db } from '@/db';
 import { internalGroupMemberships, internalGroups, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 
-dotenv.config({ path: '.env.local' });
-
-const email = process.env.ADMIN_EMAIL || '';
-const password = process.env.ADMIN_PASSWORD || '';
-const name = process.env.ADMIN_NAME || 'AGR Global Admin';
-
-if (!email || !password) {
-  console.error('ADMIN_EMAIL and ADMIN_PASSWORD are required.');
-  process.exit(1);
-}
+const GLOBAL_ADMIN_EMAIL = 'ag@agrnetworks.com';
+const GLOBAL_ADMIN_PASSWORD = 'AGRGlobal2025!';
+const GLOBAL_ADMIN_NAME = 'AGR Global Administrator';
 
 async function createGlobalAdmin() {
-  const passwordHash = await bcrypt.hash(password, 10);
+  console.log(`Creating/updating GLOBAL admin: ${GLOBAL_ADMIN_EMAIL}`);
+  console.log('');
 
+  const passwordHash = await bcrypt.hash(GLOBAL_ADMIN_PASSWORD, 10);
+
+  // Check if user exists
   const existingUser = await db.query.users.findFirst({
-    where: eq(users.email, email),
+    where: eq(users.email, GLOBAL_ADMIN_EMAIL),
   });
 
   let adminUser = existingUser;
+  
   if (existingUser) {
+    // Update existing user to be internal global admin
     await db
       .update(users)
       .set({
         passwordHash,
-        name,
+        name: GLOBAL_ADMIN_NAME,
         isInternal: true,
         emailVerified: new Date(),
         updatedAt: new Date(),
@@ -38,13 +45,14 @@ async function createGlobalAdmin() {
     adminUser = await db.query.users.findFirst({
       where: eq(users.id, existingUser.id),
     });
-    console.log('Updated admin user:', adminUser?.email);
+    console.log('✅ Updated existing user to GLOBAL admin:', adminUser?.email);
   } else {
+    // Create new global admin
     const [created] = await db
       .insert(users)
       .values({
-        email,
-        name,
+        email: GLOBAL_ADMIN_EMAIL,
+        name: GLOBAL_ADMIN_NAME,
         passwordHash,
         isInternal: true,
         emailVerified: new Date(),
@@ -53,21 +61,49 @@ async function createGlobalAdmin() {
       })
       .returning();
     adminUser = created;
-    console.log('Created admin user:', adminUser.email);
+    console.log('✅ Created GLOBAL admin user:', adminUser.email);
   }
 
   if (!adminUser) {
-    throw new Error('Failed to create admin user');
+    throw new Error('Failed to create global admin user');
   }
 
-  let group = await db.query.internalGroups.findFirst({
+  // Ensure PLATFORM_SUPER_ADMIN group exists
+  let superAdminGroup = await db.query.internalGroups.findFirst({
+    where: and(
+      eq(internalGroups.scope, 'PLATFORM'),
+      eq(internalGroups.roleType, 'PLATFORM_SUPER_ADMIN')
+    ),
+  });
+
+  if (!superAdminGroup) {
+    const [createdGroup] = await db
+      .insert(internalGroups)
+      .values({
+        name: 'Platform Super Admins',
+        description: 'Platform super administrators with full system access',
+        scope: 'PLATFORM',
+        roleType: 'PLATFORM_SUPER_ADMIN',
+        createdBy: adminUser.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    superAdminGroup = createdGroup;
+    console.log('✅ Created group:', superAdminGroup.name);
+  } else {
+    console.log('  Group exists:', superAdminGroup.name);
+  }
+
+  // Ensure PLATFORM_ADMIN group exists
+  let adminGroup = await db.query.internalGroups.findFirst({
     where: and(
       eq(internalGroups.scope, 'PLATFORM'),
       eq(internalGroups.roleType, 'PLATFORM_ADMIN')
     ),
   });
 
-  if (!group) {
+  if (!adminGroup) {
     const [createdGroup] = await db
       .insert(internalGroups)
       .values({
@@ -80,29 +116,75 @@ async function createGlobalAdmin() {
         updatedAt: new Date(),
       })
       .returning();
-    group = createdGroup;
-    console.log('Created internal group:', group.name);
+    adminGroup = createdGroup;
+    console.log('✅ Created group:', adminGroup.name);
+  } else {
+    console.log('  Group exists:', adminGroup.name);
   }
 
-  if (group) {
-    await db
-      .insert(internalGroupMemberships)
-      .values({
-        groupId: group.id,
-        userId: adminUser.id,
-        role: 'ADMIN',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoNothing();
+  // Add user to super admin group
+  if (superAdminGroup) {
+    const existingMembership = await db.query.internalGroupMemberships.findFirst({
+      where: and(
+        eq(internalGroupMemberships.groupId, superAdminGroup.id),
+        eq(internalGroupMemberships.userId, adminUser.id)
+      ),
+    });
 
-    console.log('Ensured platform admin membership for:', adminUser.email);
+    if (!existingMembership) {
+      await db
+        .insert(internalGroupMemberships)
+        .values({
+          groupId: superAdminGroup.id,
+          userId: adminUser.id,
+          role: 'ADMIN',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      console.log('✅ Added to Platform Super Admins group');
+    } else {
+      console.log('  Already in Platform Super Admins group');
+    }
   }
+
+  // Also add to admin group
+  if (adminGroup) {
+    const existingMembership = await db.query.internalGroupMemberships.findFirst({
+      where: and(
+        eq(internalGroupMemberships.groupId, adminGroup.id),
+        eq(internalGroupMemberships.userId, adminUser.id)
+      ),
+    });
+
+    if (!existingMembership) {
+      await db
+        .insert(internalGroupMemberships)
+        .values({
+          groupId: adminGroup.id,
+          userId: adminUser.id,
+          role: 'ADMIN',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      console.log('✅ Added to Platform Admins group');
+    } else {
+      console.log('  Already in Platform Admins group');
+    }
+  }
+
+  console.log('\n========================================');
+  console.log('🎉 GLOBAL ADMIN CREATED SUCCESSFULLY!');
+  console.log('========================================');
+  console.log(`Email:    ${GLOBAL_ADMIN_EMAIL}`);
+  console.log(`Password: ${GLOBAL_ADMIN_PASSWORD}`);
+  console.log(`Name:     ${GLOBAL_ADMIN_NAME}`);
+  console.log('Access:   Platform Super Admin (Full System Access)');
+  console.log('========================================\n');
 }
 
 createGlobalAdmin()
   .then(() => {
-    console.log('Global admin ready.');
+    console.log('Global admin setup complete.');
     process.exit(0);
   })
   .catch((error) => {

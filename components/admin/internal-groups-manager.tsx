@@ -110,19 +110,19 @@ export function InternalGroupsManager({
   >({});
   const [busyMembershipId, setBusyMembershipId] = useState<string | null>(null);
   const [busyGroupId, setBusyGroupId] = useState<string | null>(null);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
 
   const handleCreateGroup = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!newGroupName.trim()) {
-      showToast('Group name is required', 'error');
+      error('Group name is required');
       return;
     }
 
     setIsCreating(true);
     try {
       if (newGroupScope === 'ORG' && !newGroupOrgId) {
-        showToast('Select an organization for org-scoped groups', 'error');
+        error('Select an organization for org-scoped groups');
         return;
       }
 
@@ -154,9 +154,9 @@ export function InternalGroupsManager({
       setNewGroupScope('PLATFORM');
       setNewGroupRoleType('PLATFORM_ADMIN');
       setNewGroupOrgId('');
-      showToast('Internal group created', 'success');
+      success('Internal group created');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to create group', 'error');
+      error(err instanceof Error ? err.message : 'Failed to create group');
     } finally {
       setIsCreating(false);
     }
@@ -171,9 +171,9 @@ export function InternalGroupsManager({
     try {
       await deleteInternalGroupAction(groupId);
       setGroups((prev) => prev.filter((group) => group.id !== groupId));
-      showToast('Group deleted', 'success');
+      success('Group deleted');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to delete group', 'error');
+      error(err instanceof Error ? err.message : 'Failed to delete group');
     } finally {
       setBusyGroupId(null);
     }
@@ -182,7 +182,7 @@ export function InternalGroupsManager({
   const handleAddMember = async (groupId: string) => {
     const selection = memberSelections[groupId];
     if (!selection?.userId) {
-      showToast('Select a user to add', 'error');
+      error('Select a user to add');
       return;
     }
 
@@ -204,9 +204,9 @@ export function InternalGroupsManager({
         ...prev,
         [groupId]: { userId: '', role: selection.role },
       }));
-      showToast('Member added', 'success');
+      success('Member added');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to add member', 'error');
+      error(err instanceof Error ? err.message : 'Failed to add member');
     } finally {
       setBusyGroupId(null);
     }
@@ -232,9 +232,9 @@ export function InternalGroupsManager({
             : group
         )
       );
-      showToast('Role updated', 'success');
+      success('Role updated');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update role', 'error');
+      error(err instanceof Error ? err.message : 'Failed to update role');
     } finally {
       setBusyMembershipId(null);
     }
@@ -258,9 +258,9 @@ export function InternalGroupsManager({
             : group
         )
       );
-      showToast('Member removed', 'success');
+      success('Member removed');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to remove member', 'error');
+      error(err instanceof Error ? err.message : 'Failed to remove member');
     } finally {
       setBusyMembershipId(null);
     }

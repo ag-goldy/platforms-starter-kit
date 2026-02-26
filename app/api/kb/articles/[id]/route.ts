@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { kbArticles } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/permissions';
+import { requireAuth, requireInternalRole, requireOrgMemberRole } from '@/lib/auth/permissions';
 
 // GET /api/kb/articles/[id] - Get a single article (by ID or slug)
 export async function GET(
@@ -168,7 +168,6 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await requireAuth();
 
     // Check if article exists
     const existing = await db.query.kbArticles.findFirst({
@@ -180,6 +179,19 @@ export async function DELETE(
         { error: 'Article not found' },
         { status: 404 }
       );
+    }
+
+    // Permission: Global articles (orgId null) require internal role
+    // Org articles require customer admin in that org or internal users
+    if (!existing.orgId) {
+      await requireInternalRole();
+    } else {
+      try {
+        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+      } catch (err) {
+        // Allow internal users as well
+        await requireInternalRole();
+      }
     }
 
     await db.delete(kbArticles).where(eq(kbArticles.id, id));

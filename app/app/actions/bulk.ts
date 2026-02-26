@@ -26,7 +26,7 @@ export async function bulkUpdateStatusAction(ticketIds: string[], status: string
   for (const ticket of updatedTickets) {
     await logAudit({
       userId: user.id,
-      orgId: ticket.orgId,
+      orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
       action: 'TICKET_STATUS_CHANGED',
       details: JSON.stringify({ newStatus: validatedStatus, bulkUpdate: true }),
@@ -53,7 +53,7 @@ export async function bulkUpdatePriorityAction(ticketIds: string[], priority: st
   for (const ticket of updatedTickets) {
     await logAudit({
       userId: user.id,
-      orgId: ticket.orgId,
+      orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
       action: 'TICKET_PRIORITY_CHANGED',
       details: JSON.stringify({ priority: validatedPriority, bulkUpdate: true }),
@@ -80,7 +80,7 @@ export async function bulkAssignAction(ticketIds: string[], assigneeId: string |
   for (const ticket of updatedTickets) {
     await logAudit({
       userId: user.id,
-      orgId: ticket.orgId,
+      orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
       action: 'TICKET_ASSIGNED',
       details: JSON.stringify({ assigneeId: validatedAssigneeId, bulkUpdate: true }),
@@ -133,7 +133,7 @@ export async function bulkAddTagAction(ticketIds: string[], tagId: string) {
     if (ticket) {
       await logAudit({
         userId: user.id,
-        orgId: ticket.orgId,
+        orgId: ticket.orgId ?? undefined,
         ticketId,
         action: 'TICKET_TAG_ADDED',
         details: JSON.stringify({ tagId: validatedTagId, bulkUpdate: true }),
@@ -159,7 +159,7 @@ export async function bulkCloseAction(ticketIds: string[]) {
   for (const ticket of updatedTickets) {
     await logAudit({
       userId: user.id,
-      orgId: ticket.orgId,
+      orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
       action: 'TICKET_STATUS_CHANGED',
       details: JSON.stringify({ newStatus: 'CLOSED', bulkUpdate: true, bulkClose: true }),
@@ -191,7 +191,7 @@ export async function bulkRemoveTagAction(ticketIds: string[], tagId: string) {
     if (ticket) {
       await logAudit({
         userId: user.id,
-        orgId: ticket.orgId,
+        orgId: ticket.orgId ?? undefined,
         ticketId: assignment.ticketId,
         action: 'TICKET_TAG_REMOVED',
         details: JSON.stringify({ tagId: validatedTagId, bulkUpdate: true }),

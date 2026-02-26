@@ -23,7 +23,7 @@ export async function linkAssetToTicketAction(ticketId: string, assetId: string)
     throw new Error('Asset not found');
   }
 
-  if (asset.orgId !== ticket.orgId) {
+  if ((asset.orgId ?? null) !== (ticket.orgId ?? null)) {
     throw new Error('Asset does not belong to this organization');
   }
 
@@ -57,7 +57,7 @@ export async function unlinkAssetFromTicketAction(ticketId: string, assetId: str
     throw new Error('Asset not found');
   }
 
-  if (asset.orgId !== ticket.orgId) {
+  if ((asset.orgId ?? null) !== (ticket.orgId ?? null)) {
     throw new Error('Asset does not belong to this organization');
   }
 
@@ -134,6 +134,11 @@ export async function linkAssetToTicketBySerialAction(ticketId: string, serialNu
   if (!ticket) {
     throw new Error('Ticket not found');
   }
+  
+  // Public tickets (without org) cannot have assets linked
+  if (!ticket.orgId) {
+    throw new Error('Public tickets cannot have assets linked');
+  }
 
   const asset = await db.query.assets.findFirst({
     where: and(
@@ -181,6 +186,11 @@ export async function linkAssetToTicketByHostnameAction(ticketId: string, hostna
   });
   if (!ticket) {
     throw new Error('Ticket not found');
+  }
+  
+  // Public tickets (without org) cannot have assets linked
+  if (!ticket.orgId) {
+    throw new Error('Public tickets cannot have assets linked');
   }
 
   const asset = await db.query.assets.findFirst({

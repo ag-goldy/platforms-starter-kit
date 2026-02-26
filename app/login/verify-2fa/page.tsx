@@ -21,7 +21,7 @@ export default function Verify2FAPage() {
   const [useBackupCode, setUseBackupCode] = useState(false);
   
   const userId = searchParams.get('userId');
-  const callbackUrl = searchParams.get('callbackUrl') || '/app';
+  const callbackUrl = '/app'; // Always redirect to dashboard
   const urlError = searchParams.get('error');
 
   // Redirect if no userId
@@ -53,7 +53,7 @@ export default function Verify2FAPage() {
         userId,
         token,
         useBackupCode ? backupCode : undefined,
-        callbackUrl
+        '/app' // Always redirect to dashboard
       );
       
       // If we get here without redirect, something went wrong

@@ -2,14 +2,19 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { signOut } from '@/auth';
+import { SignOutButton } from '@/components/auth/signout-button';
 import { getDefaultRedirectUrl } from '@/lib/auth/redirect';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { MobileNav } from '@/components/layouts/mobile-nav';
 import { OrganizedNav } from '@/components/layouts/organized-nav';
 import { NotificationBell } from '@/components/notifications/notification-bell';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { AppProviders } from '@/components/providers/app-providers';
 import { NavigationLoader } from '@/components/navigation-loader';
+import { DarkModeSimpleToggle } from '@/components/ui/dark-mode-toggle';
+import { NewUserTour } from '@/components/onboarding/simple-tour';
 
 export default async function AppLayout({
   children,
@@ -31,8 +36,21 @@ export default async function AppLayout({
     redirect('/login');
   }
 
+  // Verify user exists in database
+  const userExists = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+    columns: { id: true, isInternal: true },
+  });
+
+  if (!userExists) {
+    // User in session but not in DB - redirect to login
+    // The login page will handle clearing the invalid session
+    console.error('[App Layout] User not found in DB:', session.user.id);
+    redirect('/login?error=SessionInvalid');
+  }
+
   // Redirect customer users to their portal
-  if (session.user && !session.user.isInternal) {
+  if (session.user && !userExists.isInternal) {
     const redirectUrl = await getDefaultRedirectUrl(session.user.id, false);
     redirect(redirectUrl);
   }
@@ -41,26 +59,15 @@ export default async function AppLayout({
   // The session.user.isInternal flag comes from the JWT token (set at login)
   // No need for additional DB lookup on every page navigation
 
+  // Simplified nav links for mobile menu
   const navLinks = [
     { href: '/app', label: 'Dashboard' },
     { href: '/app/tickets', label: 'Tickets' },
-    { href: '/app/kb', label: 'Knowledge Base' },
     { href: '/app/organizations', label: 'Organizations' },
     { href: '/app/users', label: 'Users' },
-    { href: '/app/templates', label: 'Templates' },
-    { href: '/app/tags', label: 'Tags' },
-    { href: '/app/sla', label: 'SLA' },
     { href: '/app/reports', label: 'Reports' },
-    { href: '/app/settings/sessions', label: 'Sessions' },
-    { href: '/app/settings/security', label: 'Security' },
-    { href: '/app/admin/audit', label: 'Audit Logs' },
-    { href: '/app/admin/health', label: 'Health' },
-    { href: '/app/admin/compliance', label: 'Compliance' },
-    { href: '/app/admin/retention', label: 'Retention' },
-    { href: '/app/admin/jobs', label: 'Failed Jobs' },
-    { href: '/app/admin/ops', label: 'Ops Dashboard' },
-    { href: '/app/admin/internal-groups', label: 'Internal Groups' },
-    { href: '/app/admin/zabbix', label: 'Zabbix' },
+    { href: '/app/settings/security', label: 'Settings' },
+    { href: '/app/admin/audit', label: 'Admin' },
   ];
 
   return (
@@ -71,43 +78,39 @@ export default async function AppLayout({
           <div className="flex items-center gap-4 md:gap-8">
             <Link href="/app" className="flex items-center gap-3">
               <img 
-                src="/logo/AGR_logo.png" 
-                alt="AGR Networks" 
-                className="h-8 w-auto"
-              />
-              <span className="text-gray-300">|</span>
-              <img 
                 src="/logo/atlas-logo.png" 
-                alt="Atlas" 
-                className="h-7 w-auto"
+                alt="atlas.logo" 
+                className="h-8 w-auto"
               />
             </Link>
             <OrganizedNav />
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <span className="hidden md:inline text-sm text-gray-600">
+            <span className="hidden md:inline text-sm text-muted-foreground">
               {session?.user?.email}
             </span>
-            <ThemeToggle />
+            <DarkModeSimpleToggle />
             <NotificationBell />
             <MobileNav links={navLinks} userEmail={session?.user?.email} />
-            <form
-              className="hidden lg:block"
-              action={async () => {
-                'use server';
-                await signOut({ redirectTo: '/login' });
-              }}
-            >
-              <Button type="submit" variant="ghost" size="sm">
-                Sign out
-              </Button>
-            </form>
+            <div className="hidden lg:block">
+              <SignOutButton variant="ghost" size="sm" />
+            </div>
           </div>
         </div>
       </nav>
       <main className="p-4 md:p-6">
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <ErrorBoundary>
+          <AppProviders>{children}</AppProviders>
+        </ErrorBoundary>
       </main>
+      
+      {/* Onboarding Tour */}
+      <NewUserTour />
+      
+      {/* Keyboard shortcut hint */}
+      <div className="fixed bottom-4 right-4 text-xs text-muted-foreground hidden lg:block bg-background/80 backdrop-blur px-2 py-1 rounded shadow border">
+        Press <kbd className="px-1 py-0.5 bg-muted rounded border">⌘</kbd> + <kbd className="px-1 py-0.5 bg-muted rounded border">K</kbd> for commands
+      </div>
     </div>
   );
 }

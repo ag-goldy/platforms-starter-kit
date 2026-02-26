@@ -29,7 +29,7 @@ export default function NotFound() {
     }
   }, [pathname]);
 
-  // If we detected a subdomain, show subdomain-specific message
+  // If we detected a subdomain, redirect to login
   if (subdomain) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -39,16 +39,16 @@ export default function NotFound() {
               <span className="text-blue-600">{subdomain}</span>
             </CardTitle>
             <CardDescription className="text-lg">
-              This portal doesn&apos;t exist
+              Portal Access Required
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-600">
-              The organization portal you&apos;re looking for hasn&apos;t been created yet.
+              Please sign in to access this organization portal.
             </p>
-            <Link href={`${protocol}://${rootDomain}`}>
+            <Link href={`/login?callbackUrl=/s/${subdomain}`}>
               <Button className="w-full">
-                Create {subdomain}
+                Sign In to Continue
               </Button>
             </Link>
           </CardContent>

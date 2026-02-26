@@ -19,14 +19,14 @@ export async function POST(request: NextRequest) {
     
     await sendEmail({
       to: email,
-      subject: 'Atlas Support - Test Email',
+      subject: 'atlas - Test Email',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #F97316;">Test Email from Atlas Support</h2>
+          <h2 style="color: #F97316;">Test Email from atlas</h2>
           <p>This is a test email sent at: <strong>${new Date().toLocaleString()}</strong></p>
           <p>If you received this, your email configuration is working!</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="color: #666; font-size: 12px;">Sent from Atlas Support Platform</p>
+          <p style="color: #666; font-size: 12px;">Sent from atlas</p>
         </div>
       `,
       text: `Test Email from Atlas Support\n\nThis is a test email sent at: ${new Date().toLocaleString()}\n\nIf you received this, your email configuration is working!`,

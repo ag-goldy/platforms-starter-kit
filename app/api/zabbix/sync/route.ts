@@ -15,8 +15,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { orgId, serviceId } = body;
+    // Try to get orgId from query params first (for form submissions)
+    const { searchParams } = new URL(request.url);
+    let orgId = searchParams.get('orgId') || '';
+    let serviceId = searchParams.get('serviceId') || '';
+
+    // If not in query params, try JSON body
+    if (!orgId) {
+      try {
+        const body = await request.json();
+        orgId = body.orgId || '';
+        serviceId = body.serviceId || '';
+      } catch {
+        // Body might be empty (form submission)
+      }
+    }
 
     if (!orgId) {
       return NextResponse.json(

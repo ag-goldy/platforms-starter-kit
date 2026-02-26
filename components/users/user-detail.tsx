@@ -50,7 +50,7 @@ export function UserDetail({ user }: UserDetailProps) {
     orgId: string;
     currentRole: CustomerRole;
   } | null>(null);
-  const { showToast } = useToast();
+  const { success, error } = useToast();
   const customerRoleSet = new Set<CustomerRole>(['CUSTOMER_ADMIN', 'REQUESTER', 'VIEWER']);
   const isCustomerRole = (role: UserRole): role is CustomerRole =>
     customerRoleSet.has(role as CustomerRole);
@@ -63,9 +63,9 @@ export function UserDetail({ user }: UserDetailProps) {
     try {
       await removeUserFromOrgAction(user.id, orgId);
       setMemberships(memberships.filter((m) => m.id !== membershipId));
-      showToast('User removed from organization', 'success');
+      success('User removed from organization');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to remove user', 'error');
+      error(err instanceof Error ? err.message : 'Failed to remove user');
     }
   };
 
@@ -82,9 +82,9 @@ export function UserDetail({ user }: UserDetailProps) {
         )
       );
       setShowRoleDialog(null);
-      showToast('User role updated', 'success');
+      success('User role updated');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update role', 'error');
+      error(err instanceof Error ? err.message : 'Failed to update role');
     }
   };
 
@@ -226,7 +226,7 @@ export function UserDetail({ user }: UserDetailProps) {
           onClose={() => setShowPasswordDialog(false)}
           onSuccess={() => {
             setShowPasswordDialog(false);
-            showToast('Password changed successfully', 'success');
+            success('Password changed successfully');
           }}
         />
       )}
