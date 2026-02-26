@@ -330,8 +330,8 @@ export default function KBPage() {
                 variant="secondary"
                 className="hidden md:inline-flex h-11 gap-2"
                 onClick={() => {
+                  setShowAiAssistant(true);
                   if (searchQuery.trim()) {
-                    setShowAiAssistant(true);
                     setAiQuery(searchQuery);
                   }
                 }}
