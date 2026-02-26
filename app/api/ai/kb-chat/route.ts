@@ -55,13 +55,14 @@ export async function POST(req: NextRequest) {
     
     console.log('[AI] Validating query:', { query: query.slice(0, 100), supportIntentEarly });
     
-    const validation = filterTechnologyContent(query);
-    console.log('[AI] Validation result:', validation);
+    // Temporarily disabled validation - let AI handle content filtering
+    // const validation = filterTechnologyContent(query);
+    // console.log('[AI] Validation result:', validation);
     
-    if (!validation.isValid && !supportIntentEarly) {
-      console.log('[AI] Query blocked by filter:', validation.reason);
-      return errorResponse(validation.reason || 'Query must be technology-related', 400);
-    }
+    // if (!validation.isValid && !supportIntentEarly) {
+    //   console.log('[AI] Query blocked by filter:', validation.reason);
+    //   return errorResponse(validation.reason || 'Query must be technology-related', 400);
+    // }
 
     const results = await db.query.kbArticles.findMany({
       where: and(
