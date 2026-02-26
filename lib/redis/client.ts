@@ -4,7 +4,8 @@
  * Priority:
  * 1. KV_REST_API_URL + KV_REST_API_TOKEN (Upstash REST API)
  * 2. REDIS_URL (standard Redis connection string)
- * 3. Fallback to mock in-memory Redis for development
+ * 3. TCKREDIS_REDIS_URL (alternative Redis connection string)
+ * 4. Fallback to mock in-memory Redis for development
  */
 
 import { Redis as UpstashRedis } from '@upstash/redis';
@@ -41,7 +42,7 @@ type StoredValue = {
 // Check which Redis configuration is available
 const upstashUrl = process.env.KV_REST_API_URL;
 const upstashToken = process.env.KV_REST_API_TOKEN;
-const redisUrl = process.env.REDIS_URL;
+const redisUrl = process.env.REDIS_URL || process.env.TCKREDIS_REDIS_URL;
 
 const isUpstashConfigured = !!(upstashUrl && upstashToken);
 const isRedisConfigured = !!redisUrl;
