@@ -2416,6 +2416,121 @@ export const bulkOperationsRelations = relations(bulkOperations, ({ one }) => ({
   }),
 }));
 
+// AI Configuration Tables
+export const orgAIConfigs = pgTable('org_ai_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull().unique(),
+  
+  // AI feature toggles
+  aiEnabled: boolean('ai_enabled').default(true).notNull(),
+  customerAIEnabled: boolean('customer_ai_enabled').default(true).notNull(),
+  
+  // System instructions for this org's AI
+  systemInstructions: text('system_instructions'),
+  
+  // Data access policy
+  allowKBAccess: boolean('allow_kb_access').default(true).notNull(),
+  allowTicketSummaries: boolean('allow_ticket_summaries').default(false).notNull(),
+  allowAssetInfo: boolean('allow_asset_info').default(false).notNull(),
+  allowServiceStatus: boolean('allow_service_status').default(true).notNull(),
+  
+  // Content filtering
+  blockPIIInResponses: boolean('block_pii_in_responses').default(true).notNull(),
+  maxResponseTokens: integer('max_response_tokens').default(1000),
+  
+  // Rate limits (per user per hour)
+  customerRateLimit: integer('customer_rate_limit').default(50),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const orgAIMemory = pgTable('org_ai_memory', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  
+  // Memory type: 'instruction' | 'fact' | 'preference' | 'policy'
+  memoryType: text('memory_type').notNull(),
+  
+  // The actual memory content
+  content: text('content').notNull(),
+  
+  // Who added this memory
+  addedBy: uuid('added_by').references(() => users.id),
+  
+  // Is this memory active?
+  isActive: boolean('is_active').default(true).notNull(),
+  
+  // Priority (higher = more important)
+  priority: integer('priority').default(0).notNull(),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const aiAuditLog = pgTable('ai_audit_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  // Context
+  orgId: uuid('org_id'), // null for public queries
+  userId: uuid('user_id'), // null for anonymous
+  interface: text('interface').notNull(), // 'public' | 'customer' | 'admin'
+  
+  // Request
+  userQuery: text('user_query').notNull(),
+  systemPromptHash: text('system_prompt_hash').notNull(),
+  
+  // Response
+  aiResponse: text('ai_response').notNull(),
+  modelUsed: text('model_used'),
+  tokensUsed: integer('tokens_used'),
+  responseTimeMs: integer('response_time_ms'),
+  
+  // Security
+  piiDetected: boolean('pii_detected').default(false),
+  piiTypes: jsonb('pii_types'),
+  wasFiltered: boolean('was_filtered').default(false),
+  
+  // Data sources used
+  sourcesUsed: jsonb('sources_used'),
+  
+  // IP and request metadata
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations for AI tables
+export const orgAIConfigsRelations = relations(orgAIConfigs, ({ one }) => ({
+  org: one(organizations, {
+    fields: [orgAIConfigs.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+export const orgAIMemoryRelations = relations(orgAIMemory, ({ one }) => ({
+  org: one(organizations, {
+    fields: [orgAIMemory.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [orgAIMemory.addedBy],
+    references: [users.id],
+  }),
+}));
+
+export const aiAuditLogRelations = relations(aiAuditLog, ({ one }) => ({
+  org: one(organizations, {
+    fields: [aiAuditLog.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [aiAuditLog.userId],
+    references: [users.id],
+  }),
+}));
+
 // Type exports for Phase 5
 export type CSATSurvey = typeof csatSurveys.$inferSelect;
 export type NewCSATSurvey = typeof csatSurveys.$inferInsert;
@@ -2437,3 +2552,11 @@ export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
 export type NewDashboardWidget = typeof dashboardWidgets.$inferInsert;
 export type BulkOperation = typeof bulkOperations.$inferSelect;
 export type NewBulkOperation = typeof bulkOperations.$inferInsert;
+
+// AI Type Exports
+export type OrgAIConfig = typeof orgAIConfigs.$inferSelect;
+export type NewOrgAIConfig = typeof orgAIConfigs.$inferInsert;
+export type OrgAIMemory = typeof orgAIMemory.$inferSelect;
+export type NewOrgAIMemory = typeof orgAIMemory.$inferInsert;
+export type AIAuditLog = typeof aiAuditLog.$inferSelect;
+export type NewAIAuditLog = typeof aiAuditLog.$inferInsert;

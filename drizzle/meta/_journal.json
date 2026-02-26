@@ -50,6 +50,13 @@
       "when": 1771659265038,
       "tag": "0006_steep_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772121655150,
+      "tag": "0007_dazzling_jubilee",
+      "breakpoints": true
     }
   ]
 }
