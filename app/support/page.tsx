@@ -40,19 +40,13 @@ interface Stats {
   threshold: number;
 }
 
+// Real-world IT support suggestions for hospitality industry
 const quickSuggestions = [
-  'How do I reset my password?',
-  'How to set up VPN access?',
-  'I need help with billing',
-  'Contact support team',
+  'Room 405 WiFi is not working',
+  'How do I connect to the hotel network?',
+  'CCTV camera is offline in lobby',
+  'IPTV channels are not loading',
 ];
-
-const mockAIResponses: Record<string, string> = {
-  'password': 'To reset your password, go to the login page and click "Forgot Password". You\'ll receive an email with instructions.',
-  'vpn': 'To set up VPN: 1) Go to Network Settings, 2) Click "Add VPN", 3) Enter credentials, 4) Save and connect.',
-  'billing': 'For billing questions, please submit a ticket with your account details or email billing@agrnetworks.com.',
-  'contact': 'You can reach us 24/7 via this ticket form, email support@agrnetworks.com, or call 1-800-555-0123.',
-};
 
 export default function SupportPage() {
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
