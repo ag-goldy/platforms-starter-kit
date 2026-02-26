@@ -142,16 +142,15 @@ export async function processEscalationRules(orgId?: string) {
  * Check for SLA breach warnings and breaches
  */
 export async function checkSLAEscalations(orgId?: string) {
-  const now = new Date();
-
-  // Find tickets approaching SLA breach (warning)
+  // Use SQL NOW() function instead of JavaScript Date to avoid type issues
+  // Find tickets approaching SLA breach (warning) - 80% of target time elapsed
   const warningTickets = await db.query.tickets.findMany({
     where: and(
       orgId ? eq(tickets.orgId, orgId) : undefined,
       eq(tickets.status, 'OPEN'),
       sql`${tickets.slaResponseTargetHours} IS NOT NULL`,
       sql`${tickets.firstResponseAt} IS NULL`,
-      sql`EXTRACT(EPOCH FROM (${now} - ${tickets.createdAt})) / 3600 > (${tickets.slaResponseTargetHours} * 0.8)`
+      sql`EXTRACT(EPOCH FROM (NOW() - ${tickets.createdAt})) / 3600 > (${tickets.slaResponseTargetHours} * 0.8)`
     ),
     columns: {
       id: true,
@@ -169,7 +168,7 @@ export async function checkSLAEscalations(orgId?: string) {
       eq(tickets.status, 'OPEN'),
       sql`${tickets.slaResponseTargetHours} IS NOT NULL`,
       sql`${tickets.firstResponseAt} IS NULL`,
-      sql`EXTRACT(EPOCH FROM (${now} - ${tickets.createdAt})) / 3600 > ${tickets.slaResponseTargetHours}`
+      sql`EXTRACT(EPOCH FROM (NOW() - ${tickets.createdAt})) / 3600 > ${tickets.slaResponseTargetHours}`
     ),
     columns: {
       id: true,
