@@ -18,6 +18,43 @@ import { headers } from 'next/headers';
 import { getClientIP } from '@/lib/rate-limit';
 import { tickets, emailOutbox, ticketComments } from '@/db/schema';
 
+// Safe Redis wrapper functions - fall back to memory if Redis is unavailable
+const memoryStore = new Map<string, unknown>();
+
+async function safeRedisGet<T>(key: string): Promise<T | null> {
+  try {
+    // Try memory first
+    const memValue = memoryStore.get(key) as T | undefined;
+    if (memValue !== undefined) return memValue;
+    
+    // Try Redis
+    const value = await safeRedisGet<T>(key);
+    if (value) {
+      memoryStore.set(key, value);
+    }
+    return value;
+  } catch {
+    return (memoryStore.get(key) as T) || null;
+  }
+}
+
+async function safeRedisSet(key: string, value: unknown, expireSeconds?: number): Promise<void> {
+  try {
+    memoryStore.set(key, value);
+    await safeRedisSet(key, value, expireSeconds ? { ex: expireSeconds } : undefined);
+  } catch {
+    // Memory store already set above
+  }
+}
+
+async function safeRedisExpire(key: string, seconds: number): Promise<void> {
+  try {
+    await safeRedisExpire(key, seconds);
+  } catch {
+    // Ignore
+  }
+}
+
 const chatSchema = z.object({
   query: z.string().min(3).max(2000),
   sessionId: z.string().optional(),
@@ -107,8 +144,16 @@ export async function POST(req: NextRequest) {
       expireSeconds = ephemeralTtlSeconds;
     }
 
-    // Load conversation history
-    const stored = (await redis.get<{ messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> }>(memoryKey)) || { messages: [] };
+    // Load conversation history (with Redis fallback)
+    let stored: { messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> } = { messages: [] };
+    try {
+      const redisData = await safeRedisGet<{ messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> }>(memoryKey);
+      if (redisData) {
+        stored = redisData;
+      }
+    } catch (redisError) {
+      console.log('[AI] Redis unavailable, using memory-only mode');
+    }
     const history = stored.messages.slice(-12); // last 12 turns
 
     // Early support handling: if form fields are complete, create ticket immediately (after memoryKey is available)
@@ -140,14 +185,14 @@ export async function POST(req: NextRequest) {
           deadlineTs: Date.now() + 10 * 60 * 1000,
         };
         const updatedEarly = {
-          ...((await redis.get<any>(memoryKey)) || {}),
+          ...((await safeRedisGet<any>(memoryKey)) || {}),
           messages: [...history, { role: 'user' as const, content: query }],
           supportState: updatedSupportState,
           aiTicketKey: createdEarly.key,
           aiMagicLink: createdEarly.magicLink,
         };
-        await redis.set(memoryKey, updatedEarly);
-        if (expireSeconds) await redis.expire(memoryKey, expireSeconds);
+        await safeRedisSet(memoryKey, updatedEarly);
+        if (expireSeconds) await safeRedisExpire(memoryKey, expireSeconds);
         const createdMsg =
           createdEarly.magicLink
             ? `Understanding\n\nTicket created. Check your email to stay updated.\n\n- Ticket: ${createdEarly.key}\n- Track: ${createdEarly.magicLink}`
@@ -361,9 +406,9 @@ export async function POST(req: NextRequest) {
       ],
       lastUserAt: new Date().toISOString(),
     };
-    await redis.set(memoryKey, updated);
+    await safeRedisSet(memoryKey, updated);
     if (expireSeconds) {
-      await redis.expire(memoryKey, expireSeconds);
+      await safeRedisExpire(memoryKey, expireSeconds);
     }
 
     console.log('[AI] Returning response:', { 
@@ -738,9 +783,9 @@ Common issues that arise during or after this procedure. Format as:
         }
 
         if (kbDraftId) {
-          await redis.set(memoryKey, { ...updated, kbDraftId });
+          await safeRedisSet(memoryKey, { ...updated, kbDraftId });
           if (expireSeconds) {
-            await redis.expire(memoryKey, expireSeconds);
+            await safeRedisExpire(memoryKey, expireSeconds);
           }
         }
       }
@@ -973,8 +1018,8 @@ Common issues that arise during or after this procedure. Format as:
           contactNumber: mergedInfo.phone,
           priority: formPriority,
         });
-        await redis.set(memoryKey, { ...updated, supportState: updatedSupportState, aiTicketKey: created?.key ?? null, aiMagicLink: created?.magicLink ?? null, kbDraftId: (prior as any)?.kbDraftId });
-        if (expireSeconds) await redis.expire(memoryKey, expireSeconds);
+        await safeRedisSet(memoryKey, { ...updated, supportState: updatedSupportState, aiTicketKey: created?.key ?? null, aiMagicLink: created?.magicLink ?? null, kbDraftId: (prior as any)?.kbDraftId });
+        if (expireSeconds) await safeRedisExpire(memoryKey, expireSeconds);
         if (created) {
           const createdMsg = created.magicLink
             ? `Understanding\n\nTicket created. Check your email to stay updated.\n\n- Ticket: ${created.key}\n- Track: ${created.magicLink}`
@@ -995,8 +1040,8 @@ Common issues that arise during or after this procedure. Format as:
         const msg = link
           ? `Understanding\n\nI’ve emailed you a tracking link:\n- Ticket: ${prior.aiTicketKey}\n- Track: ${link}`
           : `Understanding\n\nI couldn’t send a link right now. Please try again in a moment.`;
-        await redis.set(memoryKey, { ...updated, supportState: updatedSupportState, aiTicketKey: prior.aiTicketKey, aiMagicLink: link ?? prior.aiMagicLink, kbDraftId: (prior as any)?.kbDraftId });
-        if (expireSeconds) await redis.expire(memoryKey, expireSeconds);
+        await safeRedisSet(memoryKey, { ...updated, supportState: updatedSupportState, aiTicketKey: prior.aiTicketKey, aiMagicLink: link ?? prior.aiMagicLink, kbDraftId: (prior as any)?.kbDraftId });
+        if (expireSeconds) await safeRedisExpire(memoryKey, expireSeconds);
         return NextResponse.json({
           success: true,
           answer: msg,
