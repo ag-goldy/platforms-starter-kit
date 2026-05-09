@@ -22,13 +22,13 @@ import { z } from 'zod';
 import { auth } from '@/auth';
 import { headers } from 'next/headers';
 import { getClientIP } from '@/lib/rate-limit';
-import { rateLimit } from '@/lib/rate-limit';
+import { checkRateLimit as rateLimit } from '@/lib/rate-limit';
 import { db } from '@/db';
 import { aiAuditLog, memberships } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { detectPromptInjection, getSafeResponse, logSecurityEvent } from '@/lib/ai/prompt-guard';
-import { sanitizeResponse, anonymizeInternalUser, type AISecurityContext } from '@/lib/ai/security';
+import { sanitizeResponse, sanitizeResponseWithOrgRules, anonymizeInternalUser, type AISecurityContext } from '@/lib/ai/security';
 import { 
   fetchKBForAI, 
   fetchTicketSummariesForAI, 
@@ -37,10 +37,12 @@ import {
   fetchOrgAIConfig,
 } from '@/lib/ai/data-fetchers';
 import { createHash } from 'crypto';
+import { logAIUsage } from '@/lib/ai/usage-tracking';
 
 const requestSchema = z.object({
   query: z.string().min(2).max(2000),
   sessionId: z.string().optional(),
+  orgId: z.string().uuid('orgId must be a valid UUID'),
 });
 
 const client = new OpenAI({
@@ -87,14 +89,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Get org from session (subdomain resolution happens in middleware)
-    // The orgId should be in the session or derived from the request context
+    // 2. Parse request
     const body = await req.json();
-    const { orgId } = body; // This comes from the client but MUST be verified
-    
-    if (!orgId) {
-      return NextResponse.json({ error: 'Organization required' }, { status: 400 });
+    const parsed = requestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
+
+    const { query, sessionId, orgId } = parsed.data;
 
     // 3. Verify membership
     const membership = await db.query.memberships.findFirst({
@@ -106,6 +111,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!membership) {
+      console.warn('[AI:Customer] Access denied — no active membership', {
+        userId: session.user.id,
+        orgId,
+        ip,
+      });
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -120,21 +130,15 @@ export async function POST(req: NextRequest) {
 
     // 5. Rate limit by user + org
     const rateLimitKey = `ai:customer:${orgId}:${session.user.id}`;
-    const rateLimitResult = await rateLimit(rateLimitKey, aiConfig.customerRateLimit, 60 * 60);
-    if (!rateLimitResult.success) {
+    const rateLimitResult = await rateLimit({ identifier: rateLimitKey, limit: aiConfig.customerRateLimit ?? 50, windowSeconds: 60 * 60 });
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429 }
       );
     }
 
-    // 6. Parse request
-    const parsed = requestSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-    }
-
-    const { query } = parsed.data;
+    // 6. (Request already parsed)
 
     // 7. Run prompt injection detection
     const guardResult = detectPromptInjection(query);
@@ -203,7 +207,7 @@ export async function POST(req: NextRequest) {
 
     // 11. Call OpenAI
     const completion = await client.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
+      model: 'deepseek-ai/DeepSeek-V3.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: guardResult.sanitizedInput },
@@ -217,8 +221,31 @@ export async function POST(req: NextRequest) {
     // 12. Anonymize internal users and strip any internal notes that might have slipped through
     aiResponse = anonymizeInternalUser(aiResponse);
 
-    // 13. Sanitize response
-    const { sanitized, piiDetected, piiTypes } = sanitizeResponse(aiResponse, securityContext);
+    // 13. Sanitize response — applies static PII patterns + org-specific rules from DB
+    // Org rules are cached in Redis for 5 minutes; 'block' action returns 400 to caller
+    const { sanitized, piiDetected, piiTypes, blockedByRule } =
+      await sanitizeResponseWithOrgRules(aiResponse, securityContext);
+
+    if (blockedByRule) {
+      // A 'block' action org PII rule was triggered — log and return safe error
+      await db.insert(aiAuditLog).values({
+        orgId,
+        userId: session.user.id,
+        interface: 'customer',
+        userQuery: query,
+        systemPromptHash,
+        aiResponse: `[Blocked by org PII rule: ${blockedByRule}]`,
+        wasFiltered: true,
+        piiDetected: true,
+        piiTypes: [blockedByRule],
+        ipAddress: ip,
+        userAgent: (await headers()).get('user-agent') || undefined,
+      });
+      return NextResponse.json(
+        { error: 'Response blocked by content policy' },
+        { status: 400 }
+      );
+    }
 
     // 14. Audit log
     await db.insert(aiAuditLog).values({
@@ -242,6 +269,22 @@ export async function POST(req: NextRequest) {
       ipAddress: ip,
       userAgent: headersList.get('user-agent') || undefined,
     });
+
+    // 15. Log usage for cost tracking
+    if (completion.usage) {
+      await logAIUsage({
+        orgId,
+        userId: session.user.id,
+        interface: 'customer',
+        modelUsed: completion.model,
+        promptTokens: completion.usage.prompt_tokens,
+        completionTokens: completion.usage.completion_tokens,
+        metadata: {
+          responseTimeMs: Date.now() - startTime,
+          sources: [kbContext ? 'kb' : null, ticketContext ? 'tickets' : null, serviceContext ? 'services' : null].filter(Boolean),
+        },
+      });
+    }
 
     return NextResponse.json({
       answer: sanitized,
