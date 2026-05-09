@@ -1,9 +1,9 @@
 // ============================================
 // Schema Extensions for Comprehensive Improvements
 // ============================================
-import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, decimal, date, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, decimal, date } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { organizations, tickets, users, kbArticles, ticketComments, automationRules } from './schema';
+import { organizations, tickets, users, kbArticles, ticketComments } from './schema';
 
 // Widget Configuration (part of organizations - added via migration)
 export const widgetConfigSchema = {
@@ -12,100 +12,14 @@ export const widgetConfigSchema = {
   customOrder: ['tickets', 'kb', 'health', 'quick_actions'] as string[],
 };
 
-// Time Tracking
-export const timeEntries = pgTable('time_entries', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  ticketId: uuid('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  startedAt: timestamp('started_at').notNull().defaultNow(),
-  endedAt: timestamp('ended_at'),
-  durationMinutes: integer('duration_minutes'),
-  description: text('description'),
-  isBillable: boolean('is_billable').default(true),
-  hourlyRate: decimal('hourly_rate', { precision: 10, scale: 2 }),
-  source: text('source').default('manual'), // 'manual', 'timer', 'automatic'
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
-  ticket: one(tickets, {
-    fields: [timeEntries.ticketId],
-    references: [tickets.id],
-  }),
-  user: one(users, {
-    fields: [timeEntries.userId],
-    references: [users.id],
-  }),
-}));
-
-// Ticket Subtasks
-export const ticketSubtasks = pgTable('ticket_subtasks', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  ticketId: uuid('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description'),
-  status: text('status').default('todo'), // 'todo', 'in_progress', 'done'
-  assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
-  dueDate: timestamp('due_date'),
-  sortOrder: integer('sort_order').default(0),
-  completedAt: timestamp('completed_at'),
-  completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
-  createdBy: uuid('created_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-export const ticketSubtasksRelations = relations(ticketSubtasks, ({ one }) => ({
-  ticket: one(tickets, {
-    fields: [ticketSubtasks.ticketId],
-    references: [tickets.id],
-  }),
-  assignee: one(users, {
-    fields: [ticketSubtasks.assigneeId],
-    references: [users.id],
-    relationName: 'assignee',
-  }),
-  completedByUser: one(users, {
-    fields: [ticketSubtasks.completedBy],
-    references: [users.id],
-    relationName: 'completedBy',
-  }),
-  creator: one(users, {
-    fields: [ticketSubtasks.createdBy],
-    references: [users.id],
-    relationName: 'creator',
-  }),
-}));
-
-// Ticket Dependencies
-export const ticketDependencies = pgTable('ticket_dependencies', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  ticketId: uuid('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
-  dependsOnTicketId: uuid('depends_on_ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
-  dependencyType: text('dependency_type').default('blocks'), // 'blocks', 'blocked_by', 'relates_to'
-  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => ({
-  uniqueDependency: unique('unique_dependency').on(table.ticketId, table.dependsOnTicketId),
-}));
-
-export const ticketDependenciesRelations = relations(ticketDependencies, ({ one }) => ({
-  ticket: one(tickets, {
-    fields: [ticketDependencies.ticketId],
-    references: [tickets.id],
-    relationName: 'ticket',
-  }),
-  dependsOnTicket: one(tickets, {
-    fields: [ticketDependencies.dependsOnTicketId],
-    references: [tickets.id],
-    relationName: 'dependsOnTicket',
-  }),
-  creator: one(users, {
-    fields: [ticketDependencies.createdBy],
-    references: [users.id],
-  }),
-}));
+// Fix 3.1: timeEntries, ticketSubtasks, and ticketDependencies were previously
+// duplicated here with fewer columns. The canonical definitions (with orgId,
+// platformAdminId, billing fields, and uniqueDependency constraint) live in
+// schema.ts. Import and re-export them so any code that previously imported
+// from schema-extensions.ts still works.
+export {
+  timeEntries,
+} from './schema';
 
 // Draft Autosave
 export const ticketDrafts = pgTable('ticket_drafts', {
@@ -215,7 +129,11 @@ export const kbArticleAnalyticsRelations = relations(kbArticleAnalytics, ({ one 
   }),
 }));
 
-// Webhook Subscriptions
+// DEPRECATED: webhook_subscriptions is superseded by `webhooks` in schema.ts.
+// The canonical webhook system is db/schema.ts `webhooks` + `webhookDeliveries` (lib/webhooks/queries.ts).
+// `app/api/webhooks/route.ts` must be migrated to use lib/webhooks/queries.ts createWebhook/getOrgWebhooks.
+// Do NOT add new features to this table. This table will be dropped in a future migration.
+// TODO(fix-6.2): Migrate /api/webhooks route.ts to canonical webhooks table, then drop this.
 export const webhookSubscriptions = pgTable('webhook_subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
@@ -386,10 +304,6 @@ export const workflowVisualConfigsRelations = relations(workflowVisualConfigs, (
 // Type Exports
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type NewTimeEntry = typeof timeEntries.$inferInsert;
-export type TicketSubtask = typeof ticketSubtasks.$inferSelect;
-export type NewTicketSubtask = typeof ticketSubtasks.$inferInsert;
-export type TicketDependency = typeof ticketDependencies.$inferSelect;
-export type NewTicketDependency = typeof ticketDependencies.$inferInsert;
 export type TicketDraft = typeof ticketDrafts.$inferSelect;
 export type NewTicketDraft = typeof ticketDrafts.$inferInsert;
 export type TicketEditSession = typeof ticketEditSessions.$inferSelect;
