@@ -6,14 +6,9 @@
  * - Job scheduling and delayed execution
  * - Queue monitoring and management
  * - Concurrency control
- * 
- * Environment variable JOB_QUEUE_BACKEND controls which implementation to use:
- * - 'redis' (default): Use BullMQ with Redis
- * - 'postgres': Use legacy PostgreSQL queue
  */
 
-import { Queue, Job as BullJob } from 'bullmq';
-import { redisConfig } from '@/lib/redis/client';
+import { Queue } from 'bullmq';
 
 // Redis connection configuration for BullMQ
 const getConnection = () => {
