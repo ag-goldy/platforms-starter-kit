@@ -1,11 +1,13 @@
 /**
  * Zabbix Sync Cron Job
- * 
+ *
  * This endpoint is designed to be called by a cron job (e.g., Vercel Cron)
  * to periodically sync all organizations' Zabbix data.
- * 
- * Set up a cron job to call: GET /api/cron/zabbix-sync?token=CRON_SECRET_TOKEN
- * 
+ *
+ * Set up a cron job to call:
+ *   GET /api/cron/zabbix-sync
+ *   Authorization: Bearer <CRON_SECRET>
+ *
  * Default schedule: Every 6 hours (Vercel Hobby plan limitation)
  * For more frequent syncs, use an external cron service or upgrade to Pro
  */
@@ -13,22 +15,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { zabbixConfigs } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { syncOrgServices } from '@/lib/zabbix/sync';
+import { verifyCronAuth } from '@/lib/auth/cron';
 
 export async function GET(request: NextRequest) {
-  try {
-    // Verify cron token for security
-    const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
-    const expectedToken = process.env.CRON_SECRET_TOKEN;
+  // Fail-closed: rejects if CRON_SECRET not set or header mismatch.
+  const rejection = verifyCronAuth(request);
+  if (rejection) return rejection;
 
-    if (!expectedToken || token !== expectedToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  try {
 
     // Get all active Zabbix configurations
     const configs = await db.query.zabbixConfigs.findMany({
