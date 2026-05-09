@@ -57,6 +57,48 @@
       "when": 1772121655150,
       "tag": "0007_dazzling_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1770000000000,
+      "tag": "023_add_zabbix_to_services",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1770000001000,
+      "tag": "024_add_asset_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1770000002000,
+      "tag": "025_fix_asset_type_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1770000003000,
+      "tag": "026_custom_asset_types_statuses",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1770000004000,
+      "tag": "027_advanced_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1770000005000,
+      "tag": "028_performance_indexes",
+      "breakpoints": true
     }
   ]
 }
