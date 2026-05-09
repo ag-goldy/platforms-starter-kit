@@ -22,6 +22,16 @@ export async function requireAuth() {
   return ctx.user;
 }
 
+// Pure helper — exported for unit testing
+export function checkInternalRole(userRole: string, allowedRoles?: string[]): void {
+  if (!allowedRoles || allowedRoles.length === 0) return;
+  if (!allowedRoles.includes(userRole)) {
+    throw new AuthorizationError(
+      `Role '${userRole}' is not authorized. Required: ${allowedRoles.join(', ')}`
+    );
+  }
+}
+
 export async function requireInternalRole(allowedRoles?: InternalRole[]) {
   const ctx = await getRequestContext();
   const user = ctx.user;
@@ -35,14 +45,9 @@ export async function requireInternalRole(allowedRoles?: InternalRole[]) {
     throw new AuthorizationError('This resource is only accessible to internal users');
   }
 
-  if (allowedRoles && allowedRoles.length > 0) {
-    // For internal users, we need to check if they have a role
-    // Since internal users don't have memberships, we'll use a simple check
-    // In a real system, you might want to add a role field to users table
-    // For MVP, we'll assume all internal users have AGENT role by default
-    // and ADMIN is a special check (could be a separate field or first user)
-    // For now, we'll allow access if user is internal
-  }
+  // Platform admins pass as ADMIN for all internal role checks
+  const effectiveRole = ctx.isPlatformAdmin ? 'ADMIN' : ((user as any).role ?? 'AGENT');
+  checkInternalRole(effectiveRole, allowedRoles);
 
   return user;
 }
