@@ -63,6 +63,12 @@ export async function processAttachmentJob(job: ProcessAttachmentJob): Promise<J
 
       const downloadUrl = await getDownloadUrl(attachment.blobPathname);
 
+      // Validate URL is a Vercel Blob domain before fetching
+      const parsedUrl = new URL(downloadUrl);
+      if (!parsedUrl.hostname.endsWith(".vercel-storage.com")) {
+        throw new Error(`Unexpected download URL host: ${parsedUrl.hostname}`);
+      }
+
       const fileResponse = await fetch(downloadUrl);
       if (!fileResponse.ok) {
         throw new Error(`Failed to download attachment: ${fileResponse.statusText}`);

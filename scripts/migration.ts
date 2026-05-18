@@ -1,9 +1,13 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import postgres from 'postgres';
-import { renderMigrationMarkdown, type MigrationReport, type MigrationTableReport } from '@/lib/migration/report';
+import fs from "node:fs/promises";
+import path from "node:path";
+import postgres from "postgres";
+import {
+  renderMigrationMarkdown,
+  type MigrationReport,
+  type MigrationTableReport,
+} from "@/lib/migration/report";
 
-type Mode = MigrationReport['mode'];
+type Mode = MigrationReport["mode"];
 
 interface TableSpec {
   domain: string;
@@ -20,26 +24,26 @@ interface CliOptions {
 }
 
 const tableSpecs: TableSpec[] = [
-  { domain: 'orgs', table: 'organizations' },
-  { domain: 'users', table: 'users' },
-  { domain: 'users', table: 'memberships' },
-  { domain: 'users', table: 'user_invitations' },
-  { domain: 'tickets', table: 'tickets' },
-  { domain: 'tickets', table: 'ticket_comments' },
-  { domain: 'tickets', table: 'ticket_assets' },
-  { domain: 'tickets', table: 'ticket_tags' },
-  { domain: 'tickets', table: 'ticket_tag_assignments' },
-  { domain: 'tickets', table: 'ticket_merges' },
-  { domain: 'tickets', table: 'ticket_dependencies' },
-  { domain: 'kb', table: 'kb_categories' },
-  { domain: 'kb', table: 'kb_articles' },
-  { domain: 'kb', table: 'kb_article_versions' },
-  { domain: 'kb', table: 'kb_article_feedback' },
-  { domain: 'assets', table: 'assets' },
-  { domain: 'assets', table: 'org_asset_types' },
-  { domain: 'assets', table: 'org_asset_statuses' },
-  { domain: 'audit', table: 'audit_logs' },
-  { domain: 'audit', table: 'ai_audit_log' },
+  { domain: "orgs", table: "organizations" },
+  { domain: "users", table: "users" },
+  { domain: "users", table: "memberships" },
+  { domain: "users", table: "user_invitations" },
+  { domain: "tickets", table: "tickets" },
+  { domain: "tickets", table: "ticket_comments" },
+  { domain: "tickets", table: "ticket_assets" },
+  { domain: "tickets", table: "ticket_tags" },
+  { domain: "tickets", table: "ticket_tag_assignments" },
+  { domain: "tickets", table: "ticket_merges" },
+  { domain: "tickets", table: "ticket_dependencies" },
+  { domain: "kb", table: "kb_categories" },
+  { domain: "kb", table: "kb_articles" },
+  { domain: "kb", table: "kb_article_versions" },
+  { domain: "kb", table: "kb_article_feedback" },
+  { domain: "assets", table: "assets" },
+  { domain: "assets", table: "org_asset_types" },
+  { domain: "assets", table: "org_asset_statuses" },
+  { domain: "audit", table: "audit_logs" },
+  { domain: "audit", table: "ai_audit_log" },
 ];
 
 function usage(exitCode = 1): never {
@@ -59,33 +63,34 @@ Options:
 
 function parseArgs(argv: string[]): CliOptions {
   const [rawMode, ...rawRest] = argv;
-  const rest = rawRest.filter((arg) => arg !== '--');
-  if (!rawMode || !['dry-run', 'run', 'validate'].includes(rawMode)) usage();
+  const rest = rawRest.filter((arg) => arg !== "--");
+  if (!rawMode || !["dry-run", "run", "validate"].includes(rawMode)) usage();
 
   const options: Partial<CliOptions> = {
     mode: rawMode as Mode,
-    reportDir: 'migration-reports',
+    reportDir: "migration-reports",
     sampleLimit: 5,
   };
 
   for (let index = 0; index < rest.length; index += 1) {
     const key = rest[index];
     const value = rest[index + 1];
-    if (key === '--help' || key === '-h') usage(0);
+    if (key === "--help" || key === "-h") usage(0);
     if (!value) usage();
 
-    if (key === '--source') options.source = value;
-    else if (key === '--target') options.target = value;
-    else if (key === '--since') options.since = value;
-    else if (key === '--report-dir') options.reportDir = value;
-    else if (key === '--sample-limit') options.sampleLimit = Number(value);
+    if (key === "--source") options.source = value;
+    else if (key === "--target") options.target = value;
+    else if (key === "--since") options.since = value;
+    else if (key === "--report-dir") options.reportDir = value;
+    else if (key === "--sample-limit") options.sampleLimit = Number(value);
     else usage();
 
     index += 1;
   }
 
   if (!options.source || !options.target) usage();
-  if (!Number.isFinite(options.sampleLimit) || options.sampleLimit! < 1) usage();
+  if (!Number.isFinite(options.sampleLimit) || options.sampleLimit! < 1)
+    usage();
 
   return options as CliOptions;
 }
@@ -103,9 +108,9 @@ function placeholders(rowCount: number, columnCount: number): string {
       columns.push(`$${position}`);
       position += 1;
     }
-    rows.push(`(${columns.join(', ')})`);
+    rows.push(`(${columns.join(", ")})`);
   }
-  return rows.join(', ');
+  return rows.join(", ");
 }
 
 async function tableExists(sql: postgres.Sql, table: string): Promise<boolean> {
@@ -129,28 +134,40 @@ async function getColumns(sql: postgres.Sql, table: string): Promise<string[]> {
 }
 
 async function countRows(sql: postgres.Sql, table: string): Promise<number> {
-  const rows = await sql.unsafe<{ count: string }[]>(`select count(*)::text as count from ${quoteIdent(table)}`);
+  const rows = await sql.unsafe<{ count: string }[]>(
+    `select count(*)::text as count from ${quoteIdent(table)}`,
+  );
   return Number(rows[0]?.count || 0);
 }
 
-async function sampleIds(sql: postgres.Sql, table: string, limit: number): Promise<string[]> {
+async function sampleIds(
+  sql: postgres.Sql,
+  table: string,
+  limit: number,
+): Promise<string[]> {
   const columns = await getColumns(sql, table);
-  if (!columns.includes('id')) return [];
+  if (!columns.includes("id")) return [];
   const rows = await sql.unsafe<{ id: string }[]>(
     `select id::text as id from ${quoteIdent(table)} order by id limit $1`,
-    [limit]
+    [limit],
   );
   return rows.map((row) => row.id);
 }
 
-async function copyTable(source: postgres.Sql, target: postgres.Sql, table: string): Promise<number> {
+async function copyTable(
+  source: postgres.Sql,
+  target: postgres.Sql,
+  table: string,
+): Promise<number> {
   const columns = await getColumns(source, table);
   if (columns.length === 0) return 0;
 
-  const selected = await source.unsafe<Record<string, unknown>[]>(`select * from ${quoteIdent(table)}`);
+  const selected = await source.unsafe<Record<string, unknown>[]>(
+    `select * from ${quoteIdent(table)}`,
+  );
   if (selected.length === 0) return 0;
 
-  const quotedColumns = columns.map(quoteIdent).join(', ');
+  const quotedColumns = columns.map(quoteIdent).join(", ");
   let inserted = 0;
   const batchSize = 250;
 
@@ -159,7 +176,7 @@ async function copyTable(source: postgres.Sql, target: postgres.Sql, table: stri
     const values = batch.flatMap((row) => columns.map((column) => row[column]));
     await target.unsafe(
       `insert into ${quoteIdent(table)} (${quotedColumns}) values ${placeholders(batch.length, columns.length)} on conflict do nothing`,
-      values
+      values,
     );
     inserted += batch.length;
   }
@@ -184,7 +201,9 @@ async function validateLifecycle(sql: postgres.Sql): Promise<string[]> {
     where status = 'MERGED' and merged_into_id is null
   `;
   if (Number(badMergeRows[0]?.count || 0) > 0) {
-    errors.push(`${badMergeRows[0].count} merged tickets are missing merged_into_id`);
+    errors.push(
+      `${badMergeRows[0].count} merged tickets are missing merged_into_id`,
+    );
   }
 
   return errors;
@@ -195,14 +214,14 @@ async function buildTableReport(
   source: postgres.Sql,
   target: postgres.Sql,
   spec: TableSpec,
-  sampleLimit: number
+  sampleLimit: number,
 ): Promise<MigrationTableReport> {
   const validationErrors: string[] = [];
   const sourceExists = await tableExists(source, spec.table);
   const targetExists = await tableExists(target, spec.table);
 
-  if (!sourceExists) validationErrors.push('source table missing');
-  if (!targetExists) validationErrors.push('target table missing');
+  if (!sourceExists) validationErrors.push("source table missing");
+  if (!targetExists) validationErrors.push("target table missing");
 
   if (!sourceExists || !targetExists) {
     return {
@@ -220,17 +239,24 @@ async function buildTableReport(
   const sourceCount = await countRows(source, spec.table);
   let transformedCount = 0;
 
-  if (mode === 'run') {
+  if (mode === "run") {
     transformedCount = await copyTable(source, target, spec.table);
   }
 
   const destinationCount = await countRows(target, spec.table);
-  const skippedCount = mode === 'run'
-    ? Math.max(0, transformedCount - Math.max(0, destinationCount - beforeDestinationCount))
-    : beforeDestinationCount;
+  const skippedCount =
+    mode === "run"
+      ? Math.max(
+          0,
+          transformedCount -
+            Math.max(0, destinationCount - beforeDestinationCount),
+        )
+      : beforeDestinationCount;
 
-  if (mode === 'validate' && destinationCount !== sourceCount) {
-    validationErrors.push(`count mismatch: source=${sourceCount}, destination=${destinationCount}`);
+  if (mode === "validate" && destinationCount !== sourceCount) {
+    validationErrors.push(
+      `count mismatch: source=${sourceCount}, destination=${destinationCount}`,
+    );
   }
 
   return {
@@ -244,10 +270,15 @@ async function buildTableReport(
   };
 }
 
-async function writeReports(report: MigrationReport, reportDir: string): Promise<{ jsonPath: string; markdownPath: string }> {
+async function writeReports(
+  report: MigrationReport,
+  reportDir: string,
+): Promise<{ jsonPath: string; markdownPath: string }> {
   await fs.mkdir(reportDir, { recursive: true });
-  const stamp = report.startedAt.replace(/[:.]/g, '-');
-  const base = path.join(reportDir, `${stamp}-${report.mode}`);
+  const stamp = report.startedAt.replace(/[^0-9T-]/g, "-");
+  const SAFE_MODES = new Set(["dry-run", "run", "validate"]);
+  const safeMode = SAFE_MODES.has(report.mode) ? report.mode : "unknown";
+  const base = path.join(reportDir, `${stamp}-${safeMode}`);
   const jsonPath = `${base}.json`;
   const markdownPath = `${base}.md`;
   await fs.writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
@@ -264,13 +295,21 @@ async function main() {
   try {
     const tables: MigrationTableReport[] = [];
     for (const spec of tableSpecs) {
-      tables.push(await buildTableReport(options.mode, source, target, spec, options.sampleLimit));
+      tables.push(
+        await buildTableReport(
+          options.mode,
+          source,
+          target,
+          spec,
+          options.sampleLimit,
+        ),
+      );
     }
 
-    if (options.mode === 'validate' && await tableExists(target, 'tickets')) {
+    if (options.mode === "validate" && (await tableExists(target, "tickets"))) {
       const lifecycleErrors = await validateLifecycle(target);
       if (lifecycleErrors.length > 0) {
-        const ticketReport = tables.find((table) => table.table === 'tickets');
+        const ticketReport = tables.find((table) => table.table === "tickets");
         ticketReport?.validationErrors.push(...lifecycleErrors);
       }
     }
