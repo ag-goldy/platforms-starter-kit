@@ -31,15 +31,16 @@ async function streamBlob(attachment: typeof attachments.$inferSelect) {
     let contentType: string | null = null;
 
     if (isPathname) {
-      // Public blob: use getDownloadUrl with the pathname
-      // getDownloadUrl works with pathnames for public blobs
       const downloadUrl = await getDownloadUrl(pathname);
+      const downloadHost = new URL(downloadUrl).hostname;
+      if (!downloadHost.endsWith(".vercel-storage.com")) {
+        return new Response("Invalid storage URL", { status: 400 });
+      }
       blobResponse = await fetch(downloadUrl);
       contentType = blobResponse.headers.get("content-type");
     } else {
-      // Legacy full URL — validate it belongs to Vercel Blob before fetching
-      const storageUrl = new URL(attachment.storageKey);
-      if (!storageUrl.hostname.endsWith(".vercel-storage.com")) {
+      const storageHost = new URL(attachment.storageKey).hostname;
+      if (!storageHost.endsWith(".vercel-storage.com")) {
         return new Response("Invalid storage URL", { status: 400 });
       }
       blobResponse = await fetch(attachment.storageKey);

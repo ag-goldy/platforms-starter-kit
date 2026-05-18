@@ -60,9 +60,7 @@ export async function generatePasswordResetToken(
 /**
  * Validate a password reset token
  */
-export async function validatePasswordResetToken(
-  token: string,
-): Promise<{
+export async function validatePasswordResetToken(token: string): Promise<{
   tokenId: string;
   userId: string | null;
   platformAdminId: string | null;

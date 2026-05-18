@@ -274,11 +274,16 @@ async function writeReports(
   report: MigrationReport,
   reportDir: string,
 ): Promise<{ jsonPath: string; markdownPath: string }> {
-  await fs.mkdir(reportDir, { recursive: true });
+  // Prevent path traversal: resolve against cwd and reject any escaping path
+  const resolvedDir = path.resolve(process.cwd(), reportDir);
+  if (!resolvedDir.startsWith(process.cwd())) {
+    throw new Error(`Unsafe report directory: ${reportDir}`);
+  }
+  await fs.mkdir(resolvedDir, { recursive: true });
   const stamp = report.startedAt.replace(/[^0-9T-]/g, "-");
   const SAFE_MODES = new Set(["dry-run", "run", "validate"]);
   const safeMode = SAFE_MODES.has(report.mode) ? report.mode : "unknown";
-  const base = path.join(reportDir, `${stamp}-${safeMode}`);
+  const base = path.join(resolvedDir, `${stamp}-${safeMode}`);
   const jsonPath = `${base}.json`;
   const markdownPath = `${base}.md`;
   await fs.writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);

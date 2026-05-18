@@ -4,9 +4,7 @@ import { neon } from "@neondatabase/serverless";
 /**
  * Resolve organization ID by slug
  */
-async function resolveOrgBySlug(
-  slug: string,
-): Promise<{
+async function resolveOrgBySlug(slug: string): Promise<{
   id: string;
   subdomain: string;
   isActive: boolean;

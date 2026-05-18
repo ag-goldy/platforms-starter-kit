@@ -188,11 +188,9 @@ export default function GlobalArticlePage() {
         }),
       });
       if (!res.ok) {
-        const err = (await res
-          .json()
-          .catch(() => ({
-            error: "Failed to get AI response",
-          }))) as ErrorResponse;
+        const err = (await res.json().catch(() => ({
+          error: "Failed to get AI response",
+        }))) as ErrorResponse;
         const aiMessage = {
           id: (Date.now() + 1).toString(),
           type: "ai" as const,
