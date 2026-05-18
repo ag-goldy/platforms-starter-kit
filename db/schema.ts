@@ -60,6 +60,7 @@ export const ticketStatusEnum = pgEnum('ticket_status', [
   'WAITING_ON_CUSTOMER',
   'IN_PROGRESS',
   'RESOLVED',
+  'MERGED',
   'CLOSED',
 ]);
 
@@ -174,9 +175,16 @@ export const automationTriggerEnum = pgEnum('automation_trigger', [
 export const organizations = pgTable('organizations', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
+  customerId: text('customer_id').unique(),
   slug: text('slug').notNull().unique(),
   subdomain: text('subdomain').notNull().unique(),
+  platformRegion: text('platform_region').default('us').notNull(),
   allowPublicIntake: boolean('allow_public_intake').default(true).notNull(),
+  // Email-to-ticket settings
+  intakeEmailAddress: text('intake_email_address'),
+  autoReplyEnabled: boolean('auto_reply_enabled').default(true).notNull(),
+  autoReplyTemplate: text('auto_reply_template'),
+  emailDomain: text('email_domain'),
   storageQuotaBytes: integer('storage_quota_bytes').default(10737418240), // Default 10GB
   storageUsedBytes: integer('storage_used_bytes').default(0),
   businessHours: jsonb('business_hours').$type<{
@@ -197,9 +205,12 @@ export const organizations = pgTable('organizations', {
     team?: boolean;
     services?: boolean;
     knowledge?: boolean;
+    status_page?: boolean;
+    service_catalog?: boolean;
   } | null>(),
   dataRetentionDays: integer('data_retention_days'),
   retentionPolicy: text('retention_policy').$type<'KEEP_FOREVER' | 'DELETE_AFTER_DAYS' | 'ANONYMIZE_AFTER_DAYS' | null>(),
+  autoCloseResolvedDays: integer('auto_close_resolved_days').default(7).notNull(),
   requireTwoFactor: boolean('require_two_factor').default(false).notNull(),
   // SLA Policy - response/resolution hours per priority
   slaResponseHoursP1: integer('sla_response_hours_p1'),
@@ -215,6 +226,8 @@ export const organizations = pgTable('organizations', {
   disabledAt: timestamp('disabled_at'),
   disabledBy: text('disabled_by'),
   deletedAt: timestamp('deleted_at'),
+  deletionScheduledAt: timestamp('deletion_scheduled_at'),
+  deletionScheduledBy: text('deletion_scheduled_by'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -432,6 +445,23 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Platform Admins - Completely separate from tenant users
+// These are Atlas platform administrators, NOT tenant users
+export const platformAdmins = pgTable('platform_admins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role').notNull().default('ADMIN'), // 'ADMIN', 'SUPER_ADMIN', 'SUPPORT'
+  ipAllowlist: jsonb('ip_allowlist').$type<string[] | null>(),
+  isActive: boolean('is_active').default(true).notNull(),
+  twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
+  twoFactorSecret: text('two_factor_secret'),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const internalGroups = pgTable(
   'internal_groups',
   {
@@ -461,9 +491,8 @@ export const internalGroupMemberships = pgTable(
     groupId: uuid('group_id')
       .notNull()
       .references(() => internalGroups.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'cascade' }),
     role: internalGroupRoleEnum('role').default('MEMBER').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -516,7 +545,7 @@ export const tickets = pgTable('tickets', {
   assigneeId: uuid('assignee_id').references(() => users.id, {
     onDelete: 'set null',
   }),
-  mergedIntoId: uuid('merged_into_id'),
+  mergedIntoId: uuid('merged_into_id').references((): AnyPgColumn => tickets.id, { onDelete: 'set null' }),
   emailThreadId: text('email_thread_id'),
   firstResponseAt: timestamp('first_response_at'),
   resolvedAt: timestamp('resolved_at'),
@@ -539,6 +568,7 @@ export const ticketComments = pgTable('ticket_comments', {
     .notNull()
     .references(() => tickets.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   authorEmail: text('author_email'),
   content: text('content').notNull(),
   isInternal: boolean('is_internal').default(false).notNull(),
@@ -568,6 +598,7 @@ export const attachments = pgTable('attachments', {
   uploadedBy: uuid('uploaded_by').references(() => users.id, {
     onDelete: 'set null',
   }),
+  uploadedByPlatformAdmin: uuid('uploaded_by_platform_admin').references(() => platformAdmins.id, { onDelete: 'set null' }),
   scanStatus: text('scan_status').default('PENDING'), // 'PENDING', 'SCANNING', 'CLEAN', 'INFECTED', 'ERROR'
   scanResult: text('scan_result'), // Details about the scan (virus name, error message, etc.)
   scannedAt: timestamp('scanned_at'),
@@ -620,9 +651,8 @@ export const exportRequests = pgTable('export_requests', {
   orgId: uuid('org_id')
     .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
-  requestedById: uuid('requested_by_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  requestedById: uuid('requested_by_id').references(() => users.id, { onDelete: 'cascade' }),
+  requestedByPlatformAdminId: uuid('requested_by_platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   status: exportRequestStatusEnum('status').default('PENDING').notNull(),
   jobId: text('job_id'),
   filename: text('filename'),
@@ -638,6 +668,7 @@ export const exportRequests = pgTable('export_requests', {
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   orgId: uuid('org_id').references(() => organizations.id, {
     onDelete: 'set null',
   }),
@@ -653,7 +684,6 @@ export const auditLogs = pgTable('audit_logs', {
 
 export const ticketTokens = pgTable('ticket_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
-  token: text('token').notNull().unique(),
   tokenHash: text('token_hash').notNull().unique(),
   ticketId: uuid('ticket_id')
     .notNull()
@@ -771,6 +801,51 @@ export const ticketLinks = pgTable('ticket_links', {
   uniqueLink: unique().on(table.sourceTicketId, table.targetTicketId, table.linkType),
 }));
 
+// Ticket Subtasks
+export const ticketSubtasks = pgTable('ticket_subtasks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  status: text('status').notNull().default('pending'), // 'pending', 'in_progress', 'completed', 'cancelled'
+  priority: text('priority').default('normal'), // 'low', 'normal', 'high'
+  assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
+  assignedToPlatformAdmin: uuid('assigned_to_platform_admin').references(() => platformAdmins.id, { onDelete: 'set null' }),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdByPlatformAdmin: uuid('created_by_platform_admin').references(() => platformAdmins.id, { onDelete: 'set null' }),
+  completedAt: timestamp('completed_at'),
+  completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
+  completedByPlatformAdmin: uuid('completed_by_platform_admin').references(() => platformAdmins.id, { onDelete: 'set null' }),
+  dueDate: timestamp('due_date'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Ticket Dependencies
+export const ticketDependencies = pgTable('ticket_dependencies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  dependsOnTicketId: uuid('depends_on_ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  // 'blocks', 'blocked_by', 'relates_to' — defaults added to match schema-extensions canonical intent
+  dependencyType: text('dependency_type').notNull().default('blocks'),
+  createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint ported from schema-extensions.ts (Fix 3.1)
+  // Prevents duplicate dependency rows for the same ticket pair
+  uniqueDependency: unique('unique_dependency').on(table.ticketId, table.dependsOnTicketId),
+}));
+
 export const automationRules = pgTable('automation_rules', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id')
@@ -783,8 +858,28 @@ export const automationRules = pgTable('automation_rules', {
   conditions: jsonb('conditions').notNull(),
   actions: jsonb('actions').notNull(),
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdByPlatformAdmin: uuid('created_by_platform_admin').references(() => platformAdmins.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const automationRuns = pgTable('automation_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  ruleId: uuid('rule_id')
+    .notNull()
+    .references(() => automationRules.id, { onDelete: 'cascade' }),
+  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  triggerOn: automationTriggerEnum('trigger').notNull(),
+  matched: boolean('matched').default(false).notNull(),
+  status: text('status').default('SUCCESS').notNull(),
+  actionsExecuted: integer('actions_executed').default(0).notNull(),
+  durationMs: integer('duration_ms').default(0).notNull(),
+  error: text('error'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const userInvitations = pgTable('user_invitations', {
@@ -795,6 +890,7 @@ export const userInvitations = pgTable('user_invitations', {
   email: text('email').notNull(),
   role: userRoleEnum('role').notNull(),
   invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+  invitedByPlatformAdmin: uuid('invited_by_platform_admin').references(() => platformAdmins.id, { onDelete: 'set null' }),
   token: text('token').notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
   acceptedAt: timestamp('accepted_at'),
@@ -803,9 +899,8 @@ export const userInvitations = pgTable('user_invitations', {
 
 export const userSessions = pgTable('user_sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'cascade' }),
   sessionToken: text('session_token').notNull().unique(),
   deviceInfo: text('device_info'),
   ipAddress: text('ip_address'),
@@ -817,9 +912,8 @@ export const userSessions = pgTable('user_sessions', {
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
@@ -832,6 +926,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   tickets: many(tickets),
   auditLogs: many(auditLogs),
   automationRules: many(automationRules),
+  automationRuns: many(automationRuns),
   requestTypes: many(requestTypes),
   sites: many(sites),
   assets: many(assets),
@@ -953,6 +1048,35 @@ export const zabbixConfigs = pgTable('zabbix_configs', {
 export const zabbixConfigsRelations = relations(zabbixConfigs, ({ one }) => ({
   organization: one(organizations, {
     fields: [zabbixConfigs.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+// Statuspage.io Configuration Table
+export const statuspageConfigs = pgTable('statuspage_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  apiKey: text('api_key').notNull(),
+  pageId: text('page_id'),
+  pageUrl: text('page_url'),
+  isActive: boolean('is_active').default(true),
+  // Sync settings
+  autoSyncServices: boolean('auto_sync_services').default(false),
+  autoCreateIncidents: boolean('auto_create_incidents').default(false),
+  // Component mapping: serviceId -> statuspageComponentId
+  componentMappings: jsonb('component_mappings').$type<Record<string, string>>().default({}),
+  lastSyncedAt: timestamp('last_synced_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueOrgId: unique('statuspage_configs_org_id_unique').on(table.orgId),
+}));
+
+export const statuspageConfigsRelations = relations(statuspageConfigs, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [statuspageConfigs.orgId],
     references: [organizations.id],
   }),
 }));
@@ -1168,6 +1292,37 @@ export const ticketTagAssignmentsRelations = relations(ticketTagAssignments, ({ 
   }),
 }));
 
+export const automationRulesRelations = relations(automationRules, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [automationRules.orgId],
+    references: [organizations.id],
+  }),
+  runs: many(automationRuns),
+  createdByUser: one(users, {
+    fields: [automationRules.createdBy],
+    references: [users.id],
+  }),
+  createdByAdmin: one(platformAdmins, {
+    fields: [automationRules.createdByPlatformAdmin],
+    references: [platformAdmins.id],
+  }),
+}));
+
+export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [automationRuns.orgId],
+    references: [organizations.id],
+  }),
+  rule: one(automationRules, {
+    fields: [automationRuns.ruleId],
+    references: [automationRules.id],
+  }),
+  ticket: one(tickets, {
+    fields: [automationRuns.ticketId],
+    references: [tickets.id],
+  }),
+}));
+
 export const ticketMergesRelations = relations(ticketMerges, ({ one }) => ({
   sourceTicket: one(tickets, {
     fields: [ticketMerges.sourceTicketId],
@@ -1185,11 +1340,51 @@ export const ticketMergesRelations = relations(ticketMerges, ({ one }) => ({
   }),
 }));
 
+export const ticketSubtasksRelations = relations(ticketSubtasks, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [ticketSubtasks.ticketId],
+    references: [tickets.id],
+  }),
+  assignee: one(users, {
+    fields: [ticketSubtasks.assignedTo],
+    references: [users.id],
+  }),
+  assigneePlatformAdmin: one(platformAdmins, {
+    fields: [ticketSubtasks.assignedToPlatformAdmin],
+    references: [platformAdmins.id],
+  }),
+  createdBy: one(users, {
+    fields: [ticketSubtasks.createdBy],
+    references: [users.id],
+  }),
+  createdByPlatformAdmin: one(platformAdmins, {
+    fields: [ticketSubtasks.createdByPlatformAdmin],
+    references: [platformAdmins.id],
+  }),
+}));
+
+export const ticketDependenciesRelations = relations(ticketDependencies, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [ticketDependencies.ticketId],
+    references: [tickets.id],
+  }),
+  dependsOnTicket: one(tickets, {
+    fields: [ticketDependencies.dependsOnTicketId],
+    references: [tickets.id],
+  }),
+  createdBy: one(users, {
+    fields: [ticketDependencies.createdById],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type PlatformAdmin = typeof platformAdmins.$inferSelect;
+export type NewPlatformAdmin = typeof platformAdmins.$inferInsert;
 export type RequestType = typeof requestTypes.$inferSelect;
 export type NewRequestType = typeof requestTypes.$inferInsert;
 export type Site = typeof sites.$inferSelect;
@@ -1206,6 +1401,8 @@ export type Service = typeof services.$inferSelect;
 export type NewService = typeof services.$inferInsert;
 export type ZabbixConfig = typeof zabbixConfigs.$inferSelect;
 export type NewZabbixConfig = typeof zabbixConfigs.$inferInsert;
+export type StatuspageConfig = typeof statuspageConfigs.$inferSelect;
+export type NewStatuspageConfig = typeof statuspageConfigs.$inferInsert;
 export type ServiceMonitoringHistory = typeof serviceMonitoringHistory.$inferSelect;
 export type NewServiceMonitoringHistory = typeof serviceMonitoringHistory.$inferInsert;
 export type InternalGroup = typeof internalGroups.$inferSelect;
@@ -1242,6 +1439,8 @@ export type TicketMerge = typeof ticketMerges.$inferSelect;
 export type NewTicketMerge = typeof ticketMerges.$inferInsert;
 export type AutomationRule = typeof automationRules.$inferSelect;
 export type NewAutomationRule = typeof automationRules.$inferInsert;
+export type AutomationRun = typeof automationRuns.$inferSelect;
+export type NewAutomationRun = typeof automationRuns.$inferInsert;
 export type UserInvitation = typeof userInvitations.$inferSelect;
 export type NewUserInvitation = typeof userInvitations.$inferInsert;
 export type UserSession = typeof userSessions.$inferSelect;
@@ -1287,10 +1486,8 @@ export const notifications = pgTable('notifications', {
 
 export const notificationPreferences = pgTable('notification_preferences', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' })
-    .unique(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'cascade' }),
   emailEnabled: boolean('email_enabled').default(true).notNull(),
   emailDigestFrequency: text('email_digest_frequency').default('immediate').notNull(),
   emailTypes: jsonb('email_types').$type<string[]>().default([]),
@@ -1327,11 +1524,13 @@ export const ticketWatchers = pgTable('ticket_watchers', {
     .notNull()
     .references(() => tickets.id, { onDelete: 'cascade' }),
   userId: uuid('user_id')
-    .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  platformAdminId: uuid('platform_admin_id')
+    .references(() => platformAdmins.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
-  uniqueWatcher: unique().on(table.ticketId, table.userId),
+  uniqueUserWatcher: unique('unique_user_watcher').on(table.ticketId, table.userId),
+  uniqueAdminWatcher: unique('unique_admin_watcher').on(table.ticketId, table.platformAdminId),
 }));
 
 // Draft Tickets
@@ -1387,9 +1586,8 @@ export const kbArticles = pgTable('kb_articles', {
   excerpt: text('excerpt'),
   status: text('status').default('draft').notNull(), // draft, published, archived, pending_review
   visibility: text('visibility').default('public').notNull(), // public, internal, agents_only, org_only
-  authorId: uuid('author_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  authorId: uuid('author_id').references(() => users.id, { onDelete: 'cascade' }),
+  authorPlatformAdminId: uuid('author_platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   // For customer-created articles
   isAnonymous: boolean('is_anonymous').default(false), // Hide author identity for public articles
   submittedById: uuid('submitted_by_id').references(() => users.id, { onDelete: 'set null' }), // Track actual submitter if anonymous
@@ -1414,6 +1612,7 @@ export const kbArticleFeedback = pgTable('kb_article_feedback', {
     .notNull()
     .references(() => kbArticles.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   helpful: boolean('helpful').notNull(),
   comment: text('comment'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -1432,9 +1631,8 @@ export const kbArticleVersions = pgTable('kb_article_versions', {
   excerpt: text('excerpt'),
   categoryId: uuid('category_id').references(() => kbCategories.id, { onDelete: 'set null' }),
   changeSummary: text('change_summary'), // Brief description of changes
-  createdById: uuid('created_by_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'cascade' }),
+  createdByPlatformAdminId: uuid('created_by_platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   uniqueArticleVersion: unique().on(table.articleId, table.versionNumber),
@@ -2083,9 +2281,8 @@ export const timeEntries = pgTable('time_entries', {
   orgId: uuid('org_id')
     .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
   startedAt: timestamp('started_at').notNull(),
   endedAt: timestamp('ended_at').notNull(),
   durationMinutes: integer('duration_minutes').notNull(),
@@ -2437,7 +2634,12 @@ export const orgAIConfigs = pgTable('org_ai_configs', {
   // Content filtering
   blockPIIInResponses: boolean('block_pii_in_responses').default(true).notNull(),
   maxResponseTokens: integer('max_response_tokens').default(1000),
-  
+
+  // Internal notes in AI context (Fix 2.3)
+  // When false (default), isInternal=true ticket comments are stripped before
+  // sending to the external AI provider. Org admins can opt in explicitly.
+  includeInternalNotesInAI: boolean('include_internal_notes_in_ai').default(false).notNull(),
+
   // Rate limits (per user per hour)
   customerRateLimit: integer('customer_rate_limit').default(50),
   
@@ -2497,6 +2699,7 @@ export const aiAuditLog = pgTable('ai_audit_log', {
   // IP and request metadata
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}),
   
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -2542,6 +2745,10 @@ export type ActiveTimer = typeof activeTimers.$inferSelect;
 export type NewActiveTimer = typeof activeTimers.$inferInsert;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type NewTimeEntry = typeof timeEntries.$inferInsert;
+export type TicketSubtask = typeof ticketSubtasks.$inferSelect;
+export type NewTicketSubtask = typeof ticketSubtasks.$inferInsert;
+export type TicketDependency = typeof ticketDependencies.$inferSelect;
+export type NewTicketDependency = typeof ticketDependencies.$inferInsert;
 export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
@@ -2553,6 +2760,100 @@ export type NewDashboardWidget = typeof dashboardWidgets.$inferInsert;
 export type BulkOperation = typeof bulkOperations.$inferSelect;
 export type NewBulkOperation = typeof bulkOperations.$inferInsert;
 
+// CSAT Responses Table
+export const csatResponses = pgTable('csat_responses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  rating: integer('rating').notNull(),
+  comment: text('comment'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueTicketUser: unique().on(table.ticketId, table.userId),
+}));
+
+export const csatResponsesRelations = relations(csatResponses, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [csatResponses.ticketId],
+    references: [tickets.id],
+  }),
+  org: one(organizations, {
+    fields: [csatResponses.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [csatResponses.userId],
+    references: [users.id],
+  }),
+}));
+
+// CSAT Type Exports
+export type CSATResponse = typeof csatResponses.$inferSelect;
+export type NewCSATResponse = typeof csatResponses.$inferInsert;
+
+// Incident Management Tables
+export const incidents = pgTable('incidents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  status: text('status').notNull().default('investigating'), // investigating, identified, monitoring, resolved
+  severity: text('severity').notNull().default('minor'), // minor, major, critical
+  message: text('message').notNull(),
+  servicesAffected: text('services_affected').array(), // array of service IDs
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const incidentUpdates = pgTable('incident_updates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  incidentId: uuid('incident_id')
+    .notNull()
+    .references(() => incidents.id, { onDelete: 'cascade' }),
+  status: text('status').notNull(),
+  message: text('message').notNull(),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Incident Relations
+export const incidentsRelations = relations(incidents, ({ one, many }) => ({
+  org: one(organizations, {
+    fields: [incidents.orgId],
+    references: [organizations.id],
+  }),
+  createdByUser: one(users, {
+    fields: [incidents.createdBy],
+    references: [users.id],
+  }),
+  updates: many(incidentUpdates),
+}));
+
+export const incidentUpdatesRelations = relations(incidentUpdates, ({ one }) => ({
+  incident: one(incidents, {
+    fields: [incidentUpdates.incidentId],
+    references: [incidents.id],
+  }),
+  createdByUser: one(users, {
+    fields: [incidentUpdates.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // AI Type Exports
 export type OrgAIConfig = typeof orgAIConfigs.$inferSelect;
 export type NewOrgAIConfig = typeof orgAIConfigs.$inferInsert;
@@ -2560,3 +2861,208 @@ export type OrgAIMemory = typeof orgAIMemory.$inferSelect;
 export type NewOrgAIMemory = typeof orgAIMemory.$inferInsert;
 export type AIAuditLog = typeof aiAuditLog.$inferSelect;
 export type NewAIAuditLog = typeof aiAuditLog.$inferInsert;
+
+
+// API Keys Table
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(),
+  prefix: text('prefix').notNull(),
+  permissions: text('permissions').$type<string[]>().default([]),
+  lastUsedAt: timestamp('last_used_at'),
+  expiresAt: timestamp('expires_at'),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  isActive: boolean('is_active').default(true),
+});
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  org: one(organizations, {
+    fields: [apiKeys.orgId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [apiKeys.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Retention Policies Table
+export const retentionPolicies = pgTable('retention_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  dataType: text('data_type').notNull(),
+  retentionDays: integer('retention_days').notNull(),
+  autoDelete: boolean('auto_delete').default(false),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueOrgDataType: unique().on(table.orgId, table.dataType),
+}));
+
+export const retentionPoliciesRelations = relations(retentionPolicies, ({ one }) => ({
+  org: one(organizations, {
+    fields: [retentionPolicies.orgId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [retentionPolicies.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Type Exports
+export type Incident = typeof incidents.$inferSelect;
+export type NewIncident = typeof incidents.$inferInsert;
+export type IncidentUpdate = typeof incidentUpdates.$inferSelect;
+export type NewIncidentUpdate = typeof incidentUpdates.$inferInsert;
+
+export type KBArticleVersion = typeof kbArticleVersions.$inferSelect;
+export type NewKBArticleVersion = typeof kbArticleVersions.$inferInsert;
+
+export type MaintenanceWindow = typeof maintenanceWindows.$inferSelect;
+export type NewMaintenanceWindow = typeof maintenanceWindows.$inferInsert;
+
+export type APIKey = typeof apiKeys.$inferSelect;
+export type NewAPIKey = typeof apiKeys.$inferInsert;
+
+export type RetentionPolicy = typeof retentionPolicies.$inferSelect;
+export type NewRetentionPolicy = typeof retentionPolicies.$inferInsert;
+
+export type CSATResponseType = typeof csatResponses.$inferSelect;
+export type NewCSATResponseType = typeof csatResponses.$inferInsert;
+
+// AI Usage Tracking Table
+export const aiUsage = pgTable('ai_usage', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  interface: text('interface').notNull(), // 'public', 'customer', 'admin'
+  modelUsed: text('model_used').notNull(),
+  promptTokens: integer('prompt_tokens').notNull().default(0),
+  completionTokens: integer('completion_tokens').notNull().default(0),
+  totalTokens: integer('total_tokens').notNull().default(0),
+  estimatedCost: decimal('estimated_cost', { precision: 10, scale: 6 }).notNull().default('0'),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  platformAdminId: uuid('platform_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const aiUsageRelations = relations(aiUsage, ({ one }) => ({
+  org: one(organizations, {
+    fields: [aiUsage.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [aiUsage.userId],
+    references: [users.id],
+  }),
+}));
+
+export type AIUsage = typeof aiUsage.$inferSelect;
+export type NewAIUsage = typeof aiUsage.$inferInsert;
+
+// Scheduled Ticket Actions Table
+export const scheduledTicketActions = pgTable('scheduled_ticket_actions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(), // 'send_followup', 'escalate', 'auto_close'
+  scheduledFor: timestamp('scheduled_for').notNull(),
+  executed: boolean('executed').default(false).notNull(),
+  executedAt: timestamp('executed_at'),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const scheduledTicketActionsRelations = relations(scheduledTicketActions, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [scheduledTicketActions.ticketId],
+    references: [tickets.id],
+  }),
+  org: one(organizations, {
+    fields: [scheduledTicketActions.orgId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [scheduledTicketActions.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Org Quotas Table
+export const orgQuotas = pgTable('org_quotas', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' })
+    .unique(),
+  plan: text('plan').notNull().default('free'),
+  maxTicketsPerMonth: integer('max_tickets_per_month').notNull().default(50),
+  maxUsers: integer('max_users').notNull().default(3),
+  maxStorageMB: integer('max_storage_mb').notNull().default(100),
+  maxAIQueriesPerMonth: integer('max_ai_queries_per_month').notNull().default(100),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const orgQuotasRelations = relations(orgQuotas, ({ one }) => ({
+  org: one(organizations, {
+    fields: [orgQuotas.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+// Org Usage Table
+export const orgUsage = pgTable('org_usage', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  month: text('month').notNull(),
+  ticketsCreated: integer('tickets_created').default(0),
+  usersCount: integer('users_count').default(0),
+  storageMB: decimal('storage_mb', { precision: 10, scale: 2 }).default('0'),
+  aiQueries: integer('ai_queries').default(0),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  orgMonthUnique: unique().on(table.orgId, table.month),
+}));
+
+export const orgUsageRelations = relations(orgUsage, ({ one }) => ({
+  org: one(organizations, {
+    fields: [orgUsage.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+// Re-export tables from schema subdirectory that are referenced by other modules
+export { slaPolicies, slaPoliciesRelations } from './schema/sla';
+export { ticketMessages, ticketEvents } from './schema/tickets';
+
+// Type Exports
+export type ScheduledTicketAction = typeof scheduledTicketActions.$inferSelect;
+export type NewScheduledTicketAction = typeof scheduledTicketActions.$inferInsert;
+
+export type OrgQuota = typeof orgQuotas.$inferSelect;
+export type NewOrgQuota = typeof orgQuotas.$inferInsert;
+
+export type OrgUsage = typeof orgUsage.$inferSelect;
+export type NewOrgUsage = typeof orgUsage.$inferInsert;
