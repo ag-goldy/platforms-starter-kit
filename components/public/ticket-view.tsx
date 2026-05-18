@@ -15,7 +15,7 @@ import { formatDateTime } from '@/lib/utils/date';
 
 interface PublicTicketViewProps {
   ticket: Ticket & {
-    organization: { name: string };
+    organization: { name: string } | null;
     requester: { name: string | null; email: string } | null;
     assignee: { name: string | null; email: string } | null;
     comments: (TicketComment & {
@@ -219,4 +219,3 @@ export function PublicTicketView({
     </div>
   );
 }
-

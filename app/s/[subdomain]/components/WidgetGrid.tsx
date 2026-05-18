@@ -1,21 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { TicketInboxWidget } from './TicketInboxWidget';
 import { HealthStatusWidget } from './HealthStatusWidget';
 import { KBSuggestionsWidget } from './KBSuggestionsWidget';
 import { TeamActivityWidget } from './TeamActivityWidget';
 import { QuickActionsWidget } from './QuickActionsWidget';
-import { AssetAlertsWidget } from './AssetAlertsWidget';
 import { useCustomerPortal, WidgetConfig } from '@/components/customer/CustomerPortalContext';
 
 interface WidgetGridProps {
   subdomain: string;
-  org: any;
+  org: {
+    id: string;
+    name: string;
+    subdomain: string;
+    slug: string;
+    logoUrl?: string | null;
+  };
 }
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -25,7 +30,7 @@ const containerVariants = {
   },
 };
 
-const widgetVariants = {
+const widgetVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -39,8 +44,7 @@ const widgetVariants = {
 };
 
 export function WidgetGrid({ subdomain, org }: WidgetGridProps) {
-  const { widgetLayout, updateWidgetLayout } = useCustomerPortal();
-  const [isDragging, setIsDragging] = useState(false);
+  const { widgetLayout } = useCustomerPortal();
 
   // For now, use a static grid layout
   // In a full implementation, this would use react-grid-layout
@@ -58,8 +62,6 @@ export function WidgetGrid({ subdomain, org }: WidgetGridProps) {
         return <TeamActivityWidget {...props} />;
       case 'quick_actions':
         return <QuickActionsWidget {...props} />;
-      case 'asset_alerts':
-        return <AssetAlertsWidget {...props} />;
       default:
         return null;
     }

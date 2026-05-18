@@ -15,7 +15,6 @@ export async function GET(
     }
 
     const { id } = await params;
-    console.log('Fetching ticket:', id);
 
     // Get ticket without relations
     const ticket = await db.query.tickets.findFirst({
@@ -23,11 +22,12 @@ export async function GET(
     });
 
     if (!ticket) {
-      console.log('Ticket not found:', id);
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    console.log('Ticket found, orgId:', ticket.orgId);
+    if (!ticket.orgId) {
+      return NextResponse.json({ error: 'Public tickets cannot be fetched through this endpoint' }, { status: 400 });
+    }
 
     // Check if user is a member of the ticket's organization
     const membership = await db.query.memberships.findFirst({
@@ -39,7 +39,6 @@ export async function GET(
     });
 
     if (!membership) {
-      console.log('Access denied: User not member of org', session.user.id, ticket.orgId);
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -64,13 +63,13 @@ export async function GET(
     // Get comment authors separately
     const commentAuthors = await Promise.all(
       comments.map(async (c) => {
-        const author = c.authorId ? await db.query.users.findFirst({
-          where: eq(users.id, c.authorId),
-          columns: { name: true },
+        const author = c.userId ? await db.query.users.findFirst({
+          where: eq(users.id, c.userId),
+          columns: { name: true, email: true },
         }) : null;
         return {
           id: c.id,
-          author: author?.name || 'Unknown',
+          author: author?.name || c.authorEmail || 'Unknown',
           content: c.content,
           isInternal: c.isInternal || false,
           createdAt: c.createdAt,
@@ -81,13 +80,6 @@ export async function GET(
     // Get attachments
     const ticketAttachments = await db.query.attachments.findMany({
       where: eq(attachments.ticketId, id),
-    });
-
-    console.log('Ticket data assembled:', {
-      id: ticket.id,
-      key: ticket.key,
-      comments: commentAuthors.length,
-      attachments: ticketAttachments.length,
     });
 
     return NextResponse.json({
@@ -112,14 +104,14 @@ export async function GET(
       attachments: ticketAttachments.map((a) => ({
         id: a.id,
         name: a.filename,
-        size: a.sizeBytes,
-        url: a.url,
+        size: a.size,
+        url: `/api/attachments/${a.id}`,
       })),
     });
   } catch (error) {
     console.error('Error fetching ticket:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch ticket', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to fetch ticket' },
       { status: 500 }
     );
   }

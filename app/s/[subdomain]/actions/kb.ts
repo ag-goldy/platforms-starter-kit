@@ -1,25 +1,12 @@
 'use server';
 
 import { db } from '@/db';
-import { kbArticles, kbCategories, organizations, users } from '@/db/schema';
+import { kbArticles } from '@/db/schema';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { and, eq, desc, asc, sql } from 'drizzle-orm';
+import { and, eq, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
-
-// Simple slugify function
-function slugify(text: string): string {
-  return text
-    .toString()
-    .normalize('NFD')         // Split accented characters
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-');  // Replace multiple - with single -
-}
+import { generateKbKey } from '@/lib/kb/keys';
 
 // Schema for customer KB article submission
 const submitKBArticleSchema = z.object({
@@ -30,35 +17,6 @@ const submitKBArticleSchema = z.object({
   isAnonymous: z.boolean().default(false),
   tags: z.array(z.string()).optional(),
 });
-
-// Generate a unique slug
-async function generateUniqueSlug(title: string, orgId?: string): Promise<string> {
-  const baseSlug = slugify(title);
-  let slug = baseSlug;
-  let counter = 1;
-  
-  while (true) {
-    const existing = await db.query.kbArticles.findFirst({
-      where: and(
-        eq(kbArticles.slug, slug),
-        orgId ? eq(kbArticles.orgId, orgId) : undefined
-      ),
-    });
-    
-    if (!existing) {
-      return slug;
-    }
-    
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-    
-    if (counter > 100) {
-      // Fallback to random suffix
-      slug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
-      return slug;
-    }
-  }
-}
 
 /**
  * Submit a new KB article (customer)
@@ -71,7 +29,7 @@ export async function submitCustomerKBArticleAction(
   const { user } = await requireOrgMemberRole(orgId);
   const validated = submitKBArticleSchema.parse(data);
 
-  const slug = await generateUniqueSlug(validated.title, orgId);
+  const slug = await generateKbKey();
 
   const [article] = await db
     .insert(kbArticles)

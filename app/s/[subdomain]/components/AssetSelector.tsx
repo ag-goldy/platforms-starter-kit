@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Server,
   Wifi,
@@ -12,7 +12,7 @@ import {
   X,
   Link,
   Check,
-  AlertCircle,
+
   Database,
   Cloud,
 } from 'lucide-react';
@@ -37,29 +37,28 @@ interface AssetSelectorProps {
   onClose: () => void;
 }
 
-export function AssetSelector({ orgId, subdomain, linkedAssets, onLink, onUnlink, onClose }: AssetSelectorProps) {
+export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }: AssetSelectorProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'zabbix' | 'manual'>('all');
 
   useEffect(() => {
-    fetchAssets();
-  }, [orgId]);
-
-  const fetchAssets = async () => {
-    try {
-      const res = await fetch(`/api/assets/org/${orgId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAssets(data.assets || []);
+    const fetchAssetsData = async () => {
+      try {
+        const res = await fetch(`/api/assets/org/${orgId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAssets(data.assets || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch assets:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch assets:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchAssetsData();
+  }, [orgId]);
 
   const getAssetIcon = (type: string) => {
     switch (type?.toUpperCase()) {
@@ -161,7 +160,7 @@ export function AssetSelector({ orgId, subdomain, linkedAssets, onLink, onUnlink
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'all' | 'zabbix' | 'manual')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-stone-900 text-white'

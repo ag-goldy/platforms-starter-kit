@@ -5,13 +5,13 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 interface SlideOverState {
   isOpen: boolean;
   type: 'ticket' | 'kb' | 'team' | 'settings' | null;
-  data: any;
+  data: unknown;
 }
 
 interface CustomerPortalContextType {
   // Slide-over state
   slideOver: SlideOverState;
-  openSlideOver: (type: SlideOverState['type'], data?: any) => void;
+  openSlideOver: (type: SlideOverState['type'], data?: unknown) => void;
   closeSlideOver: () => void;
   isSlideOverOpen: boolean;
 
@@ -32,9 +32,9 @@ interface CustomerPortalContextType {
 
 export interface WidgetConfig {
   id: string;
-  type: 'ticket_inbox' | 'health_status' | 'kb_suggestions' | 'team_activity' | 'asset_alerts' | 'quick_actions';
+  type: 'ticket_inbox' | 'health_status' | 'kb_suggestions' | 'team_activity' | 'quick_actions';
   position: { x: number; y: number; w: number; h: number };
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }
 
 const defaultLayout: WidgetConfig[] = [
@@ -54,7 +54,7 @@ export function CustomerPortalProvider({ children }: { children: React.ReactNode
     data: null,
   });
 
-  const openSlideOver = useCallback((type: SlideOverState['type'], data?: any) => {
+  const openSlideOver = useCallback((type: SlideOverState['type'], data?: unknown) => {
     setSlideOver({ isOpen: true, type, data });
   }, []);
 

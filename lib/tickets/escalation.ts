@@ -1,8 +1,98 @@
 'use server';
 
 import { db } from '@/db';
-import { tickets, escalationRules, ticketComments, users } from '@/db/schema';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { escalationRules, notifications, ticketComments, tickets, ticketTagAssignments } from '@/db/schema';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { calculateSLAClock } from '@/lib/tickets/sla';
+
+const openSLAStatuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_ON_CUSTOMER'] as const;
+type EscalationTrigger = 'sla_warning' | 'sla_breach';
+
+function escalationMarker(trigger: EscalationTrigger, metric: 'response' | 'resolution') {
+  return `[atlas:${trigger}:${metric}]`;
+}
+
+async function hasEscalationMarker(ticketId: string, marker: string): Promise<boolean> {
+  const existing = await db.query.ticketComments.findFirst({
+    where: and(
+      eq(ticketComments.ticketId, ticketId),
+      sql`${ticketComments.content} like ${`%${marker}%`}`
+    ),
+    columns: { id: true },
+  });
+  return Boolean(existing);
+}
+
+async function addSystemEscalationComment(ticketId: string, marker: string, content: string): Promise<boolean> {
+  if (await hasEscalationMarker(ticketId, marker)) {
+    return false;
+  }
+
+  await db.insert(ticketComments).values({
+    ticketId,
+    content: `${marker} ${content}`,
+    isInternal: true,
+  });
+  return true;
+}
+
+async function applyEscalationActions(params: {
+  ticket: { id: string; key: string; orgId: string | null; assigneeId: string | null; priority: 'P1' | 'P2' | 'P3' | 'P4' };
+  actions: {
+    notifyUserIds?: string[];
+    changePriority?: 'P1' | 'P2' | 'P3' | 'P4';
+    addTags?: string[];
+    assignToUserId?: string;
+    addComment?: string;
+  };
+  now: Date;
+}) {
+  const { ticket, actions, now } = params;
+  const updateData: Partial<typeof tickets.$inferInsert> = { updatedAt: now };
+
+  if (actions.changePriority && actions.changePriority !== ticket.priority) {
+    updateData.priority = actions.changePriority;
+  }
+  if (actions.assignToUserId) {
+    updateData.assigneeId = actions.assignToUserId;
+  }
+
+  await db.update(tickets).set(updateData).where(eq(tickets.id, ticket.id));
+
+  if (actions.addComment) {
+    await db.insert(ticketComments).values({
+      ticketId: ticket.id,
+      userId: actions.assignToUserId || ticket.assigneeId || null,
+      content: actions.addComment.replace(/\{ticketKey\}/g, ticket.key),
+      isInternal: true,
+      createdAt: now,
+    });
+  }
+
+  if (actions.addTags?.length) {
+    await db.insert(ticketTagAssignments).values(
+      actions.addTags.map((tagId) => ({
+        ticketId: ticket.id,
+        tagId,
+        assignedById: actions.assignToUserId || null,
+      }))
+    ).onConflictDoNothing();
+  }
+
+  const orgId = ticket.orgId;
+  if (orgId && actions.notifyUserIds?.length) {
+    await db.insert(notifications).values(
+      actions.notifyUserIds.map((userId) => ({
+        userId,
+        type: 'TICKET_SLA_WARNING' as const,
+        title: `SLA escalation for ${ticket.key}`,
+        message: `Ticket ${ticket.key} matched an escalation rule.`,
+        data: { ticketId: ticket.id, orgId },
+        link: `/app/tickets/${ticket.id}`,
+      }))
+    ).onConflictDoNothing();
+  }
+}
 
 /**
  * Check and process escalation rules for tickets
@@ -91,37 +181,7 @@ export async function processEscalationRules(orgId?: string) {
 
       for (const ticket of matchingTickets) {
         try {
-          // Execute actions
-          const updateData: Partial<typeof tickets.$inferInsert> = {
-            updatedAt: now,
-          };
-
-          if (actions.changePriority) {
-            updateData.priority = actions.changePriority;
-          }
-
-          if (actions.assignToUserId) {
-            updateData.assigneeId = actions.assignToUserId;
-          }
-
-          // Update ticket
-          await db
-            .update(tickets)
-            .set(updateData)
-            .where(eq(tickets.id, ticket.id));
-
-          // Add comment if specified
-          if (actions.addComment) {
-            await db.insert(ticketComments).values({
-              ticketId: ticket.id,
-              userId: actions.assignToUserId || ticket.assigneeId || 'system',
-              content: actions.addComment.replace(/\{ticketKey\}/g, ticket.key),
-              isInternal: true,
-              createdAt: now,
-            });
-          }
-
-          // TODO: Send notifications to notifyUserIds and notifyGroupIds
+          await applyEscalationActions({ ticket: { ...ticket, orgId: rule.orgId }, actions, now });
 
           ruleResult.escalations++;
         } catch (error) {
@@ -142,47 +202,67 @@ export async function processEscalationRules(orgId?: string) {
  * Check for SLA breach warnings and breaches
  */
 export async function checkSLAEscalations(orgId?: string) {
-  // Use SQL NOW() function instead of JavaScript Date to avoid type issues
-  // Find tickets approaching SLA breach (warning) - 80% of target time elapsed
-  const warningTickets = await db.query.tickets.findMany({
+  const now = new Date();
+  const candidateTickets = await db.query.tickets.findMany({
     where: and(
       orgId ? eq(tickets.orgId, orgId) : undefined,
-      eq(tickets.status, 'OPEN'),
-      sql`${tickets.slaResponseTargetHours} IS NOT NULL`,
-      sql`${tickets.firstResponseAt} IS NULL`,
-      sql`EXTRACT(EPOCH FROM (NOW() - ${tickets.createdAt})) / 3600 > (${tickets.slaResponseTargetHours} * 0.8)`
+      inArray(tickets.status, [...openSLAStatuses]),
+      sql`(${tickets.slaResponseTargetHours} IS NOT NULL OR ${tickets.slaResolutionTargetHours} IS NOT NULL)`
     ),
     columns: {
       id: true,
       key: true,
       subject: true,
       orgId: true,
+      status: true,
+      priority: true,
+      createdAt: true,
+      firstResponseAt: true,
+      resolvedAt: true,
+      slaPausedAt: true,
       slaResponseTargetHours: true,
+      slaResolutionTargetHours: true,
     },
   });
 
-  // Find tickets that have breached SLA
-  const breachedTickets = await db.query.tickets.findMany({
-    where: and(
-      orgId ? eq(tickets.orgId, orgId) : undefined,
-      eq(tickets.status, 'OPEN'),
-      sql`${tickets.slaResponseTargetHours} IS NOT NULL`,
-      sql`${tickets.firstResponseAt} IS NULL`,
-      sql`EXTRACT(EPOCH FROM (NOW() - ${tickets.createdAt})) / 3600 > ${tickets.slaResponseTargetHours}`
-    ),
-    columns: {
-      id: true,
-      key: true,
-      subject: true,
-      orgId: true,
-      priority: true,
-    },
-  });
+  const warnings: typeof candidateTickets = [];
+  const breaches: typeof candidateTickets = [];
+
+  for (const ticket of candidateTickets) {
+    const clock = calculateSLAClock({
+      createdAt: ticket.createdAt,
+      firstResponseAt: ticket.firstResponseAt,
+      resolvedAt: ticket.resolvedAt,
+      now,
+      status: ticket.status,
+      responseTargetHours: ticket.slaResponseTargetHours,
+      resolutionTargetHours: ticket.slaResolutionTargetHours,
+      pausedAt: ticket.slaPausedAt,
+    });
+
+    if (clock.responseStatus === 'warning' || clock.resolutionStatus === 'warning') {
+      const metric = clock.responseStatus === 'warning' ? 'response' : 'resolution';
+      const added = await addSystemEscalationComment(
+        ticket.id,
+        escalationMarker('sla_warning', metric),
+        `SLA ${metric} warning for ticket ${ticket.key}.`
+      );
+      if (added) warnings.push(ticket);
+    }
+
+    if (clock.responseStatus === 'breached' || clock.resolutionStatus === 'breached') {
+      const metric = clock.responseStatus === 'breached' ? 'response' : 'resolution';
+      const added = await addSystemEscalationComment(
+        ticket.id,
+        escalationMarker('sla_breach', metric),
+        `SLA ${metric} breached for ticket ${ticket.key}.`
+      );
+      if (added) breaches.push(ticket);
+    }
+  }
 
   return {
-    warnings: warningTickets,
-    breaches: breachedTickets,
+    warnings,
+    breaches,
   };
 }
-
-

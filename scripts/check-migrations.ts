@@ -18,7 +18,7 @@ async function main() {
       LIMIT 10
     `);
     console.log('\nRecent migrations:');
-    migrations.forEach((m: any) => {
+    migrations.forEach((m: { id: string; hash: string; created_at: string }) => {
       console.log(`  - ${m.id}: ${m.hash.slice(0, 16)}... (${m.created_at})`);
     });
     
@@ -30,7 +30,7 @@ async function main() {
       ORDER BY ordinal_position
     `);
     console.log('\nAssets table columns:');
-    columns.forEach((c: any) => {
+    columns.forEach((c: { column_name: string; data_type: string }) => {
       console.log(`  - ${c.column_name}: ${c.data_type}`);
     });
     

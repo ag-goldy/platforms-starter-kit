@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,12 @@ export function ServicesRefresh({ children, refreshInterval = 30000 }: ServicesR
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     setLastRefresh(new Date());
     router.refresh();
     setTimeout(() => setIsRefreshing(false), 600);
-  };
+  }, [router]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -28,7 +28,7 @@ export function ServicesRefresh({ children, refreshInterval = 30000 }: ServicesR
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [refreshInterval]);
+  }, [refreshInterval, handleRefresh]);
 
   return (
     <div className="space-y-4">

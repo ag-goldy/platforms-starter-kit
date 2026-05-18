@@ -13,16 +13,26 @@ import {
   ChevronRight,
   LayoutDashboard,
   Lock,
-  Server,
-  HardDrive,
   Settings2,
 } from 'lucide-react';
 import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
+interface OrgFeatures {
+  assets?: boolean;
+  team?: boolean;
+  knowledge?: boolean;
+  services?: boolean;
+}
+
+interface Org {
+  id: string;
+  features?: OrgFeatures;
+}
+
 interface ContextSidebarProps {
   subdomain: string;
-  org: any;
+  org: Org;
 }
 
 interface NavItem {
@@ -44,7 +54,7 @@ export function ContextSidebar({ subdomain, org }: ContextSidebarProps) {
   const pathname = usePathname();
   const currentView = searchParams.get('view') || pathname?.split('/').pop() || 'dashboard';
 
-  const features = org.features || {};
+  void org.features;
 
   useEffect(() => {
     async function fetchUserData() {
@@ -117,23 +127,11 @@ export function ContextSidebar({ subdomain, org }: ContextSidebarProps) {
       requiresAdmin: true,
     },
     {
-      id: 'assets',
-      label: 'Assets',
-      icon: <HardDrive className="w-5 h-5" />,
-      view: 'assets',
-    },
-    {
       id: 'management',
       label: 'Management',
       icon: <Settings2 className="w-5 h-5" />,
       view: 'management',
       requiresAdmin: true,
-    },
-    {
-      id: 'infrastructure',
-      label: 'Infrastructure',
-      icon: <Server className="w-5 h-5" />,
-      view: 'infrastructure',
     },
     {
       id: 'status',
@@ -155,7 +153,7 @@ export function ContextSidebar({ subdomain, org }: ContextSidebarProps) {
     if (item.view === 'team') {
       console.log('Opening team slide-over');
       openSlideOver('team');
-    } else if (item.view === 'assets' || item.view === 'infrastructure' || item.view === 'management') {
+    } else if (item.view === 'management') {
       // Navigate to full page - guard against navigating to same page
       const targetPath = `/s/${subdomain}/${item.view}`;
       if (pathname !== targetPath && !pathname?.startsWith(targetPath + '/')) {
@@ -172,7 +170,7 @@ export function ContextSidebar({ subdomain, org }: ContextSidebarProps) {
       console.log('Navigating to:', url);
       try {
         router.push(url);
-      } catch (e) {
+      } catch {
         console.error('Router push failed, using window.location');
         window.location.href = url;
       }
@@ -225,9 +223,7 @@ export function ContextSidebar({ subdomain, org }: ContextSidebarProps) {
                       {item.badge}
                     </span>
                   )}
-                  {isDisabled && (
-                    <Lock className="w-3 h-3 text-stone-400" title="Admin access required" />
-                  )}
+                  {isDisabled && <Lock className="w-3 h-3 text-stone-400" />}
                 </>
               )}
               {isCollapsed && item.badge && (

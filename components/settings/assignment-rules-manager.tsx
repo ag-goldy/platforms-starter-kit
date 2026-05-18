@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,7 @@ import {
   toggleAssignmentRule,
   type AssignmentRuleInput,
 } from '@/app/app/actions/assignment-rules';
-import type { ticketAssignmentRules, users, internalGroups } from '@/db/schema';
+import type { ticketAssignmentRules } from '@/db/schema';
 
 type Rule = typeof ticketAssignmentRules.$inferSelect & {
   assignee?: { id: string; name: string | null; email: string } | null;
@@ -55,11 +55,11 @@ const STRATEGY_LABELS: Record<string, string> = {
 export function AssignmentRulesManager({
   orgId,
   initialRules,
-  users,
-  groups,
+  users: _users,
+  groups: _groups,
 }: AssignmentRulesManagerProps) {
   const router = useRouter();
-  const [rules, setRules] = useState<Rule[]>(initialRules);
+  const [rules] = useState<Rule[]>(initialRules);
   const [isOpen, setIsOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isLoading, setIsLoading] = useState(false);

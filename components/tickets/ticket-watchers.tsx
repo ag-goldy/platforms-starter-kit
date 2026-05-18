@@ -17,7 +17,7 @@ interface TicketWatchersProps {
 }
 
 export function TicketWatchers({ ticketId }: TicketWatchersProps) {
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
   const [watchers, setWatchers] = useState<Watcher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
@@ -72,7 +72,7 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
       );
     } catch (error) {
       console.error('Failed to toggle watcher:', error);
-      error('Failed to update watcher status');
+      showError('Failed to update watcher status');
     } finally {
       setIsToggling(false);
     }

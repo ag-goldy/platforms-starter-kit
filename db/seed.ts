@@ -1,140 +1,77 @@
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+config({ path: resolve(process.cwd(), '.env.local') });
+config({ path: resolve(process.cwd(), '.env') }); // Fallback
 import { db } from './index';
-import { organizations, users, memberships } from './schema';
-import bcrypt from 'bcryptjs';
-import { and, eq } from 'drizzle-orm';
+import { platformAdmins, users, organizations, orgSettings, memberships, teams } from './schema/index';
+import * as bcrypt from 'bcryptjs';
 
-// Configuration - Update these to set new passwords
-const NEW_PASSWORDS = {
-  'ag@agrnetworks.com': 'Admin@AGR2025!',
-  'help@agrnetworks.com': 'Help@AGR2025!',
-};
+async function main() {
+  console.log('Seeding database...');
 
-async function seed() {
-  dotenv.config({ path: '.env.local' });
-  console.log('Starting seed...');
+  try {
+    // Clean up existing data for seed
+    await db.delete(platformAdmins).execute();
+    await db.delete(organizations).execute();
+    await db.delete(users).execute();
 
-  // Reset/create ag@agrnetworks.com (Internal Admin)
-  const agPasswordHash = await bcrypt.hash(NEW_PASSWORDS['ag@agrnetworks.com'], 10);
-  const existingAg = await db.query.users.findFirst({
-    where: eq(users.email, 'ag@agrnetworks.com'),
-  });
+    const hashedPassword = await bcrypt.hash('Password123!', 10);
 
-  let agUser;
-  if (existingAg) {
-    await db
-      .update(users)
-      .set({
-        passwordHash: agPasswordHash,
-        name: 'AG Administrator',
-        isInternal: true,
-      })
-      .where(eq(users.email, 'ag@agrnetworks.com'));
-    agUser = await db.query.users.findFirst({
-      where: eq(users.email, 'ag@agrnetworks.com'),
-    });
-    console.log('✓ Reset password for:', agUser?.email);
-  } else {
-    [agUser] = await db
-      .insert(users)
-      .values({
-        email: 'ag@agrnetworks.com',
-        name: 'AG Administrator',
-        passwordHash: agPasswordHash,
-        isInternal: true,
-        emailVerified: new Date(),
-      })
-      .returning();
-    console.log('✓ Created user:', agUser.email);
+    // 1. Platform Super Admin
+    console.log('Creating platform super-admin...');
+    await db.insert(platformAdmins).values({
+      email: 'admin@atlas.com',
+      hashedPassword,
+      role: 'SUPER_ADMIN',
+      status: 'active',
+    }).execute();
+
+    // 2. Demo Organization
+    console.log('Creating demo organization...');
+    const [org] = await db.insert(organizations).values({
+      name: 'Acme Corp',
+      slug: 'acme',
+      status: 'active',
+      plan: 'pro',
+    }).returning().execute();
+
+    await db.insert(orgSettings).values({
+      orgId: org.id,
+      brandingJson: { primaryColor: '#FF6600' },
+      featuresJson: { kbEnabled: true, assetsEnabled: true },
+    }).execute();
+
+    // 3. Team
+    const [team] = await db.insert(teams).values({
+      orgId: org.id,
+      name: 'IT Support',
+    }).returning().execute();
+
+    // 4. Owner User
+    console.log('Creating owner user...');
+    const [owner] = await db.insert(users).values({
+      email: 'owner@acme.com',
+      hashedPassword,
+      status: 'active',
+    }).returning().execute();
+
+    await db.insert(memberships).values({
+      userId: owner.id,
+      orgId: org.id,
+      role: 'owner',
+      teamId: team.id,
+    }).execute();
+
+    console.log('✅ Seed completed successfully.');
+    console.log('Login with: admin@atlas.com / Password123!');
+    console.log('Login with: owner@acme.com / Password123!');
+  } catch (error) {
+    console.error('❌ Seed failed:', error);
+    process.exit(1);
   }
 
-  // Reset/create help@agrnetworks.com (Help Desk Agent)
-  const helpPasswordHash = await bcrypt.hash(NEW_PASSWORDS['help@agrnetworks.com'], 10);
-  const existingHelp = await db.query.users.findFirst({
-    where: eq(users.email, 'help@agrnetworks.com'),
-  });
-
-  let helpUser;
-  if (existingHelp) {
-    await db
-      .update(users)
-      .set({
-        passwordHash: helpPasswordHash,
-        name: 'Help Desk Agent',
-        isInternal: true,
-      })
-      .where(eq(users.email, 'help@agrnetworks.com'));
-    helpUser = await db.query.users.findFirst({
-      where: eq(users.email, 'help@agrnetworks.com'),
-    });
-    console.log('✓ Reset password for:', helpUser?.email);
-  } else {
-    [helpUser] = await db
-      .insert(users)
-      .values({
-        email: 'help@agrnetworks.com',
-        name: 'Help Desk Agent',
-        passwordHash: helpPasswordHash,
-        isInternal: true,
-        emailVerified: new Date(),
-      })
-      .returning();
-    console.log('✓ Created user:', helpUser.email);
-  }
-
-  // Create or get sample organization (optional - for testing)
-  let org = await db.query.organizations.findFirst({
-    where: eq(organizations.slug, 'acme'),
-  });
-
-  if (!org) {
-    [org] = await db
-      .insert(organizations)
-      .values({
-        name: 'Acme Corporation',
-        slug: 'acme',
-        subdomain: 'acme',
-      })
-      .returning();
-    console.log('✓ Created organization:', org.name);
-  } else {
-    console.log('  Organization exists:', org.name);
-  }
-
-  // Create "Unassigned Intake" org for public tickets if it doesn't exist
-  const intakeOrg = await db.query.organizations.findFirst({
-    where: eq(organizations.slug, 'unassigned-intake'),
-  });
-
-  if (!intakeOrg) {
-    await db.insert(organizations).values({
-      name: 'Unassigned Intake',
-      slug: 'unassigned-intake',
-      subdomain: 'intake',
-    });
-    console.log('✓ Created unassigned intake organization');
-  } else {
-    console.log('  Unassigned intake organization exists');
-  }
-
-  console.log('\n=================================');
-  console.log('Credentials (save these securely):');
-  console.log('=================================');
-  console.log('');
-  console.log('Admin User:');
-  console.log('  Email:    ag@agrnetworks.com');
-  console.log('  Password:', NEW_PASSWORDS['ag@agrnetworks.com']);
-  console.log('');
-  console.log('Help Desk User:');
-  console.log('  Email:    help@agrnetworks.com');
-  console.log('  Password:', NEW_PASSWORDS['help@agrnetworks.com']);
-  console.log('');
-  console.log('=================================');
-  console.log('Seed completed successfully!');
   process.exit(0);
 }
 
-seed().catch((error) => {
-  console.error('Seed failed:', error);
-  process.exit(1);
-});
+main();

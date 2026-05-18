@@ -37,6 +37,7 @@ export function SmartAssignDialog({
     if (open && !recommendation) {
       loadRecommendation();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   async function loadRecommendation() {

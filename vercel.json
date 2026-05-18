@@ -3,6 +3,14 @@
     {
       "path": "/api/jobs/process",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/graph-subscription",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/email-digest",
+      "schedule": "0 22 * * *"
     }
   ]
 }

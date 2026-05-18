@@ -154,7 +154,7 @@ export async function toggleAssignmentRule(
   return { rule };
 }
 
-export async function getAssignableUsers(orgId: string) {
+export async function getAssignableUsers(_orgId: string) {
   await requireInternalAdmin();
 
   const internalUsers = await db.query.users.findMany({

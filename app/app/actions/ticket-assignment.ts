@@ -48,9 +48,10 @@ export async function assignTicketToOrgAction(
     revalidatePath('/app/tickets');
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Assign Ticket to Org] Error:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: errorMessage };
   }
 }
 

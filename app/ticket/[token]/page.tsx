@@ -71,7 +71,7 @@ export default async function PublicTicketPage({
       <div className="mx-auto max-w-4xl space-y-6">
         <PublicTicketView
           ticket={ticket as unknown as Ticket & {
-            organization: { name: string };
+            organization: { name: string } | null;
             requester: { name: string | null; email: string } | null;
             assignee: { name: string | null; email: string } | null;
             comments: (TicketComment & {
@@ -87,4 +87,3 @@ export default async function PublicTicketPage({
     </div>
   );
 }
-

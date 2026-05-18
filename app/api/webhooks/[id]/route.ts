@@ -6,7 +6,7 @@ import {
   deleteWebhook,
   rotateWebhookSecret,
 } from '@/lib/webhooks/queries';
-import { requireOrgAccess } from '@/lib/auth/permissions';
+import { requireInternalRole } from '@/lib/auth/permissions';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -26,10 +26,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, webhook.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     return NextResponse.json({ webhook });
   } catch (error) {
@@ -55,10 +52,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, webhook.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     const body = await req.json();
 
@@ -93,10 +87,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, webhook.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     await deleteWebhook(id, webhook.orgId);
     return NextResponse.json({ success: true });

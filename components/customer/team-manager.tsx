@@ -46,7 +46,7 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
   const [teamMembers, setTeamMembers] = useState(members);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [togglingMemberId, setTogglingMemberId] = useState<string | null>(null);
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +74,8 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
       setInviteEmail('');
       setShowInviteForm(false);
       success('Invitation sent!');
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to invite');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to invite');
     } finally {
       setIsInviting(false);
     }
@@ -95,8 +95,8 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
 
       setInvitations(invitations.filter(i => i.id !== invitationId));
       success('Invitation cancelled');
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to cancel');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to cancel');
     }
   };
 
@@ -126,8 +126,8 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
         )
       );
       success('Role updated');
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to update role');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to update role');
     } finally {
       setUpdatingMemberId(null);
     }
@@ -166,8 +166,8 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
         )
       );
       success(nextActive ? 'Member reactivated' : 'Member deactivated');
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to update member');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to update member');
     } finally {
       setTogglingMemberId(null);
     }

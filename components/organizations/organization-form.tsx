@@ -11,6 +11,7 @@ interface OrganizationFormProps {
   action: (formData: FormData) => Promise<void>;
   initialData?: {
     name?: string;
+    customerId?: string;
     slug?: string;
     subdomain?: string;
   };
@@ -18,6 +19,7 @@ interface OrganizationFormProps {
 
 export function OrganizationForm({ action, initialData }: OrganizationFormProps) {
   const [name, setName] = useState(initialData?.name || '');
+  const [customerId, setCustomerId] = useState(initialData?.customerId || '');
   const [slug, setSlug] = useState(initialData?.slug || '');
   const [subdomain, setSubdomain] = useState(initialData?.subdomain || '');
 
@@ -67,6 +69,21 @@ export function OrganizationForm({ action, initialData }: OrganizationFormProps)
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="customerId">Customer ID</Label>
+            <Input
+              id="customerId"
+              name="customerId"
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              placeholder="ACME"
+              pattern="[A-Z0-9]+"
+            />
+            <p className="text-xs text-gray-500">
+              Used for ticket IDs, for example ACME(INC)123456.
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="subdomain">Subdomain</Label>
             <Input
               id="subdomain"
@@ -95,5 +112,4 @@ export function OrganizationForm({ action, initialData }: OrganizationFormProps)
     </Card>
   );
 }
-
 

@@ -64,7 +64,7 @@ export function UserDetail({ user }: UserDetailProps) {
       await removeUserFromOrgAction(user.id, orgId);
       setMemberships(memberships.filter((m) => m.id !== membershipId));
       success('User removed from organization');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to remove user');
     }
   };
@@ -83,7 +83,7 @@ export function UserDetail({ user }: UserDetailProps) {
       );
       setShowRoleDialog(null);
       success('User role updated');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to update role');
     }
   };

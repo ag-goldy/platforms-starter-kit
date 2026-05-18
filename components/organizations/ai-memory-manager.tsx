@@ -18,6 +18,8 @@ import {
 } from '@/app/app/actions/ai-settings';
 import type { OrgAIMemory } from '@/db/schema';
 
+type MemoryType = 'instruction' | 'fact' | 'preference' | 'policy';
+
 interface AIMemoryManagerProps {
   orgId: string;
   initialMemories: OrgAIMemory[];
@@ -44,8 +46,12 @@ export function AIMemoryManager({ orgId, initialMemories }: AIMemoryManagerProps
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [newMemory, setNewMemory] = useState({
-    memoryType: 'fact' as const,
+  const [newMemory, setNewMemory] = useState<{
+    memoryType: MemoryType;
+    content: string;
+    priority: number;
+  }>({
+    memoryType: 'fact',
     content: '',
     priority: 0,
   });
@@ -120,7 +126,7 @@ export function AIMemoryManager({ orgId, initialMemories }: AIMemoryManagerProps
                   <Label>Memory Type</Label>
                   <Select
                     value={newMemory.memoryType}
-                    onValueChange={(v) => setNewMemory({ ...newMemory, memoryType: v as any })}
+                    onValueChange={(v) => setNewMemory({ ...newMemory, memoryType: v as MemoryType })}
                   >
                     <SelectTrigger>
                       <SelectValue />

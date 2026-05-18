@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 // Baseten API Configuration
 const BASETEN_API_KEY = process.env.BASETEN_API_KEY || '';
 const BASETEN_BASE_URL = process.env.BASETEN_BASE_URL || 'https://inference.baseten.co/v1';
-const BASETEN_MODEL = 'openai/gpt-oss-120b';
+const BASETEN_MODEL = 'deepseek-ai/DeepSeek-V3.1';
 
 // Technology space keywords for filtering
 const TECH_KEYWORDS = [
@@ -84,7 +84,7 @@ export async function parseTechResource(url: string): Promise<{ title?: string; 
       content: "Technology documentation content would be parsed here."
     };
     
-  } catch (error) {
+  } catch {
     return { error: "Failed to parse web resource." };
   }
 }
@@ -181,8 +181,8 @@ Provide reasoning and confidence level (0-1).`;
       const confidenceMatch = analysis.match(/Confidence:\s*([0-9.]+)/i);
       
       return {
-        priority: (priorityMatch?.[1] as any) || 'P3',
-        category: (categoryMatch?.[1] as any) || 'SERVICE_REQUEST',
+        priority: (priorityMatch?.[1] as 'P1' | 'P2' | 'P3' | 'P4') || 'P3',
+        category: (categoryMatch?.[1] as 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST') || 'SERVICE_REQUEST',
         confidence: parseFloat(confidenceMatch?.[1] || '0.7'),
         reasoning: analysis
       };
@@ -265,7 +265,7 @@ Focus on technical solutions and troubleshooting.`;
 export const kbTicketingAPI = new KBTicketingAPI();
 
 // Error handling wrapper
-export function withTechFilter<T extends (...args: any[]) => any>(fn: T): T {
+export function withTechFilter<T extends (...args: string[]) => Promise<unknown>>(fn: T): T {
   return (async (...args: Parameters<T>) => {
     try {
       // Validate first argument as query/content

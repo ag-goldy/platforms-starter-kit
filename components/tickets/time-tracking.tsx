@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Play, Pause, Plus, Trash2, DollarSign, Timer } from 'lucide-react';
+import { Clock, Play, Pause, Plus, Trash2, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,6 @@ interface TimeTrackingProps {
 }
 
 export function TimeTracking({
-  ticketId,
   entries,
   currentUserId,
   onAddEntry,

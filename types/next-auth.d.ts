@@ -8,6 +8,8 @@ declare module 'next-auth' {
       email: string;
       name?: string | null;
       isInternal: boolean;
+      isPlatformAdmin?: boolean;
+      role?: string;
     };
   }
 
@@ -15,7 +17,9 @@ declare module 'next-auth' {
     id: string;
     email: string;
     name?: string | null;
-    isInternal: boolean;
+    isInternal?: boolean;
+    isPlatformAdmin?: boolean;
+    role?: string;
   }
 }
 
@@ -25,6 +29,8 @@ declare module 'next-auth/jwt' {
     email: string;
     name?: string | null;
     isInternal: boolean;
+    isPlatformAdmin?: boolean;
+    role?: string;
   }
 }
 

@@ -99,6 +99,13 @@
       "when": 1770000005000,
       "tag": "028_performance_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778381149418,
+      "tag": "0014_drop_and_create",
+      "breakpoints": true
     }
   ]
 }

@@ -174,21 +174,12 @@ run('security hardening', () => {
   });
 
   test('magic link tokens are single-use and expire', async () => {
+    // Skip probe - schema is confirmed to have token_hash column
+    // Just clean up any existing test data
     try {
-      await db.insert(ticketTokens).values({
-        ticketId: randomUUID(),
-        email: 'probe@example.com',
-        tokenHash: 'probe',
-        purpose: 'VIEW',
-        expiresAt: new Date(),
-      });
       await db.delete(ticketTokens).where(inArray(ticketTokens.email, ['probe@example.com']));
-    } catch (error) {
-      if (error instanceof Error && /column "token_hash" of relation "ticket_tokens" does not exist/.test(error.message)) {
-        expect(true).toBe(true);
-        return;
-      }
-      throw error;
+    } catch {
+      // Ignore cleanup errors
     }
     const org = await createOrg('TokenOrg');
     const ticket = await createTicket(org.id, 'token@example.com');
@@ -220,21 +211,12 @@ run('security hardening', () => {
   });
 
   test('attachments are blocked across orgs and tokens only access matching tickets', async () => {
+    // Skip probe - schema is confirmed to have token_hash column
+    // Just clean up any existing test data
     try {
-      await db.insert(ticketTokens).values({
-        ticketId: randomUUID(),
-        email: 'probe2@example.com',
-        tokenHash: 'probe2',
-        purpose: 'VIEW',
-        expiresAt: new Date(),
-      });
       await db.delete(ticketTokens).where(inArray(ticketTokens.email, ['probe2@example.com']));
-    } catch (error) {
-      if (error instanceof Error && /column "token_hash" of relation "ticket_tokens" does not exist/.test(error.message)) {
-        expect(true).toBe(true);
-        return;
-      }
-      throw error;
+    } catch {
+      // Ignore cleanup errors
     }
     const orgA = await createOrg('Gamma');
     const orgB = await createOrg('Delta');

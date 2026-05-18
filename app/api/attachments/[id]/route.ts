@@ -61,8 +61,8 @@ async function streamBlob(attachment: typeof attachments.$inferSelect) {
     status: 200,
     headers: responseHeaders,
   });
-  } catch (error) {
-    console.error('[Attachments] Failed to fetch blob:', error);
+  } catch (_error) {
+    console.error('[Attachments] Failed to fetch blob:', _error);
     return new Response('Attachment not found', { status: 404 });
   }
 }
@@ -145,12 +145,12 @@ export async function GET(
     }
     
     return streamBlob(attachment);
-  } catch (error) {
-    if (error instanceof AuthorizationError) {
+  } catch (_error) {
+    if (_error instanceof AuthorizationError) {
       return new Response('Forbidden', { status: 403 });
     }
 
-    console.error('[Attachments] Download failed:', error);
+    console.error('[Attachments] Download failed:', _error);
     return new Response('Internal Server Error', { status: 500 });
   }
 }

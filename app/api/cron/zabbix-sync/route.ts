@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { zabbixConfigs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { syncOrgServices } from '@/lib/zabbix/sync';
+import { syncOrgAssets, syncOrgServices } from '@/lib/zabbix/sync';
 import { verifyCronAuth } from '@/lib/auth/cron';
 
 export async function GET(request: NextRequest) {
@@ -49,12 +49,16 @@ export async function GET(request: NextRequest) {
         }
 
         // Sync the organization
-        const syncResults = await syncOrgServices(config.orgId);
+        const [serviceResults, assetResults] = await Promise.all([
+          syncOrgServices(config.orgId),
+          syncOrgAssets(config.orgId),
+        ]);
         
         results.push({
           orgId: config.orgId,
           status: 'success',
-          syncedServices: syncResults.length,
+          syncedServices: serviceResults.length,
+          syncedAssets: assetResults.length,
         });
       } catch (error) {
         console.error(`[Zabbix Cron] Failed to sync org ${config.orgId}:`, error);

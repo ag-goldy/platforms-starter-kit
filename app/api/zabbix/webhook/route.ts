@@ -14,6 +14,7 @@ import { services } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { updateServiceMonitoring, addMonitoringHistory } from '@/lib/zabbix/queries';
 import { revalidatePath } from 'next/cache';
+import { constantTimeEquals } from '@/lib/security/secrets';
 
 interface ZabbixWebhookPayload {
   host?: string;
@@ -46,13 +47,15 @@ function isRateLimited(key: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    // Optional: Verify webhook secret
-    const webhookSecret = process.env.WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const receivedSecret = request.headers.get('X-Webhook-Secret');
-      if (receivedSecret !== webhookSecret) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    const webhookSecret = process.env.ZABBIX_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('[SECURITY] ZABBIX_WEBHOOK_SECRET is not configured - rejecting Zabbix webhook');
+      return NextResponse.json({ error: 'Zabbix webhook not configured' }, { status: 503 });
+    }
+
+    const receivedSecret = request.headers.get('x-webhook-secret');
+    if (!constantTimeEquals(receivedSecret, webhookSecret)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse payload

@@ -3,16 +3,14 @@ import {
   getDueScheduledTickets,
   processScheduledTicket,
 } from '@/lib/scheduled-tickets/queries';
+import { verifyCronAuth } from '@/lib/auth/cron';
 
 export async function GET(req: NextRequest) {
-  try {
-    // Verify cron secret
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
+  // Fail-closed: rejects if CRON_SECRET not set or header mismatch
+  const rejection = verifyCronAuth(req);
+  if (rejection) return rejection;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  try {
 
     // Get all due scheduled tickets
     const dueTickets = await getDueScheduledTickets();

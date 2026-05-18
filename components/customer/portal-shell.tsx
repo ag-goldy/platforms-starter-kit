@@ -63,7 +63,7 @@ export async function CustomerPortalShell({
       <nav className="border-b bg-white">
         <div className="flex h-14 items-center justify-between px-6">
           <div className="flex items-center gap-6">
-            <Link href={`/s/${subdomain}/tickets`} className="flex items-center gap-2 text-sm font-semibold">
+            <Link href={`/s/${subdomain}/dashboard`} className="flex items-center gap-2 text-sm font-semibold">
               {org?.branding?.logoUrl ? (
                 <Image src={org.branding.logoUrl} alt="Logo" width={24} height={24} className="h-6 w-6 rounded" />
               ) : null}
@@ -87,14 +87,6 @@ export async function CustomerPortalShell({
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
                 Team
-              </Link>
-            )}
-            {session && isAdmin && (org?.features?.assets ?? true) && (
-              <Link
-                href={`/s/${subdomain}/assets`}
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                Assets
               </Link>
             )}
             {session && isAdmin && (org?.features?.exports ?? true) && (

@@ -27,7 +27,7 @@ interface CustomerExportManagerProps {
 
 export function CustomerExportManager({ orgId, requests }: CustomerExportManagerProps) {
   const router = useRouter();
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRequest = async () => {
@@ -36,8 +36,8 @@ export function CustomerExportManager({ orgId, requests }: CustomerExportManager
       await requestOrgExportAction(orgId);
       success('Export request submitted');
       router.refresh();
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to request export');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to request export');
     } finally {
       setIsRequesting(false);
     }

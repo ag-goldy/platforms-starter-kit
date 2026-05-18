@@ -14,6 +14,7 @@ export type TicketPriority = (typeof ticketPriorityEnum.enumValues)[number];
 
 export interface TicketFilters {
   orgId?: string;
+  publicIntake?: boolean;
   status?: TicketStatus[];
   priority?: TicketPriority[];
   assigneeId?: string | null;
@@ -39,7 +40,7 @@ export interface TicketFilters {
  */
 export async function getTickets(filters: TicketFilters = {}) {
   // If orgId is provided, use withOrgScope to enforce tenant isolation
-  if (filters.orgId) {
+  if (filters.orgId && filters.orgId !== 'public') {
     return withOrgScope(filters.orgId, async (orgId) => {
       return getTicketsInternal({ ...filters, orgId });
     });
@@ -58,7 +59,13 @@ async function getTicketsInternal(filters: TicketFilters) {
   const conditions = [];
 
   if (filters.orgId) {
-    conditions.push(eq(tickets.orgId, filters.orgId));
+    if (filters.orgId === 'public') {
+      conditions.push(isNull(tickets.orgId));
+    } else {
+      conditions.push(eq(tickets.orgId, filters.orgId));
+    }
+  } else if (filters.publicIntake) {
+    conditions.push(isNull(tickets.orgId));
   }
 
   if (filters.status && filters.status.length > 0) {

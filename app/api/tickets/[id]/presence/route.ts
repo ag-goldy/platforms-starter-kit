@@ -69,7 +69,7 @@ export async function POST(
     }
 
     const ticketId = params.id;
-    const { isEditing } = await req.json();
+    const { isEditing: _isEditing } = await req.json();
 
     // Upsert session
     await db

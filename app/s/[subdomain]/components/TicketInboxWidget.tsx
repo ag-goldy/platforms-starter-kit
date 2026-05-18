@@ -1,28 +1,27 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Ticket,
   Plus,
   Search,
-  Filter,
-  MoreHorizontal,
   Clock,
   MessageSquare,
   Paperclip,
   ChevronRight,
-  CheckCircle,
   Inbox,
-  User,
   Bug,
 } from 'lucide-react';
 import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 interface TicketInboxWidgetProps {
   subdomain: string;
-  org: any;
+  org: {
+    id: string;
+    name: string;
+    subdomain: string;
+  } | null;
 }
 
 interface TicketItem {
@@ -45,17 +44,33 @@ interface TicketItem {
 
 type FilterTab = 'all' | 'mine' | 'waiting' | 'resolved';
 
+interface DiagnosticData {
+  user?: {
+    email?: string;
+  };
+  organization?: {
+    name?: string;
+  };
+  membership?: {
+    role?: string;
+  };
+  ticketCount?: number;
+  allUserOrganizations?: Array<{
+    orgId: string;
+    name: string;
+    subdomain: string;
+    role: string;
+  }>;
+}
+
 export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [diagnosticData, setDiagnosticData] = useState<any>(null);
+  const [diagnosticData, setDiagnosticData] = useState<DiagnosticData | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const { openSlideOver } = useCustomerPortal();
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
   const runDiagnostic = async () => {
     try {
@@ -196,7 +211,7 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
               <div className="mt-2">
                 <p className="font-medium">Your organizations:</p>
                 <ul className="list-disc list-inside pl-2">
-                  {diagnosticData.allUserOrganizations.map((o: any) => (
+                  {diagnosticData.allUserOrganizations.map((o) => (
                     <li key={o.orgId}>{o.name} ({o.subdomain}) - {o.role}</li>
                   ))}
                 </ul>

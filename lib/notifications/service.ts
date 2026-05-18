@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { notifications } from '@/db/schema';
 import { redis } from '@/lib/redis';
 import { NotificationType } from './types';
+import { sendPushNotification } from './push';
 
 interface CreateNotificationParams {
   userId: string;
@@ -63,6 +64,13 @@ export async function createNotification({
 
   // Publish to Redis for real-time delivery
   await publishNotification(userId, notification);
+  await sendPushNotification({
+    userId,
+    type,
+    title,
+    message,
+    link,
+  });
 
   return notification;
 }

@@ -5,7 +5,7 @@ import { asc } from 'drizzle-orm';
 import { auth } from '@/auth';
 
 // GET /api/organizations - List all organizations
-export async function GET(request: NextRequest) {
+export async function GET(_: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {

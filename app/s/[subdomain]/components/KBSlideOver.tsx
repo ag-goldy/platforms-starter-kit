@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   BookOpen,
   Search,
@@ -16,9 +16,7 @@ import {
   Trash2,
   X,
   Save,
-  MoreHorizontal,
-  Folder,
-  Tag,
+
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
@@ -29,7 +27,6 @@ interface KBSlideOverProps {
     articleSlug?: string;
     mode?: 'view' | 'create' | 'edit';
   } | null;
-  onClose: () => void;
 }
 
 interface Article {
@@ -54,7 +51,7 @@ interface Category {
   articleCount: number;
 }
 
-export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
+export function KBSlideOver({ data }: KBSlideOverProps) {
   const params = useParams();
   const subdomain = params?.subdomain as string;
   const [articles, setArticles] = useState<Article[]>([]);
@@ -77,13 +74,53 @@ export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
   });
 
   useEffect(() => {
-    fetchUserRole();
-    fetchArticles();
+    const fetchUserRoleData = async () => {
+      try {
+        const res = await fetch(`/api/user/membership/org-from-subdomain/${subdomain}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUserRole(data.role);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error);
+      }
+    };
+    const fetchArticlesData = async () => {
+      try {
+        const res = await fetch(`/api/kb/${subdomain}/articles?limit=50`);
+        if (res.ok) {
+          const data = await res.json();
+          setArticles(data.articles || []);
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch articles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserRoleData();
+    fetchArticlesData();
   }, [subdomain]);
 
   useEffect(() => {
+    const fetchArticleData = async (slug: string) => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/kb/${subdomain}/articles/${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedArticle(data);
+          setMode('view');
+        }
+      } catch (error) {
+        console.error('Failed to fetch article:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     if (data?.articleSlug) {
-      fetchArticle(data.articleSlug);
+      fetchArticleData(data.articleSlug);
     } else if (data?.mode === 'create') {
       setMode('create');
       setFormData({
@@ -96,50 +133,7 @@ export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
     } else {
       setMode('list');
     }
-  }, [data, categories]);
-
-  const fetchUserRole = async () => {
-    try {
-      const res = await fetch(`/api/user/membership/org-from-subdomain/${subdomain}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUserRole(data.role);
-      }
-    } catch (error) {
-      console.error('Failed to fetch user role:', error);
-    }
-  };
-
-  const fetchArticles = async () => {
-    try {
-      const res = await fetch(`/api/kb/${subdomain}/articles?limit=50`);
-      if (res.ok) {
-        const data = await res.json();
-        setArticles(data.articles || []);
-        setCategories(data.categories || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch articles:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchArticle = async (slug: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/kb/${subdomain}/articles/${slug}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSelectedArticle(data);
-        setMode('view');
-      }
-    } catch (error) {
-      console.error('Failed to fetch article:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [data, categories, subdomain]);
 
   const handleCreateArticle = async () => {
     if (!formData.title.trim() || !formData.content.trim()) return;
@@ -158,8 +152,8 @@ export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
         setMode('list');
         setFormData({ title: '', excerpt: '', content: '', categoryId: '', status: 'published' });
       }
-    } catch (error) {
-      console.error('Failed to create article:', error);
+    } catch {
+      console.error('Failed to create article');
     } finally {
       setIsSubmitting(false);
     }
@@ -184,8 +178,8 @@ export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
         setSelectedArticle(updated);
         setMode('view');
       }
-    } catch (error) {
-      console.error('Failed to update article:', error);
+    } catch {
+      console.error('Failed to update article');
     } finally {
       setIsSubmitting(false);
     }
@@ -206,8 +200,8 @@ export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
           setMode('list');
         }
       }
-    } catch (error) {
-      console.error('Failed to delete article:', error);
+    } catch {
+      console.error('Failed to delete article');
     }
   };
 
@@ -297,7 +291,7 @@ export function KBSlideOver({ data, onClose }: KBSlideOverProps) {
               <label className="text-sm font-medium text-stone-700">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as any }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as 'published' | 'draft' | 'pending_review' }))}
                 className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
               >
                 <option value="published">Published</option>

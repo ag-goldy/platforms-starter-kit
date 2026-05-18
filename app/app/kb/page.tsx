@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Plus, Edit, Eye, ThumbsUp, Calendar, FolderTree, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, Edit, Eye, ThumbsUp, Calendar, FolderTree } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils/date';
 import { DeleteArticleButton } from '@/components/kb/delete-article-button';
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { kbArticles } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { requireAuth, requireInternalRole, requireOrgMemberRole } from '@/lib/auth/permissions';
+import { requireAuth, requireInternalRole, requireOrgMemberRole, requireOrgRole } from '@/lib/auth/permissions';
 
 // GET /api/kb/articles/[id] - Get a single article (by ID or slug)
 export async function GET(
@@ -10,6 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const global = searchParams.get('global') === 'true';
@@ -54,6 +55,14 @@ export async function GET(
       );
     }
 
+    if (article.orgId) {
+      try {
+        await requireOrgRole(article.orgId);
+      } catch {
+        await requireInternalRole();
+      }
+    }
+
     // Increment view count
     await db
       .update(kbArticles)
@@ -77,7 +86,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const user = await requireAuth();
+    await requireAuth();
     const body = await request.json();
 
     const {
@@ -102,6 +111,16 @@ export async function PATCH(
         { error: 'Article not found' },
         { status: 404 }
       );
+    }
+
+    if (!existing.orgId) {
+      await requireInternalRole();
+    } else {
+      try {
+        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+      } catch {
+        await requireInternalRole();
+      }
     }
 
     // Check slug uniqueness if changed
@@ -188,7 +207,7 @@ export async function DELETE(
     } else {
       try {
         await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
-      } catch (err) {
+      } catch {
         // Allow internal users as well
         await requireInternalRole();
       }

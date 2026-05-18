@@ -50,14 +50,16 @@ export default async function TicketDetailPage({
   return (
     <div className="space-y-6">
       <TicketDetail ticket={ticket as unknown as Ticket & {
-        organization: { name: string };
+        organization: { name: string } | null;
+        requesterEmail?: string | null;
         requester: { name: string | null; email: string } | null;
         assignee: { name: string | null; email: string } | null;
         comments: (TicketComment & {
+          authorEmail?: string | null;
           user: { name: string | null; email: string } | null;
         })[];
         attachments: Attachment[];
-      }} internalUsers={internalUsers} slaMetrics={slaMetrics} availableAssets={availableAssets as any} />
+      }} internalUsers={internalUsers} slaMetrics={slaMetrics} availableAssets={availableAssets} />
       <AuditLogList logs={auditLogs} />
     </div>
   );

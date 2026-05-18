@@ -6,11 +6,7 @@ import {
   Users,
   Plus,
   Mail,
-  MoreHorizontal,
   Crown,
-  User,
-  Clock,
-  CheckCircle,
   X,
   Search,
   Edit,
@@ -18,7 +14,6 @@ import {
   Save,
   XCircle,
   RefreshCw,
-  Shield,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
@@ -50,7 +45,7 @@ interface PendingInvite {
   invitedBy: string;
 }
 
-export function TeamSlideOver({ data, onClose }: TeamSlideOverProps) {
+export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
   const params = useParams();
   const subdomain = params?.subdomain as string;
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -74,6 +69,7 @@ export function TeamSlideOver({ data, onClose }: TeamSlideOverProps) {
 
   useEffect(() => {
     fetchTeamData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -86,10 +82,10 @@ export function TeamSlideOver({ data, onClose }: TeamSlideOverProps) {
     try {
       const res = await fetch(`/api/team/${subdomain}`);
       if (res.ok) {
-        const data = await res.json();
-        setMembers(data.members || []);
-        setPendingInvites(data.pendingInvites || []);
-        setUserRole(data.userRole);
+        const responseData = await res.json();
+        setMembers(responseData.members || []);
+        setPendingInvites(responseData.pendingInvites || []);
+        setUserRole(responseData.userRole);
       }
     } catch (error) {
       console.error('Failed to fetch team:', error);
@@ -491,6 +487,7 @@ export function TeamSlideOver({ data, onClose }: TeamSlideOverProps) {
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center">
                       {member.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={member.avatar}
                           alt={member.name}

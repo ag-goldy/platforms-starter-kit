@@ -5,7 +5,7 @@
  */
 
 import { db } from '@/db';
-import { automationRules, ticketTagAssignments, ticketTags } from '@/db/schema';
+import { automationRules, automationRuns, ticketTagAssignments, ticketTags } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { evaluateConditions } from './conditions';
 import { executeActions } from './actions';
@@ -67,26 +67,56 @@ export async function evaluateAndExecuteRules(
   const tagNames = tagAssignments.map((ta) => ta.tagName);
 
   for (const rule of rules) {
-    // Evaluate conditions
-    const matches = evaluateConditions(rule.conditions, {
-      ticket: context.ticket,
-      tags: tagNames,
-    });
+    const startedAt = Date.now();
+    let matches = false;
+    let actionsExecuted = 0;
+    let status = 'SKIPPED';
+    let errorMessage: string | null = null;
 
-    if (matches) {
-      matched++;
-      try {
-        // Execute actions
-        await executeActions(rule.actions, {
+    try {
+      matches = evaluateConditions(rule.conditions, {
+        ticket: context.ticket,
+        tags: tagNames,
+      });
+
+      if (matches) {
+        matched++;
+        const result = await executeActions(rule.actions, {
           ticketId: context.ticket.id,
           orgId: context.orgId,
           userId: context.userId,
         });
+        actionsExecuted = result.executed;
+        status = result.errors.length === 0
+          ? 'SUCCESS'
+          : result.executed > 0
+            ? 'PARTIAL'
+            : 'FAILED';
+        errorMessage = result.errors.join('\n') || null;
         executed++;
-      } catch (error) {
-        console.error(`Failed to execute rule ${rule.id}:`, error);
-        // Continue with other rules
       }
+    } catch (error) {
+      status = 'FAILED';
+      errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to evaluate rule ${rule.id}:`, error);
+    } finally {
+      await db.insert(automationRuns).values({
+        orgId: context.orgId,
+        ruleId: rule.id,
+        ticketId: context.ticket.id,
+        triggerOn: context.triggerOn,
+        matched: matches,
+        status,
+        actionsExecuted,
+        durationMs: Date.now() - startedAt,
+        error: errorMessage,
+        metadata: {
+          userId: context.userId || null,
+          ruleName: rule.name,
+        },
+      }).catch((error) => {
+        console.error(`Failed to log automation run ${rule.id}:`, error);
+      });
     }
   }
 

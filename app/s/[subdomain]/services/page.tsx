@@ -20,8 +20,20 @@ interface ServiceWithMonitoring {
   monitoringStatus: string | null;
   uptimePercentage: string | null;
   responseTimeMs: number | null;
-  zabbixTriggers: unknown[] | null;
+  zabbixTriggers: ZabbixTrigger[] | null;
   lastSyncedAt: Date | null;
+  history?: ServiceMonitoringHistoryEntry[];
+}
+
+interface ZabbixTrigger {
+  value: string;
+  description: string;
+}
+
+interface ServiceMonitoringHistoryEntry {
+  id: string;
+  status: string;
+  timestamp: Date;
 }
 
 function getStatusColor(status: string | null): string {
@@ -228,9 +240,9 @@ export default async function CustomerServicesPage({
                       {svc.zabbixTriggers && Array.isArray(svc.zabbixTriggers) && svc.zabbixTriggers.length > 0 && (
                         <div className="mt-3 space-y-1">
                           {svc.zabbixTriggers
-                            .filter((t: any) => t.value === '1')
+                            .filter((t: ZabbixTrigger) => t.value === '1')
                             .slice(0, 3)
-                            .map((trigger: any, idx: number) => (
+                            .map((trigger: ZabbixTrigger, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 text-sm text-red-700">
                                 <AlertCircle className="h-4 w-4" />
                                 <span>{trigger.description}</span>

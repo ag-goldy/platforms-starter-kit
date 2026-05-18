@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { tickets, users, kbArticles } from '@/db/schema';
+import { tickets, kbArticles } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
 // POST - Get AI suggestions for a ticket
@@ -184,7 +184,7 @@ async function suggestAssignee(subject: string, description: string) {
   let topAssignee = null;
   let maxCount = 0;
   
-  for (const [_, data] of assigneeCounts) {
+  for (const [, data] of assigneeCounts) {
     if (data.count > maxCount) {
       maxCount = data.count;
       topAssignee = data.user;

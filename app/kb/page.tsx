@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { PublicSiteHeader } from '@/components/public/site-header';
 
 interface Category {
   id: string;
@@ -48,6 +48,15 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+interface Suggestion {
+  title: string;
+  url?: string;
+}
+
+interface ErrorResponse {
+  error?: string;
+}
+
 export default function KBPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -68,16 +77,11 @@ export default function KBPage() {
   const [aiQuery, setAiQuery] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSessionId] = useState<string>(() => {
-    const hasCrypto = typeof self !== 'undefined' && (self as any).crypto && (self as any).crypto.randomUUID;
-    if (hasCrypto) return (self as any).crypto.randomUUID();
+    const hasCrypto = typeof self !== 'undefined' && typeof (self as Window & { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID === 'function';
+    if (hasCrypto) return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [showSupportForm, setShowSupportForm] = useState(false);
-  const [supportEmail, setSupportEmail] = useState('');
-  const [supportName, setSupportName] = useState('');
-  const [supportPhone, setSupportPhone] = useState('');
   const [supportIssue, setSupportIssue] = useState('');
-  const [supportPriority, setSupportPriority] = useState<'P1' | 'P2' | 'P3' | 'P4'>('P3');
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -188,7 +192,7 @@ export default function KBPage() {
         body: JSON.stringify({ query: userMessage.content, sessionId: aiSessionId }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed to get AI response' }));
+        const err = await res.json().catch(() => ({ error: 'Failed to get AI response' })) as ErrorResponse;
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           type: 'ai',
@@ -206,7 +210,7 @@ export default function KBPage() {
         content: (() => {
           const base = data.answer || 'I could not find a precise match in the knowledge base.';
           const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-            ? `\n\n### Related Articles\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+            ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
             : '';
           return base + suggestions;
         })(),
@@ -248,7 +252,7 @@ export default function KBPage() {
         const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
         const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
         content = base + created + (track ? `\n${track}` : '') + suggestions;
       }
@@ -259,10 +263,6 @@ export default function KBPage() {
         timestamp: new Date(),
       };
       setAiMessages((prev) => [...prev, aiMessage]);
-      setShowSupportForm(false);
-      setSupportEmail('');
-      setSupportName('');
-      setSupportPhone('');
       setSupportIssue('');
     } catch {
       const aiMessage: ChatMessage = {
@@ -279,38 +279,21 @@ export default function KBPage() {
   const pinnedArticles = articles.filter(a => a.tags?.includes('Pinned') || a.viewCount > 100).slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <img 
-                src="/logo/atlas-logo.png" 
-                alt="atlas.logo" 
-                className="h-8 w-auto"
-              />
-            </Link>
-            <nav className="flex items-center gap-6">
-              <Link href="/support" className="text-sm text-gray-600 hover:text-gray-900">
-                Support
-              </Link>
-              <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-                Login
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white text-gray-900">
+      <PublicSiteHeader onAskAI={() => setShowAiAssistant(true)} />
 
       {/* Hero Section */}
-      <section className="bg-gray-900 py-12">
+      <section className="bg-gray-900 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
-            <h1 className="text-3xl font-bold text-white mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500/20 rounded-full text-orange-400 text-sm mb-4">
+              <Sparkles className="h-4 w-4" />
+              AI-Powered Support
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-4">
               Knowledge Base
             </h1>
-            <p className="text-gray-400 mb-6">
+            <p className="text-lg text-gray-400 mb-8">
               Find answers, guides, and documentation to help you get the most out of our platform.
             </p>
             
@@ -323,12 +306,12 @@ export default function KBPage() {
                   placeholder="Search articles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-11 bg-white border-0"
+                  className="pl-10 h-12 border-0 bg-white text-gray-900 placeholder:text-gray-500"
                 />
               </div>
               <Button 
                 variant="secondary"
-                className="hidden md:inline-flex h-11 gap-2"
+                className="hidden md:inline-flex h-12 gap-2 bg-white text-gray-900 hover:bg-gray-100"
                 onClick={() => {
                   setShowAiAssistant(true);
                   if (searchQuery.trim()) {
@@ -350,7 +333,7 @@ export default function KBPage() {
           {/* Sidebar - Categories */}
           <aside className="lg:col-span-3">
             <div className="space-y-6 lg:sticky lg:top-6">
-              <Card>
+              <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
                 <CardContent className="p-4">
                   <h2 className="text-sm font-semibold text-gray-900 mb-3">Categories</h2>
                   
@@ -394,7 +377,7 @@ export default function KBPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-orange-50 border-orange-100">
+              <Card className="border-orange-100 bg-orange-50 text-gray-900 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <MessageSquare className="h-5 w-5 text-orange-600 mt-0.5" />
@@ -424,9 +407,9 @@ export default function KBPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   {pinnedArticles.map((article) => (
                     <Link key={article.id} href={`/kb/${article.slug}`}>
-                      <Card className="h-full hover:border-orange-300 hover:shadow-sm transition-all group">
+                      <Card className="h-full border-gray-200 bg-white text-gray-900 shadow-sm hover:border-orange-300 hover:shadow-sm transition-all group">
                         <CardContent className="p-4">
-                          <Badge variant="secondary" className="mb-2">
+                          <Badge variant="secondary" className="mb-2 border-transparent bg-gray-100 text-gray-700 hover:bg-gray-100">
                             {getCategoryName(article.categoryId)}
                           </Badge>
                           <h3 className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors">
@@ -473,7 +456,7 @@ export default function KBPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                 </div>
               ) : filteredArticles.length === 0 ? (
-                <Card>
+                <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
                   <CardContent className="py-12 text-center">
                     <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-1">
@@ -493,11 +476,11 @@ export default function KBPage() {
                       <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-orange-300 hover:shadow-sm transition-all group">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs border-gray-200 bg-white text-gray-700">
                               {getCategoryName(article.categoryId)}
                             </Badge>
                             {article.tags?.map(tag => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
+                              <Badge key={tag} variant="secondary" className="text-xs border-transparent bg-gray-100 text-gray-700 hover:bg-gray-100">
                                 {tag}
                               </Badge>
                             ))}
@@ -524,14 +507,14 @@ export default function KBPage() {
 
       {showAiAssistant && (
         <div
-          className="fixed right-0 top-0 z-50 h-screen w-full bg-white shadow-xl border-l flex flex-col"
+          className="fixed right-0 top-0 z-50 h-screen w-full border-l border-gray-200 bg-white text-gray-900 shadow-xl flex flex-col"
           style={panelWidth ? { width: `${panelWidth}px` } : undefined}
         >
           <div
             onMouseDown={() => setIsResizing(true)}
             className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-orange-200/50 hidden lg:block"
           />
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-orange-600" />
@@ -591,14 +574,14 @@ export default function KBPage() {
             )}
           </div>
           
-            <form onSubmit={handleAiSubmit} className="p-4 border-t">
+            <form onSubmit={handleAiSubmit} className="p-4 border-t border-gray-200">
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Textarea
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     placeholder="Type your question... (Shift+Enter for newline)"
-                    className="flex-1 min-h-[80px]"
+                    className="flex-1 min-h-[80px] border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                     disabled={isAiLoading}
                     rows={3}
                     onKeyDown={(e) => {
@@ -629,7 +612,7 @@ export default function KBPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleSupportSubmit}
-                    className="h-7 px-2"
+                    className="h-7 px-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   >
                     Create Ticket
                   </Button>
@@ -651,7 +634,7 @@ export default function KBPage() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 mt-12">
+      <footer className="border-t border-gray-200 bg-white mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-gray-500">

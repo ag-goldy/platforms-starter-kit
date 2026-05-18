@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { db } from '@/db';
-import { organizations, kbArticles, kbCategories } from '@/db/schema';
+import { organizations, kbArticles } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { ArticleView } from '@/components/kb/article-view';
 import type { Metadata } from 'next';

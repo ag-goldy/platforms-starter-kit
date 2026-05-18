@@ -79,6 +79,7 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
     }, 2000); // Poll every 2 seconds
 
     return () => clearInterval(pollInterval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exportJobId, exportStatus]);
 
   const handleExportCSV = async () => {

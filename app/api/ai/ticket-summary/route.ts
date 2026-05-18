@@ -1,14 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { tickets, ticketComments, users, kbArticles, memberships } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
-import OpenAI from 'openai';
+import { kbArticles, memberships, tickets } from '@/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
+import { createHash } from 'crypto';
+import { detectPromptInjection, getSafeResponse } from '@/lib/ai/prompt-guard';
+import { getAIResponse } from '@/lib/ai/client';
+import { logAIInteraction } from '@/lib/ai/audit';
+import { redactPII } from '@/lib/ai/pii';
 
-const client = new OpenAI({
-  apiKey: process.env.BASETEN_API_KEY || '',
-  baseURL: process.env.BASETEN_BASE_URL || 'https://inference.baseten.co/v1',
-});
+const SUMMARY_SYSTEM_PROMPT =
+  'You are Zeus AI, an expert IT support analyst. Summarize ticket threads in exactly three concise sentences and do not expose personal data.';
+
+function sha256(value: string) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function getClientIp(req: NextRequest) {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || null;
+}
+
+async function canSummarizeTicket(
+  user: {
+    id: string;
+    isInternal?: boolean;
+    isPlatformAdmin?: boolean;
+  },
+  ticket: { orgId: string | null; requesterId: string | null }
+) {
+  if (user.isPlatformAdmin) return true;
+  if (!ticket.orgId) return ticket.requesterId === user.id;
+  if (!user.isInternal) return ticket.requesterId === user.id;
+
+  const membership = await db.query.memberships.findFirst({
+    where: and(
+      eq(memberships.userId, user.id),
+      eq(memberships.orgId, ticket.orgId),
+      eq(memberships.isActive, true)
+    ),
+    columns: { id: true },
+  });
+
+  return Boolean(membership);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,131 +58,170 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ticket ID required' }, { status: 400 });
     }
 
-    // Fetch ticket with comments
-    const ticket = await db.query.tickets.findFirst({
+    /* eslint-disable no-restricted-syntax -- Resolve by ticket id first, then enforce org/requester authorization before using AI context. */
+    const fullTicket = await db.query.tickets.findFirst({
       where: eq(tickets.id, ticketId),
       with: {
         requester: true,
         assignee: true,
         organization: true,
         comments: {
-          with: {
-            user: true,
-          },
-          orderBy: (comments) => comments.createdAt,
+          with: { user: true },
+          orderBy: (comments, { asc }) => [asc(comments.createdAt)],
         },
       },
     });
+    /* eslint-enable no-restricted-syntax */
 
-    if (!ticket) {
+    if (!fullTicket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // Check permissions - internal users or ticket participants
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-      columns: { isInternal: true },
+    const allowed = await canSummarizeTicket(session.user, {
+      orgId: fullTicket.orgId,
+      requesterId: fullTicket.requesterId,
     });
-
-    let hasAccess = user?.isInternal || ticket.requesterId === session.user.id;
-    
-    if (!hasAccess && ticket.orgId) {
-      const membership = await db.query.memberships.findFirst({
-        where: and(
-          eq(memberships.userId, session.user.id),
-          eq(memberships.orgId, ticket.orgId)
-        ),
-      });
-      hasAccess = !!membership;
-    }
-
-    if (!hasAccess) {
+    if (!allowed) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Build conversation transcript
-    const transcript = ticket.comments.map(c => {
-      const author = c.user?.name || c.user?.email || c.authorEmail || 'Unknown';
-      const prefix = c.isInternal ? '[Internal]' : '';
-      return `${prefix}${author} (${new Date(c.createdAt).toLocaleDateString()}):\n${c.content}`;
-    }).join('\n\n---\n\n');
-
-    // Find related KB articles
     const relatedArticles = await db.query.kbArticles.findMany({
       where: and(
         eq(kbArticles.status, 'published'),
-        sql`(${kbArticles.title} ILIKE ${'%' + ticket.subject + '%'} OR ${kbArticles.content} ILIKE ${'%' + ticket.subject + '%'})`
+        fullTicket.orgId
+          ? eq(kbArticles.orgId, fullTicket.orgId)
+          : sql`${kbArticles.orgId} IS NULL`,
+        sql`(${kbArticles.title} ILIKE ${'%' + fullTicket.subject + '%'} OR ${kbArticles.content} ILIKE ${'%' + fullTicket.subject + '%'})`
       ),
       limit: 3,
       columns: { title: true, slug: true, excerpt: true },
     });
 
-    const prompt = `You are Zeus AI, an expert IT support analyst for AGR Networks. Analyze this support ticket and provide a concise summary with actionable recommendations.
+    const transcript = fullTicket.comments.map((comment) => {
+      const author = comment.user?.name || comment.user?.email || comment.authorEmail || 'Unknown';
+      const prefix = comment.isInternal ? '[Internal] ' : '';
+      return `${prefix}${author} (${new Date(comment.createdAt).toISOString()}):\n${comment.content}`;
+    }).join('\n\n---\n\n');
 
-## Ticket Information
-- **ID**: ${ticket.key}
-- **Subject**: ${ticket.subject}
-- **Status**: ${ticket.status}
-- **Priority**: ${ticket.priority}
-- **Category**: ${ticket.category}
-- **Requester**: ${ticket.requester?.name || ticket.requester?.email || 'Unknown'}
-- **Assigned to**: ${ticket.assignee?.name || ticket.assignee?.email || 'Unassigned'}
-- **Created**: ${new Date(ticket.createdAt).toLocaleString()}
+    const prompt = `Analyze this support ticket and summarize the issue, current state, and recommended next action in exactly three sentences.
 
-## Description
-${ticket.description || 'No description provided.'}
+Ticket:
+- Key: ${fullTicket.key}
+- Subject: ${fullTicket.subject}
+- Status: ${fullTicket.status}
+- Priority: ${fullTicket.priority}
+- Category: ${fullTicket.category}
+- Requester: ${fullTicket.requester?.name || fullTicket.requester?.email || 'Unknown'}
+- Assigned to: ${fullTicket.assignee?.name || fullTicket.assignee?.email || 'Unassigned'}
 
-## Conversation History
+Description:
+${fullTicket.description || 'No description provided.'}
+
+Conversation:
 ${transcript || 'No comments yet.'}
 
-${relatedArticles.length > 0 ? `## Related Knowledge Base Articles
-${relatedArticles.map(a => `- ${a.title}${a.excerpt ? `: ${a.excerpt.slice(0, 100)}...` : ''}`).join('\n')}` : ''}
+${relatedArticles.length > 0 ? `Related KB:
+${relatedArticles.map((article) => `- ${article.title}${article.excerpt ? `: ${article.excerpt.slice(0, 100)}` : ''}`).join('\n')}` : ''}
 
----
+Return only the three-sentence summary.`;
 
-Provide your analysis in this format:
+    const requestPII = redactPII(prompt);
+    const injectionCheck = detectPromptInjection(requestPII.redacted);
+    const startedAt = Date.now();
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers.get('user-agent') || undefined;
+    const systemPromptHash = sha256(SUMMARY_SYSTEM_PROMPT);
 
-## Summary
-A 2-3 sentence summary of the issue and current state.
+    if (injectionCheck.shouldBlock) {
+      const safeResponse = getSafeResponse(injectionCheck.threats);
+      await logAIInteraction({
+        orgId: fullTicket.orgId,
+        userId: session.user.id,
+        interface: 'admin',
+        userQuery: requestPII.redacted,
+        systemPromptHash,
+        aiResponse: safeResponse,
+        responseTimeMs: Date.now() - startedAt,
+        piiDetected: requestPII.detected,
+        piiTypes: requestPII.types,
+        wasFiltered: true,
+        sourcesUsed: ['ticket:summary'],
+        ipAddress,
+        userAgent,
+        metadata: {
+          blocked: true,
+          threats: injectionCheck.threats,
+          piiCounts: requestPII.counts,
+          ticketId: fullTicket.id,
+        },
+      });
 
-## Key Points
-- Point 1
-- Point 2
-- Point 3
+      return NextResponse.json({
+        success: false,
+        blocked: true,
+        error: safeResponse,
+        piiRedaction: {
+          applied: requestPII.detected,
+          requestTypes: requestPII.types,
+          requestCounts: requestPII.counts,
+        },
+      }, { status: 400 });
+    }
 
-## Recommendations
-1. **Immediate Action**: What should be done right now
-2. **Next Steps**: Follow-up actions
-3. **Resolution Path**: How to resolve this ticket
-
-## Related Resources
-${relatedArticles.length > 0 ? 'Reference the KB articles above if relevant.' : 'No related KB articles found.'}
-
-Be concise, professional, and actionable.`;
-
-    const completion = await client.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
-      messages: [
-        { role: 'system', content: 'You are Zeus AI, an expert IT support analyst. Provide concise, actionable ticket analysis.' },
-        { role: 'user', content: prompt },
-      ],
+    const completion = await getAIResponse([
+      { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
+      { role: 'user', content: injectionCheck.sanitizedInput },
+    ], {
+      model: 'deepseek-ai/DeepSeek-V3.1',
       temperature: 0.3,
-      max_tokens: 800,
+      max_tokens: 220,
     });
 
-    const analysis = completion.choices[0]?.message?.content || '';
+    const responsePII = redactPII(completion.choices[0]?.message?.content || '');
+    const analysis = responsePII.redacted;
+    const piiTypes = Array.from(new Set([...requestPII.types, ...responsePII.types]));
+
+    await logAIInteraction({
+      orgId: fullTicket.orgId,
+      userId: session.user.id,
+      interface: 'admin',
+      userQuery: requestPII.redacted,
+      systemPromptHash,
+      aiResponse: analysis,
+      modelUsed: completion.model,
+      tokensUsed: completion.usage?.total_tokens,
+      responseTimeMs: Date.now() - startedAt,
+      piiDetected: piiTypes.length > 0,
+      piiTypes,
+      wasFiltered: piiTypes.length > 0 || injectionCheck.isSuspicious,
+      sourcesUsed: ['ticket:summary', ...(relatedArticles.length > 0 ? ['kb:related'] : [])],
+      ipAddress,
+      userAgent,
+      metadata: {
+        threats: injectionCheck.threats,
+        requestPIICounts: requestPII.counts,
+        responsePIICounts: responsePII.counts,
+        ticketId: fullTicket.id,
+      },
+    });
 
     return NextResponse.json({
       success: true,
       analysis,
-      ticketKey: ticket.key,
-      relatedArticles: relatedArticles.map(a => ({
-        title: a.title,
-        slug: a.slug,
-        excerpt: a.excerpt,
+      ticketKey: fullTicket.key,
+      piiRedaction: {
+        applied: piiTypes.length > 0,
+        requestTypes: requestPII.types,
+        responseTypes: responsePII.types,
+        requestCounts: requestPII.counts,
+        responseCounts: responsePII.counts,
+      },
+      relatedArticles: relatedArticles.map((article) => ({
+        title: article.title,
+        slug: article.slug,
+        excerpt: article.excerpt,
       })),
     });
-
   } catch (error) {
     console.error('[AI Ticket Summary] Error:', error);
     return NextResponse.json(

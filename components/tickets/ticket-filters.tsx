@@ -315,6 +315,7 @@ export function TicketFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
+              <SelectItem value="public">Public Intake</SelectItem>
               {organizations.map((org) => (
                 <SelectItem key={org.id} value={org.id}>
                   {org.name}

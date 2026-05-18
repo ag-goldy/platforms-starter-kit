@@ -11,8 +11,6 @@ import {
   Moon,
   Sun,
   Smartphone,
-  Globe,
-  ChevronRight,
   CheckCircle,
   AlertCircle,
   Download,
@@ -123,7 +121,7 @@ export function SettingsSlideOver({ onClose }: SettingsSlideOverProps) {
       } else {
         setTwoFAError(data.error || 'Failed to start 2FA setup');
       }
-    } catch (err) {
+    } catch {
       setTwoFAError('An error occurred');
     } finally {
       setIsProcessing2FA(false);
@@ -147,7 +145,7 @@ export function SettingsSlideOver({ onClose }: SettingsSlideOverProps) {
       } else {
         setTwoFAError(data.error || 'Invalid verification code');
       }
-    } catch (err) {
+    } catch {
       setTwoFAError('An error occurred');
     } finally {
       setIsProcessing2FA(false);
@@ -175,7 +173,7 @@ export function SettingsSlideOver({ onClose }: SettingsSlideOverProps) {
       } else {
         setTwoFAError(data.error || 'Failed to disable 2FA');
       }
-    } catch (err) {
+    } catch {
       setTwoFAError('An error occurred');
     } finally {
       setIsProcessing2FA(false);
@@ -247,7 +245,7 @@ export function SettingsSlideOver({ onClose }: SettingsSlideOverProps) {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'profile' | 'notifications' | 'preferences' | 'security')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-brand-500 text-white'

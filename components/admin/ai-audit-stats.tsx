@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MessageSquare, AlertTriangle, Filter, Clock } from 'lucide-react';
+import { MessageSquare, AlertTriangle, Filter, Clock } from 'lucide-react';
 import { getAIAuditStatsAction } from '@/app/app/actions/ai-audit';
 
 interface Stats {

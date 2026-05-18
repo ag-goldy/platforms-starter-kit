@@ -11,6 +11,12 @@ import { Client } from '@microsoft/microsoft-graph-client';
 
 type AuthProviderCallback = (error: Error | null, accessToken: string | null) => void;
 
+interface GraphError extends Error {
+  code?: string;
+  statusCode?: number;
+  body?: Record<string, unknown>;
+}
+
 const TEST_EMAIL = 'ag@agrnetworks.com';
 
 async function testEmail() {
@@ -92,14 +98,15 @@ async function testEmail() {
     console.log('');
     console.log('🎉 Check your inbox at:', TEST_EMAIL);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as GraphError;
     console.error('\n❌ ERROR:');
-    console.error('  Message:', error.message);
-    console.error('  Code:', error.code || 'N/A');
-    console.error('  Status Code:', error.statusCode || 'N/A');
+    console.error('  Message:', err.message);
+    console.error('  Code:', err.code || 'N/A');
+    console.error('  Status Code:', err.statusCode || 'N/A');
     
-    if (error.body) {
-      console.error('  Body:', JSON.stringify(error.body, null, 2));
+    if (err.body) {
+      console.error('  Body:', JSON.stringify(err.body, null, 2));
     }
     
     console.error('\n🔧 Common fixes:');

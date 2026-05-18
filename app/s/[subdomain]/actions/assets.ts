@@ -92,7 +92,8 @@ async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId
       where: eq(areas.id, areaId),
       with: { site: true },
     });
-    const site = area?.site as { orgId: string } | undefined;
+    interface SiteInfo { orgId: string }
+    const site = area?.site as SiteInfo | undefined;
     if (!area || !site || site.orgId !== orgId) {
       throw new Error('Area not found');
     }
@@ -192,7 +193,7 @@ export async function updateCustomerAssetAction(
 // ============================================================================
 
 import { orgAssetTypes, orgAssetStatuses, type OrgAssetType, type OrgAssetStatus } from '@/db/schema';
-import { desc, asc } from 'drizzle-orm';
+import { asc } from 'drizzle-orm';
 
 export async function getOrgAssetTypesAction(orgId: string): Promise<OrgAssetType[]> {
   await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);

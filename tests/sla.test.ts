@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getDefaultSLATargets,
   calculateSLAStatus,
+  calculateSLAClock,
 } from '@/lib/tickets/sla';
 
 describe('SLA Utilities', () => {
@@ -74,5 +75,60 @@ describe('SLA Utilities', () => {
       expect(status).toBe('not_applicable');
     });
   });
-});
 
+  describe('calculateSLAClock', () => {
+    const createdAt = new Date('2026-05-10T00:00:00.000Z');
+
+    it('returns warning at the default 80 percent threshold', () => {
+      const result = calculateSLAClock({
+        createdAt,
+        now: new Date('2026-05-10T08:00:00.000Z'),
+        responseTargetHours: 10,
+        resolutionTargetHours: 20,
+      });
+
+      expect(result.responseStatus).toBe('warning');
+      expect(result.resolutionStatus).toBe('met');
+      expect(result.responseDueAt?.toISOString()).toBe('2026-05-10T10:00:00.000Z');
+    });
+
+    it('returns breached after target time is reached', () => {
+      const result = calculateSLAClock({
+        createdAt,
+        now: new Date('2026-05-10T11:00:00.000Z'),
+        responseTargetHours: 10,
+        resolutionTargetHours: 10,
+      });
+
+      expect(result.responseStatus).toBe('breached');
+      expect(result.resolutionStatus).toBe('breached');
+    });
+
+    it('marks responded and resolved clocks as met', () => {
+      const result = calculateSLAClock({
+        createdAt,
+        now: new Date('2026-05-11T00:00:00.000Z'),
+        firstResponseAt: new Date('2026-05-10T01:00:00.000Z'),
+        resolvedAt: new Date('2026-05-10T05:00:00.000Z'),
+        responseTargetHours: 2,
+        resolutionTargetHours: 8,
+      });
+
+      expect(result.responseStatus).toBe('met');
+      expect(result.resolutionStatus).toBe('met');
+    });
+
+    it('pauses open clocks when ticket is waiting on customer', () => {
+      const result = calculateSLAClock({
+        createdAt,
+        now: new Date('2026-05-11T00:00:00.000Z'),
+        status: 'WAITING_ON_CUSTOMER',
+        responseTargetHours: 2,
+        resolutionTargetHours: 8,
+      });
+
+      expect(result.responseStatus).toBe('paused');
+      expect(result.resolutionStatus).toBe('paused');
+    });
+  });
+});

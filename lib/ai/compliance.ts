@@ -68,8 +68,7 @@ export async function handleAIDataDeletionRequest(userId: string, orgId?: string
   await db.delete(orgAIMemory)
     .where(eq(orgAIMemory.addedBy, userId));
 
-  // 3. Log the deletion request in system compliance log
-  console.log('[Compliance] AI data deletion for user:', userId, 'org:', orgId);
+  // 3. User AI data deletion complete
 
   return { success: true, deleted: deleted.length || 0 };
 }
@@ -89,8 +88,7 @@ export async function handleOrgAIDataDeletion(orgId: string): Promise<{
   await db.delete(orgAIMemory)
     .where(eq(orgAIMemory.orgId, orgId));
 
-  // 3. Log the deletion
-  console.log('[Compliance] AI data deletion for org:', orgId);
+  // 3. Org AI data deletion complete
 
   return { success: true, deleted: deleted.length || 0 };
 }
@@ -162,11 +160,6 @@ export async function cleanupAIAuditLogs(): Promise<{
       )
     );
 
-  console.log('[Compliance] AI audit log cleanup:', {
-    public: publicDeleted.length || 0,
-    customer: customerDeleted.length || 0,
-    admin: adminDeleted.length || 0,
-  });
 
   return {
     publicDeleted: publicDeleted.length || 0,
@@ -176,6 +169,6 @@ export async function cleanupAIAuditLogs(): Promise<{
 }
 
 // Helper for the delete queries
-function and(...conditions: any[]) {
-  return conditions.reduce((acc, curr) => acc && curr, true);
+function and<T>(...conditions: T[]) {
+  return conditions.reduce((acc, curr) => acc && curr, true) as T;
 }

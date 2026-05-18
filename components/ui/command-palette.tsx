@@ -47,11 +47,11 @@ interface CommandPaletteProps {
   } | null;
 }
 
-export function CommandPalette({ isOpen, onClose, user }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, user: _user }: CommandPaletteProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [recentCommands, setRecentCommands] = useState<string[]>([]);
+  const [, setRecentCommands] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -356,7 +356,7 @@ export function CommandPalette({ isOpen, onClose, user }: CommandPaletteProps) {
                   <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     {category}
                   </div>
-                  {items.map((cmd, idx) => {
+                  {items.map((cmd) => {
                     const globalIndex = flatCommands.findIndex((c) => c.id === cmd.id);
                     const isSelected = globalIndex === selectedIndex;
 

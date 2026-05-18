@@ -9,26 +9,34 @@ export function renderAgentReplyEmail(options: {
 }) {
   const { ticketKey, subject, agentName, comment, ticketUrl } = options;
   const title = `New Reply on ${ticketKey}`;
+  
   const bodyHtml = `
-    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;">
-      ${escapeHtml(agentName)} replied to your ticket.
-    </p>
-    <div style="margin:16px 0;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;">
-      <p style="margin:0;font-size:13px;line-height:1.6;color:#111827;">
+    <p>Hi there,</p>
+    
+    <p><strong>${escapeHtml(agentName)}</strong> replied to your ticket:</p>
+    
+    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 25px 0;">
+      <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #111827;">
         ${formatMultilineText(comment)}
       </p>
     </div>
-    ${ticketUrl ? `<p style="margin:0 0 12px;font-size:14px;"><a href="${ticketUrl}" style="color:#2563eb;text-decoration:none;">View ticket</a></p>` : ''}
-    <p style="margin:0;font-size:12px;color:#6b7280;">
-      Ticket ${escapeHtml(ticketKey)} • ${escapeHtml(subject)}
+    
+    ${ticketUrl ? `
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${ticketUrl}" class="btn">View Ticket</a>
+    </div>
+    ` : ''}
+    
+    <p style="font-size: 12px; color: #6b7280; text-align: center;">
+      Ticket: ${escapeHtml(ticketKey)} • ${escapeHtml(subject)}
     </p>
   `;
 
   return {
     subject: `Re: ${subject} (${ticketKey})`,
     html: renderBaseTemplate({
-      title,
-      preheader: `Reply on ticket ${ticketKey}`,
+      title: 'New Reply',
+      preheader: `${agentName} replied to ticket ${ticketKey}`,
       bodyHtml,
     }),
     text: `New reply on ticket ${ticketKey}\n\n${agentName} replied:\n${comment}\n\n${ticketUrl ? `View ticket: ${ticketUrl}\n\n` : ''}Subject: ${subject}`,

@@ -12,9 +12,7 @@ import {
   Tag,
   AlertCircle,
   CheckCircle2,
-  MessageSquare,
-  Calendar,
-  Paperclip
+  MessageSquare
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -74,8 +72,8 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
     notFound();
   }
 
-  // Cast ticket to any to avoid type inference issues with Drizzle relations
-  const typedTicket = ticket as any;
+  // Use the ticket directly with proper typing
+  const typedTicket = ticket;
 
   const statusConfig = getStatusConfig(typedTicket.status);
   const priorityColors: Record<string, string> = {
@@ -159,7 +157,7 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
               </div>
             ) : (
               <div className="space-y-6">
-                {typedTicket.comments.map((comment: any) => (
+                {typedTicket.comments.map((comment) => (
                   <CommentCard key={comment.id} comment={comment} />
                 ))}
               </div>
@@ -224,7 +222,18 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
   );
 }
 
-function CommentCard({ comment }: { comment: any }) {
+interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  user?: {
+    name: string | null;
+    email: string;
+    role?: string;
+  } | null;
+}
+
+function CommentCard({ comment }: { comment: Comment }) {
   const isStaff = comment.user?.role === 'ADMIN' || comment.user?.role === 'AGENT';
   const initials = comment.user?.name?.slice(0, 2).toUpperCase() || 
                    comment.user?.email?.slice(0, 2).toUpperCase() || '??';

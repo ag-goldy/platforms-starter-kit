@@ -12,12 +12,12 @@ import { canViewTicket } from '@/lib/auth/permissions';
  * Assign ticket to current user
  */
 export async function assignToMeAction(ticketId: string) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   
   // Verify user can view ticket
   await canViewTicket(ticketId);
   
-  await assignTicketAction(ticketId, user.id);
+  await assignTicketAction(ticketId, session.user.id);
   revalidatePath('/app');
   revalidatePath(`/app/tickets/${ticketId}`);
   

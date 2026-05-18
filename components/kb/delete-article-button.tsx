@@ -24,7 +24,7 @@ export function DeleteArticleButton({ articleId, articleTitle }: DeleteArticleBu
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -41,8 +41,8 @@ export function DeleteArticleButton({ articleId, articleTitle }: DeleteArticleBu
       success('Article deleted successfully');
       setIsOpen(false);
       router.refresh();
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to delete article');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to delete article');
     } finally {
       setIsDeleting(false);
     }

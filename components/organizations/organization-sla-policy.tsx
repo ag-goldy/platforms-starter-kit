@@ -41,7 +41,7 @@ export function OrganizationSLAPolicy({ orgId, currentPolicy }: OrganizationSLAP
     slaResolutionHoursP3: currentPolicy.slaResolutionHoursP3 ?? '',
     slaResolutionHoursP4: currentPolicy.slaResolutionHoursP4 ?? '',
   });
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -70,8 +70,8 @@ export function OrganizationSLAPolicy({ orgId, currentPolicy }: OrganizationSLAP
 
       success('SLA policy saved');
       setIsEditing(false);
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to save');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setIsSaving(false);
     }

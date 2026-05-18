@@ -1,7 +1,7 @@
 import { NavLink } from '@/components/ui/nav-link';
 import { cn } from '@/lib/utils';
 import { 
-  Monitor, Shield, Bell, User, Key,
+  Monitor, Shield,
   ChevronRight
 } from 'lucide-react';
 

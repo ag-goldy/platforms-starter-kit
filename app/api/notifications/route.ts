@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { notifications } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, lt } from 'drizzle-orm';
+import { rateLimit } from '@/lib/rate-limit';
 
-// GET /api/notifications - Get user's notifications
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+// GET /api/notifications - Get user's notifications (cursor-based pagination)
+// Query params:
+//   cursor   — opaque base64 cursor from previous response's nextCursor
+//   limit    — page size, default 20, max 100
+//   unread   — 'true' to return only unread
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -14,31 +22,54 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const rawLimit = parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10);
+    // Enforce default and maximum page size
+    const limit = Math.min(isNaN(rawLimit) || rawLimit < 1 ? DEFAULT_PAGE_SIZE : rawLimit, MAX_PAGE_SIZE);
 
-    const whereClause = unreadOnly
-      ? and(eq(notifications.userId, session.user.id), eq(notifications.read, false))
-      : eq(notifications.userId, session.user.id);
+    // Decode cursor: base64-encoded ISO timestamp of the last seen createdAt
+    const cursorParam = searchParams.get('cursor');
+    let cursorDate: Date | null = null;
+    if (cursorParam) {
+      try {
+        cursorDate = new Date(Buffer.from(cursorParam, 'base64').toString('utf8'));
+        if (isNaN(cursorDate.getTime())) cursorDate = null;
+      } catch {
+        cursorDate = null;
+      }
+    }
 
-    const [userNotifications, totalResult, unreadResult] = await Promise.all([
+    // Build where clause: user filter + optional unread filter + optional cursor
+    const baseConditions = [eq(notifications.userId, session.user.id)];
+    if (unreadOnly) baseConditions.push(eq(notifications.read, false));
+    if (cursorDate) baseConditions.push(lt(notifications.createdAt, cursorDate));
+    const whereClause = and(...baseConditions);
+
+    // Fetch one extra to determine if there's a next page
+    const [userNotifications, unreadResult] = await Promise.all([
       db.query.notifications.findMany({
         where: whereClause,
         orderBy: [desc(notifications.createdAt)],
-        limit,
-        offset,
+        limit: limit + 1,
       }),
-      db.$count(notifications, eq(notifications.userId, session.user.id)),
       db.$count(
         notifications,
         and(eq(notifications.userId, session.user.id), eq(notifications.read, false))
       ),
     ]);
 
+    const hasMore = userNotifications.length > limit;
+    const page = hasMore ? userNotifications.slice(0, limit) : userNotifications;
+
+    // nextCursor = base64-encoded createdAt of the last item in current page
+    const nextCursor = hasMore
+      ? Buffer.from(page[page.length - 1].createdAt.toISOString()).toString('base64')
+      : null;
+
     return NextResponse.json({
-      notifications: userNotifications,
-      total: totalResult,
+      notifications: page,
       unreadCount: unreadResult,
+      hasMore,
+      nextCursor,
     });
   } catch (error) {
     console.error('[Notifications API] Error:', error);
@@ -56,6 +87,10 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // 30 mark-read actions per hour per user
+    const rl = await rateLimit(`notifications:post:${session.user.id}`, { maxRequests: 30, windowSeconds: 3600 });
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
 
     const body = await request.json();
     const { notificationId, markAll = false } = body;

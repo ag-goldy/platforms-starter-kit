@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +32,6 @@ import {
   Plus,
   Settings,
   Trash2,
-  Edit,
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils/date';
 import { PageHeaderWithBack } from '@/components/navigation/back-button';
@@ -62,8 +60,7 @@ interface ConfigWithOrg {
 }
 
 export default function ZabbixAdminPage() {
-  const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
   const [configs, setConfigs] = useState<ConfigWithOrg[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,11 +84,7 @@ export default function ZabbixAdminPage() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Fetch configs and organizations on mount
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [configsRes, orgsRes] = await Promise.all([
         fetch('/api/admin/zabbix'),
@@ -109,15 +102,19 @@ export default function ZabbixAdminPage() {
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      showToast('Failed to load data', 'error');
+      showError('Failed to load data');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showError]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleTestConnection = async () => {
     if (!apiUrl || !apiToken) {
-      showToast('Please enter API URL and Token', 'error');
+      showError('Please enter API URL and Token');
       return;
     }
 
@@ -140,7 +137,7 @@ export default function ZabbixAdminPage() {
       setTestResult({ success: true, message: data.message || 'Connection successful!' });
     } catch (error) {
       setTestResult({ success: false, message: error instanceof Error ? error.message : 'Connection test failed' });
-      showToast('Failed to test connection', 'error');
+      showError('Failed to test connection');
     } finally {
       setIsTesting(false);
     }
@@ -148,7 +145,7 @@ export default function ZabbixAdminPage() {
 
   const handleSave = async () => {
     if (!selectedOrgId || !apiUrl || !apiToken) {
-      showToast('Please fill in all required fields', 'error');
+      showError('Please fill in all required fields');
       return;
     }
 
@@ -173,12 +170,12 @@ export default function ZabbixAdminPage() {
         throw new Error(data.error || 'Failed to save configuration');
       }
 
-      showToast('Configuration saved successfully', 'success');
+      success('Configuration saved successfully');
       resetForm();
       setShowForm(false);
       fetchData();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to save', 'error');
+      showError(error instanceof Error ? error.message : 'Failed to save');
     } finally {
       setIsSaving(false);
     }
@@ -200,10 +197,10 @@ export default function ZabbixAdminPage() {
         throw new Error(data.error || 'Sync failed');
       }
 
-      showToast(data.message || 'Sync completed', 'success');
+      success(data.message || 'Sync completed');
       fetchData();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Sync failed', 'error');
+      showError(error instanceof Error ? error.message : 'Sync failed');
     } finally {
       setIsSyncing(null);
     }
@@ -224,10 +221,10 @@ export default function ZabbixAdminPage() {
         throw new Error(data.error || 'Bulk sync failed');
       }
 
-      showToast(data.message || 'Bulk sync completed', 'success');
+      success(data.message || 'Bulk sync completed');
       fetchData();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Bulk sync failed', 'error');
+      showError(error instanceof Error ? error.message : 'Bulk sync failed');
     } finally {
       setIsBulkSyncing(false);
     }
@@ -249,11 +246,11 @@ export default function ZabbixAdminPage() {
         throw new Error(data.error || 'Delete failed');
       }
 
-      showToast('Configuration deleted', 'success');
+      success('Configuration deleted');
       setDeleteConfirm(null);
       fetchData();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Delete failed', 'error');
+      showError(error instanceof Error ? error.message : 'Delete failed');
     } finally {
       setDeleteConfirm(null);
       setIsDeleting(null);

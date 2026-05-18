@@ -83,7 +83,7 @@ async function fixUsers() {
         console.log(`✅ Updated user: ${userData.email}`);
       } else {
         // Create new user
-        const [newUser] = await db
+        await db
           .insert(users)
           .values({
             email: userData.email,

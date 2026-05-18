@@ -9,15 +9,32 @@ const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 // Note: Cookie domain is intentionally NOT set for Vercel compatibility
 // Setting domain can cause CSRF issues on Vercel deployments
-const cookieDomain = undefined;
 
 // Ensure secret is set
-const getSecret = () => {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!secret && isProduction) {
+const getSecret = (): string | string[] | undefined => {
+  const rawSecrets = [
+    process.env.AUTH_SECRETS,
+    process.env.NEXTAUTH_SECRETS,
+    process.env.AUTH_SECRET,
+    process.env.NEXTAUTH_SECRET,
+    process.env.AUTH_SECRET_PREVIOUS,
+    process.env.NEXTAUTH_SECRET_PREVIOUS,
+  ].filter(Boolean) as string[];
+
+  const secrets = rawSecrets
+    .flatMap((value) =>
+      value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+    .filter((value, index, arr) => arr.indexOf(value) === index);
+
+  if (secrets.length === 0 && isProduction) {
     console.error('[Auth] ERROR: AUTH_SECRET or NEXTAUTH_SECRET must be set in production!');
   }
-  return secret;
+  if (secrets.length === 0) return undefined;
+  return secrets.length === 1 ? secrets[0] : secrets;
 };
 
 export const authConfig = {
@@ -45,7 +62,9 @@ export const authConfig = {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.isInternal = (user as { isInternal?: boolean }).isInternal || false;
+        token.isInternal = (user as { isInternal?: boolean }).isInternal ?? false;
+        token.isPlatformAdmin = (user as { isPlatformAdmin?: boolean }).isPlatformAdmin ?? false;
+        token.role = (user as { role?: string }).role;
       }
       
       // Handle session updates
@@ -61,6 +80,8 @@ export const authConfig = {
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.isInternal = token.isInternal as boolean;
+        session.user.isPlatformAdmin = token.isPlatformAdmin as boolean;
+        session.user.role = token.role as string | undefined;
       }
       return session;
     },

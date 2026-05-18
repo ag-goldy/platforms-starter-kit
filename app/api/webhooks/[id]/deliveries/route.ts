@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getWebhookById, getWebhookDeliveries } from '@/lib/webhooks/queries';
-import { requireOrgAccess } from '@/lib/auth/permissions';
+import { requireInternalRole } from '@/lib/auth/permissions';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -21,10 +21,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, webhook.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);

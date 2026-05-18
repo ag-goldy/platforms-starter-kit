@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -6,7 +7,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // Temporarily ignore until all type errors are fixed
   },
   experimental: {
     // Enable experimental features if needed
@@ -30,4 +31,8 @@ const nextConfig: NextConfig = {
   // },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: 'atlas-helpdesk',
+  project: 'atlas-helpdesk',
+});

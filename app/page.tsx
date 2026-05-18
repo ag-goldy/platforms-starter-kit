@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { 
   Search, 
   Folder,
@@ -15,7 +14,6 @@ import {
   Bot,
   Loader2,
   ArrowRight,
-  Headphones,
   Activity,
   Ticket,
   BookOpen,
@@ -23,6 +21,7 @@ import {
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { PublicSiteHeader } from '@/components/public/site-header';
 
 // Icon mapping for common category names
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -75,19 +74,17 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+interface Suggestion {
+  title: string;
+  url?: string;
+}
+
 const quickSuggestions = [
   'How do I reset my password?',
   'How to set up VPN?',
   'Billing and invoices',
   'Contact support team',
 ];
-
-const mockAIResponses: Record<string, string> = {
-  'password': 'To reset your password, go to the login page and click "Forgot Password". You\'ll receive an email with instructions to create a new password.',
-  'vpn': 'To set up VPN access: 1) Go to Network Settings, 2) Click "Add VPN Connection", 3) Enter your credentials, 4) Save and connect.',
-  'billing': 'For billing inquiries, you can view your invoices in Account > Billing. For questions, contact billing@agrnetworks.com.',
-  'contact': 'You can reach our support team 24/7 via: Email: support@agrnetworks.com, Phone: 1-800-555-0123, or submit a support ticket for more assistance.',
-};
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,20 +114,13 @@ export default function HomePage() {
   const [isAITyping, setIsAITyping] = useState(false);
   const [aiSessionId] = useState<string>(() => {
     // Prefer browser crypto.randomUUID if available
-    // eslint-disable-next-line no-restricted-globals
-    const hasCrypto = typeof self !== 'undefined' && (self as any).crypto && (self as any).crypto.randomUUID;
+    const hasCrypto = typeof self !== 'undefined' && typeof (self as Window & { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID === 'function';
     if (hasCrypto) {
-      // eslint-disable-next-line no-restricted-globals
-      return (self as any).crypto.randomUUID();
+      return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
     }
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [showSupportForm, setShowSupportForm] = useState(false);
-  const [supportEmail, setSupportEmail] = useState('');
-  const [supportName, setSupportName] = useState('');
-  const [supportPhone, setSupportPhone] = useState('');
   const [supportIssue, setSupportIssue] = useState('');
-  const [supportPriority, setSupportPriority] = useState<'P1' | 'P2' | 'P3' | 'P4'>('P3');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
@@ -203,8 +193,8 @@ export default function HomePage() {
     if (!aiInput.trim()) return;
     const intent = /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
     if (intent.test(aiInput)) {
-      setShowSupportForm(true);
       setSupportIssue(aiInput);
+      await handleSupportSubmit();
       return;
     }
 
@@ -229,7 +219,7 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Related Articles\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
         content = (data.answer || 'I could not find a precise match in the knowledge base.') + suggestions;
       }
@@ -254,27 +244,23 @@ export default function HomePage() {
   };
 
   const handleSupportSubmit = async () => {
-    if (!supportEmail.trim() || !supportName.trim() || !supportPhone.trim() || !supportIssue.trim()) return;
+    const issue = supportIssue.trim() || aiInput.trim();
+    if (!issue) return;
     setIsAITyping(true);
     try {
       const res = await fetch('/api/ai/kb-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: supportIssue,
+          query: `${issue}\n\nopen a ticket`,
           sessionId: aiSessionId,
-          email: supportEmail,
-          name: supportName,
-          phone: supportPhone,
-          issue: supportIssue,
-          priority: supportPriority,
         }),
       });
       let content = 'Ticket created. Check your email for the tracking link.';
       if (res.ok) {
         const data = await res.json();
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
         const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
         const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
@@ -290,10 +276,6 @@ export default function HomePage() {
         timestamp: new Date(),
       };
       setChatMessages((prev) => [...prev, aiMessage]);
-      setShowSupportForm(false);
-      setSupportEmail('');
-      setSupportName('');
-      setSupportPhone('');
       setSupportIssue('');
     } catch {
       const aiMessage: ChatMessage = {
@@ -320,42 +302,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <img 
-                src="/logo/atlas-logo.png" 
-                alt="atlas.logo" 
-                className="h-8 w-auto"
-              />
-            </Link>
-            <nav className="flex items-center gap-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hidden md:inline-flex gap-2"
-                onClick={() => setIsAIModalOpen(true)}
-              >
-                <Sparkles className="h-4 w-4 text-orange-500" />
-                Ask AI
-              </Button>
-              <Link href="/support" className="text-sm text-gray-600 hover:text-gray-900">
-                Support
-              </Link>
-              <Link href="/kb" className="text-sm text-gray-600 hover:text-gray-900">
-                Knowledge Base
-              </Link>
-              <Link href="/login">
-                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
-                  Login
-                </Button>
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <PublicSiteHeader onAskAI={() => setIsAIModalOpen(true)} />
 
       {/* Hero Section */}
       <section className="bg-gray-900 py-16">
@@ -494,30 +441,6 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* CTA */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <Card className="bg-gray-900 text-white">
-          <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Headphones className="h-5 w-5 text-orange-500" />
-                <span className="text-orange-400 text-sm font-medium">Still need help?</span>
-              </div>
-              <h2 className="text-xl font-bold mb-1">Can&apos;t find what you&apos;re looking for?</h2>
-              <p className="text-gray-400">
-                Our support team is here to help you with any questions.
-              </p>
-            </div>
-            <Link href="/support">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white px-6">
-                Submit a Ticket
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </section>
-
       {/* Footer */}
       <footer className="border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -653,9 +576,14 @@ export default function HomePage() {
                   variant="outline"
                   size="sm"
                   onClick={handleSupportSubmit}
+                  disabled={!aiInput.trim() || isAITyping}
                   className="h-7 px-2"
                 >
-                  Create Ticket
+                  {isAITyping ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    'Create Ticket'
+                  )}
                 </Button>
               </div>
             </div>

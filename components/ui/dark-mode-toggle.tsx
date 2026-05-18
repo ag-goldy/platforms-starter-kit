@@ -24,7 +24,7 @@ export function DarkModeToggle({
   className,
   showLabel = false,
 }: DarkModeToggleProps) {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <DropdownMenu>
@@ -73,7 +73,7 @@ export function DarkModeSimpleToggle({
 }: {
   className?: string;
 }) {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
 
   return (
     <Button

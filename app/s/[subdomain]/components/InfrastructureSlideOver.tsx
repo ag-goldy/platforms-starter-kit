@@ -8,25 +8,23 @@ import {
   Router,
   Video,
   Shield,
-  Activity,
   AlertTriangle,
-  CheckCircle,
-  XCircle,
+
   RefreshCw,
   Settings,
-  Link,
   ExternalLink,
   Search,
-  Filter,
   BarChart3,
   MapPin,
-  Cpu,
-  HardDrive,
 } from 'lucide-react';
+
+interface Org {
+  id: string;
+}
 
 interface InfrastructureSlideOverProps {
   subdomain: string;
-  org: any;
+  org: Org;
   onClose: () => void;
 }
 
@@ -69,7 +67,7 @@ interface ZabbixIntegration {
   syncStatus: 'idle' | 'syncing' | 'error';
 }
 
-export function InfrastructureSlideOver({ subdomain, org, onClose }: InfrastructureSlideOverProps) {
+export function InfrastructureSlideOver({ org }: InfrastructureSlideOverProps) {
   const [hosts, setHosts] = useState<ZabbixHost[]>([]);
   const [integration, setIntegration] = useState<ZabbixIntegration | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,32 +77,31 @@ export function InfrastructureSlideOver({ subdomain, org, onClose }: Infrastruct
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    fetchInfrastructureData();
-  }, [org.id]);
+    const fetchInfrastructureData = async () => {
+      try {
+        // Check if Zabbix integration exists
+        const integrationRes = await fetch(`/api/zabbix/integration/${org.id}`);
+        if (integrationRes.ok) {
+          const integrationData = await integrationRes.json();
+          setIntegration(integrationData);
 
-  const fetchInfrastructureData = async () => {
-    try {
-      // Check if Zabbix integration exists
-      const integrationRes = await fetch(`/api/zabbix/integration/${org.id}`);
-      if (integrationRes.ok) {
-        const integrationData = await integrationRes.json();
-        setIntegration(integrationData);
-
-        if (integrationData.enabled) {
-          // Fetch hosts from Zabbix
-          const hostsRes = await fetch(`/api/zabbix/hosts/${org.id}`);
-          if (hostsRes.ok) {
-            const hostsData = await hostsRes.json();
-            setHosts(hostsData.hosts || []);
+          if (integrationData.enabled) {
+            // Fetch hosts from Zabbix
+            const hostsRes = await fetch(`/api/zabbix/hosts/${org.id}`);
+            if (hostsRes.ok) {
+              const hostsData = await hostsRes.json();
+              setHosts(hostsData.hosts || []);
+            }
           }
         }
+      } catch (error) {
+        console.error('Failed to fetch infrastructure data:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch infrastructure data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchInfrastructureData();
+  }, [org.id]);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -115,8 +112,8 @@ export function InfrastructureSlideOver({ subdomain, org, onClose }: Infrastruct
       if (res.ok) {
         await fetchInfrastructureData();
       }
-    } catch (error) {
-      console.error('Failed to sync:', error);
+    } catch {
+      console.error('Failed to sync');
     } finally {
       setIsSyncing(false);
     }

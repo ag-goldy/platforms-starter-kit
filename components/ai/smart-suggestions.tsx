@@ -50,7 +50,7 @@ export function SmartSuggestions({
   className,
 }: SmartSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [expanded, setExpanded] = useState(true);
 
@@ -315,7 +315,7 @@ export function AiResponseSuggestions({
   className,
 }: AiResponseSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   const generateSuggestions = async () => {
     setIsLoading(true);
@@ -342,6 +342,7 @@ export function AiResponseSuggestions({
       const timeout = setTimeout(generateSuggestions, 1000);
       return () => clearTimeout(timeout);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context]);
 
   if (suggestions.length === 0) return null;

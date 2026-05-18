@@ -63,7 +63,7 @@ interface Category {
 }
 
 export default function CategoriesPage() {
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
@@ -160,11 +160,11 @@ export default function CategoriesPage() {
         throw new Error(error.error || 'Failed to create category');
       }
 
-      showToast('Category created successfully', 'success');
+      success('Category created successfully');
       setNewCategory({ name: '', description: '', parentId: '', isPublic: true, sortOrder: 0 });
       loadCategories();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to create category', 'error');
+      showError(err instanceof Error ? err.message : 'Failed to create category');
     } finally {
       setIsCreating(false);
     }
@@ -184,11 +184,11 @@ export default function CategoriesPage() {
         throw new Error(error.error || 'Failed to delete category');
       }
 
-      showToast('Category deleted successfully', 'success');
+      success('Category deleted successfully');
       setCategoryToDelete(null);
       loadCategories();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to delete category', 'error');
+      showError(err instanceof Error ? err.message : 'Failed to delete category');
     } finally {
       setIsDeleting(false);
     }
@@ -232,11 +232,11 @@ export default function CategoriesPage() {
         throw new Error(error.error || 'Failed to update category');
       }
 
-      showToast('Category updated successfully', 'success');
+      success('Category updated successfully');
       setCategoryToEdit(null);
       loadCategories();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update category', 'error');
+      showError(err instanceof Error ? err.message : 'Failed to update category');
     } finally {
       setIsUpdating(false);
     }

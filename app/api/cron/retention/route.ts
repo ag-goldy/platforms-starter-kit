@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyRetentionPoliciesToAllOrgs } from '@/lib/compliance/retention';
-import { secureEndpoint, logUnauthorizedAccess } from '@/lib/api/security';
 import { getCorrelationId } from '@/lib/monitoring/correlation';
+import { verifyCronAuth } from '@/lib/auth/cron';
 
 /**
  * POST /api/cron/retention
- * 
- * Cron job endpoint for applying data retention policies
- * Should be called daily (e.g., via Vercel Cron)
- * 
- * Secured with a secret token or internal auth
+ *
+ * Cron job endpoint for applying data retention policies.
+ * Should be called daily (e.g., via Vercel Cron).
+ *
+ * Authentication: Authorization: Bearer <CRON_SECRET>
  */
 export async function POST(request: NextRequest) {
-  // Secure endpoint - allow CRON secret or internal auth
-  const { authorized } = await secureEndpoint(request, {
-    allowCron: true,
-    requireInternal: true,
-  });
-  
-  if (!authorized) {
-    await logUnauthorizedAccess(request, 'Missing or invalid authentication', '/api/cron/retention');
-    return NextResponse.json(
-      { error: 'Unauthorized', message: 'Valid CRON secret or internal authentication required' },
-      { status: 401 }
-    );
-  }
+  // Fail-closed: rejects if CRON_SECRET not set or header mismatch
+  const rejection = verifyCronAuth(request);
+  if (rejection) return rejection;
 
   try {
     const correlationId = await getCorrelationId();

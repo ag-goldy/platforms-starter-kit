@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { notFound } from 'next/navigation';
@@ -6,7 +7,7 @@ import { CustomerTeamManager } from '@/components/customer/team-manager';
 import { db } from '@/db';
 import { memberships, users, userInvitations } from '@/db/schema';
 import { eq, and, isNull, gt } from 'drizzle-orm';
-import { Users, Shield, Mail, Clock } from 'lucide-react';
+import { Users, Shield, Mail } from 'lucide-react';
 
 export default async function CustomerTeamPage({
   params,
@@ -152,9 +153,9 @@ export default async function CustomerTeamPage({
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <a href="/login" className="inline-flex items-center justify-center w-full bg-black hover:bg-gray-800 text-white h-11 rounded-xl font-medium transition-colors">
+            <Link href="/login" className="inline-flex items-center justify-center w-full bg-black hover:bg-gray-800 text-white h-11 rounded-xl font-medium transition-colors">
               Sign in to Continue
-            </a>
+            </Link>
           </CardContent>
         </Card>
       </div>

@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   ArrowLeft, 
@@ -26,6 +24,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { PublicSiteHeader } from '@/components/public/site-header';
 
 interface Article {
   id: string;
@@ -50,6 +49,15 @@ interface Article {
   } | null;
 }
 
+interface Suggestion {
+  title: string;
+  url?: string;
+}
+
+interface ErrorResponse {
+  error?: string;
+}
+
 export default function GlobalArticlePage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -69,16 +77,11 @@ export default function GlobalArticlePage() {
   const [aiQuery, setAiQuery] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSessionId] = useState<string>(() => {
-    const hasCrypto = typeof self !== 'undefined' && (self as any).crypto && (self as any).crypto.randomUUID;
-    if (hasCrypto) return (self as any).crypto.randomUUID();
+    const hasCrypto = typeof self !== 'undefined' && typeof (self as Window & { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID === 'function';
+    if (hasCrypto) return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [showSupportForm, setShowSupportForm] = useState(false);
-  const [supportEmail, setSupportEmail] = useState('');
-  const [supportName, setSupportName] = useState('');
-  const [supportPhone, setSupportPhone] = useState('');
   const [supportIssue, setSupportIssue] = useState('');
-  const [supportPriority, setSupportPriority] = useState<'P1' | 'P2' | 'P3' | 'P4'>('P3');
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
@@ -98,7 +101,7 @@ export default function GlobalArticlePage() {
         }
         const data = await response.json();
         setArticle(data.article);
-      } catch (err) {
+      } catch {
         setError('Failed to load article');
       } finally {
         setIsLoading(false);
@@ -114,8 +117,8 @@ export default function GlobalArticlePage() {
         const res = await fetch(`/api/kb/articles?global=true&category=${article.category.slug}`);
         if (res.ok) {
           const data = await res.json();
-          const items = (data.articles || [])
-            .filter((a: any) => a.slug !== article.slug)
+          const items = (data.articles as Article[] || [])
+            .filter((a) => a.slug !== article.slug)
             .slice(0, 3);
           setRelatedArticles(items);
         }
@@ -169,7 +172,7 @@ export default function GlobalArticlePage() {
         body: JSON.stringify({ query: userMessage.content, sessionId: aiSessionId }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed to get AI response' }));
+        const err = await res.json().catch(() => ({ error: 'Failed to get AI response' })) as ErrorResponse;
         const aiMessage = {
           id: (Date.now() + 1).toString(),
           type: 'ai' as const,
@@ -183,7 +186,7 @@ export default function GlobalArticlePage() {
       const data = await res.json();
       const base = data.answer || 'I could not find a precise match in the knowledge base.';
       const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-        ? `\n\n### Related Articles\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+        ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
         : '';
       const aiMessage = {
         id: (Date.now() + 1).toString(),
@@ -227,7 +230,7 @@ export default function GlobalArticlePage() {
         const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
         const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
         content = base + created + (track ? `\n${track}` : '') + suggestions;
       }
@@ -238,10 +241,6 @@ export default function GlobalArticlePage() {
         timestamp: new Date(),
       };
       setAiMessages((prev) => [...prev, aiMessage]);
-      setShowSupportForm(false);
-      setSupportEmail('');
-      setSupportName('');
-      setSupportPhone('');
       setSupportIssue('');
     } catch {
       const aiMessage = {
@@ -280,17 +279,8 @@ export default function GlobalArticlePage() {
 
   if (error || !article) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b">
-          <div className="px-6 lg:px-10 h-16 flex items-center">
-            <Link href="/kb">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to KB
-              </Button>
-            </Link>
-          </div>
-        </header>
+      <div className="min-h-screen bg-gray-50 text-gray-900">
+        <PublicSiteHeader />
         <div className="px-6 lg:px-10 py-12 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
             {error || 'Article not found'}
@@ -304,44 +294,8 @@ export default function GlobalArticlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="px-6 lg:px-10 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/kb">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </Link>
-            <div className="h-6 w-px bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-blue-600" />
-              <span className="font-medium text-gray-900">Global KB</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/support">
-              <Button variant="outline" size="sm">
-                Get Support
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="sm">Login</Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden md:inline-flex gap-2"
-              onClick={() => setShowAiAssistant(true)}
-            >
-              <Sparkles className="h-4 w-4 text-orange-500" />
-              Ask Zeus AI
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <PublicSiteHeader onAskAI={() => setShowAiAssistant(true)} />
 
       {/* Article Content */}
       <main className="w-full px-0 py-0">
@@ -384,30 +338,30 @@ export default function GlobalArticlePage() {
             </div>
           </div>
 
-          <div className="px-6 lg:px-10">
+          <div className="px-6 lg:px-10 pb-8">
             {article.contentType === 'html' ? (
               <div 
-                className="prose prose-blue max-w-none"
+                className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600"
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
             ) : (
-              <div className="prose prose-blue max-w-none">
+              <div className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600">
                 <ReactMarkdown>{article.content}</ReactMarkdown>
               </div>
             )}
           </div>
 
           {relatedArticles.length > 0 && (
-            <div className="px-6 lg:px-10 mt-12 pt-8 border-t">
-              <h2 className="text-xl font-semibold mb-4">Related Articles</h2>
+            <div className="px-6 lg:px-10 mt-12 pt-8 border-t border-gray-200">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">Related Articles</h2>
               <div className="grid md:grid-cols-3 gap-0">
                 {relatedArticles.map((related) => (
                   <Link
                     key={related.id}
                     href={`/kb/${related.slug}`}
-                    className="block"
+                    className="block rounded-lg border border-transparent p-4 transition-colors hover:border-orange-200 hover:bg-white"
                   >
-                    <h3 className="font-medium line-clamp-2">{related.title}</h3>
+                    <h3 className="line-clamp-2 font-medium text-gray-900">{related.title}</h3>
                     {related.excerpt && (
                       <p className="text-sm text-gray-600 mt-2 line-clamp-2">
                         {related.excerpt}
@@ -419,8 +373,8 @@ export default function GlobalArticlePage() {
             </div>
           )}
 
-          <div className="px-6 lg:px-10">
-            <Card>
+          <div className="px-6 lg:px-10 pb-8">
+            <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
               <CardContent className="p-6">
                 {feedbackSubmitted ? (
                   <div className="flex items-center justify-center gap-2 text-green-600">
@@ -436,7 +390,7 @@ export default function GlobalArticlePage() {
                       <Button
                         variant="outline"
                         onClick={() => handleFeedback(true)}
-                        className="gap-2"
+                        className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                       >
                         <ThumbsUp className="h-4 w-4" />
                         Yes
@@ -444,7 +398,7 @@ export default function GlobalArticlePage() {
                       <Button
                         variant="outline"
                         onClick={() => handleFeedback(false)}
-                        className="gap-2"
+                        className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                       >
                         <ThumbsDown className="h-4 w-4" />
                         No
@@ -457,15 +411,15 @@ export default function GlobalArticlePage() {
           </div>
 
         {/* Footer Navigation */}
-        <div className="mt-8 flex justify-between">
+        <div className="mt-8 flex justify-between px-6 pb-10 lg:px-10">
           <Link href="/kb">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
               <ArrowLeft className="h-4 w-4" />
               Browse All Articles
             </Button>
           </Link>
           <Link href="/support">
-            <Button className="gap-2">
+            <Button className="gap-2 bg-orange-600 text-white hover:bg-orange-700">
               Need More Help?
             </Button>
           </Link>
@@ -474,14 +428,14 @@ export default function GlobalArticlePage() {
 
       {showAiAssistant && (
         <div
-          className="fixed right-0 top-0 z-50 h-screen w-full bg-white shadow-xl border-l flex flex-col"
+          className="fixed right-0 top-0 z-50 h-screen w-full border-l border-gray-200 bg-white text-gray-900 shadow-xl flex flex-col"
           style={panelWidth ? { width: `${panelWidth}px` } : undefined}
         >
           <div
             onMouseDown={() => setIsResizing(true)}
             className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-orange-200/50 hidden lg:block"
           />
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-orange-600" />
@@ -541,14 +495,14 @@ export default function GlobalArticlePage() {
             )}
           </div>
           
-            <form ref={formRef} onSubmit={handleAiSubmit} className="p-4 border-t">
+            <form ref={formRef} onSubmit={handleAiSubmit} className="p-4 border-t border-gray-200">
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Textarea
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     placeholder="Type your question... (Shift+Enter for newline)"
-                    className="flex-1 min-h-[80px]"
+                    className="flex-1 min-h-[80px] border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                     disabled={isAiLoading}
                     rows={3}
                     onKeyDown={(e) => {
@@ -578,7 +532,7 @@ export default function GlobalArticlePage() {
                     variant="outline"
                     size="sm"
                     onClick={handleSupportSubmit}
-                    className="h-7 px-2"
+                    className="h-7 px-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   >
                     Create Ticket
                   </Button>

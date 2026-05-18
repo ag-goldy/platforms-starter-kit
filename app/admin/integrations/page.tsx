@@ -5,7 +5,7 @@ import { IntegrationChooser, IntegrationType } from '@/components/integrations/i
 import { PageHeaderWithBack } from '@/components/navigation/back-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings, ExternalLink, Loader2, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Settings, ExternalLink, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,12 +50,17 @@ export default function AdminIntegrationsPage() {
     fetchConfiguredIntegrations();
   }, [fetchConfiguredIntegrations]);
 
+  // Providers with full implementations (not stubs)
+  const IMPLEMENTED_PROVIDERS = ['zabbix'];
+
   const handleSelectIntegration = (integration: IntegrationType) => {
     if (integration.id === 'zabbix') {
       router.push('/admin/zabbix');
+    } else if (!IMPLEMENTED_PROVIDERS.includes(integration.id)) {
+      // Provider is registered but not yet implemented — show informative message
+      alert(`${integration.name} integration is registered but not yet available.\nCheck back in a future release.`);
     } else {
-      // TODO: Show coming soon modal instead of alert
-      alert(`${integration.name} integration coming soon!`);
+      router.push(`/admin/${integration.id}`);
     }
   };
 

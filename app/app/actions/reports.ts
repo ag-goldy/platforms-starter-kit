@@ -10,7 +10,7 @@ export async function generateReportAction(filters: ReportFilters) {
 }
 
 export async function exportReportCSVAction(filters: ReportFilters) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   
   // Enqueue export job instead of generating synchronously
   const jobId = await enqueueJob({
@@ -19,7 +19,7 @@ export async function exportReportCSVAction(filters: ReportFilters) {
     data: {
       format: 'CSV' as const,
       filters,
-      userId: user.id,
+      userId: session.user.id,
     },
   });
 
@@ -27,7 +27,7 @@ export async function exportReportCSVAction(filters: ReportFilters) {
 }
 
 export async function exportReportJSONAction(filters: ReportFilters) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   
   // Enqueue export job instead of generating synchronously
   const jobId = await enqueueJob({
@@ -36,7 +36,7 @@ export async function exportReportJSONAction(filters: ReportFilters) {
     data: {
       format: 'JSON' as const,
       filters,
-      userId: user.id,
+      userId: session.user.id,
     },
   });
 

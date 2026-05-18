@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, notifications, theme, language } = body;
+    const { name, notifications: _notifications, theme: _theme, language: _language } = body;
 
     // Update user name if provided
     if (name !== undefined) {

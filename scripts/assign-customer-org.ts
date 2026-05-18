@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { db } from '@/db';
-import { organizations, memberships, users } from '@/db/schema';
+import { memberships, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 dotenv.config({ path: '.env.local' });

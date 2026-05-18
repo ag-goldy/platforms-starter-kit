@@ -26,7 +26,7 @@ export async function createArticleVersionAction(
     changeSummary?: string;
   }
 ) {
-  const { user } = await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
 
   // Get the current article
   const article = await db.query.kbArticles.findFirst({
@@ -143,7 +143,7 @@ export async function revertToVersionAction(
   articleId: string,
   versionNumber: number
 ) {
-  const { user } = await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
 
   const version = await getArticleVersionAction(orgId, articleId, versionNumber);
 
@@ -444,5 +444,4 @@ export async function getRelatedArticlesAction(
   return relatedArticles;
 }
 
-// Import sql for raw queries
 import { sql } from 'drizzle-orm';

@@ -13,6 +13,7 @@ import { headers } from 'next/headers';
 import { getClientIP } from '@/lib/rate-limit';
 import { processEmailReply } from '@/lib/email/reply-handler';
 import { getOrgSLATargets } from '@/lib/tickets/sla';
+import { bearerTokenMatches, constantTimeEquals } from '@/lib/security/secrets';
 
 /**
  * Extract plain text from HTML email body
@@ -189,17 +190,20 @@ async function findOrganizationForEmail(senderEmail: string, recipientEmail?: st
 }
 
 /**
- * Verify webhook signature (optional, for security)
+ * Verify webhook signature or shared bearer token.
  */
 async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
-  // Implement signature verification based on your email provider
-  // For now, we'll use a simple secret token check
   const webhookSecret = process.env.INBOUND_EMAIL_SECRET;
   if (!webhookSecret) {
-    // If no secret is set, allow all requests (not recommended for production)
+    console.error('[SECURITY] INBOUND_EMAIL_SECRET is not configured - rejecting inbound email webhook');
+    return false;
+  }
+
+  const authHeader = request.headers.get('authorization');
+  if (bearerTokenMatches(authHeader, webhookSecret)) {
     return true;
   }
-  
+
   const signature = request.headers.get('x-webhook-signature') || 
                    request.headers.get('x-resend-signature') ||
                    request.headers.get('x-sendgrid-signature');
@@ -208,9 +212,7 @@ async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
     return false;
   }
   
-  // In production, implement proper HMAC verification based on your provider
-  // For now, simple token comparison
-  return signature === webhookSecret;
+  return constantTimeEquals(signature, webhookSecret);
 }
 
 /**
@@ -229,16 +231,15 @@ async function addTicketComment(
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    
-    // Verify webhook signature if configured
     const isValid = await verifyWebhookSignature(request);
     if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
+        { error: process.env.INBOUND_EMAIL_SECRET ? 'Invalid signature' : 'Inbound email webhook not configured' },
+        { status: process.env.INBOUND_EMAIL_SECRET ? 401 : 503 }
       );
     }
+
+    const body = await request.json();
     
     // Parse email content
     const emailData = parseInboundEmail(body);
@@ -290,7 +291,7 @@ export async function POST(request: NextRequest) {
     const org = await findOrganizationForEmail(senderEmail, to);
     
     // Generate ticket key
-    const ticketKey = await generateTicketKey();
+    const ticketKey = await generateTicketKey(org?.id ?? null);
     
     // Get SLA targets if org exists, otherwise use defaults
     const slaTargets = org ? await getOrgSLATargets(org.id, 'P3') : { responseHours: 4, resolutionHours: 24 };

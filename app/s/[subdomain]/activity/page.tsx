@@ -47,7 +47,7 @@ export default async function CustomerActivityPage({
 
   const filters = await searchParams;
 
-  const { user, membership } = await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
+  const { user } = await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
 
   const whereClauses = [eq(auditLogs.orgId, org.id)];
 

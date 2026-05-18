@@ -1,11 +1,10 @@
 'use server';
 
 import { requireInternalRole, requireInternalAdmin } from '@/lib/auth/permissions';
-import { getQuotaStatus, setStorageQuota, recalculateStorageUsage, formatBytes } from '@/lib/attachments/quota';
+import { getQuotaStatus, setStorageQuota, recalculateStorageUsage, formatBytes, decrementStorageUsage } from '@/lib/attachments/quota';
 import { db } from '@/db';
 import { attachments } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { decrementStorageUsage } from '@/lib/attachments/quota';
 
 /**
  * Get storage quota status for an organization

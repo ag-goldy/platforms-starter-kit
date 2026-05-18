@@ -1,9 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';

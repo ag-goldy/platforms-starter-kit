@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { ticketTokens, type NewTicketToken } from '@/db/schema';
-import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import crypto from 'crypto';
 import { redis } from '@/lib/redis';
 
@@ -61,29 +61,15 @@ export async function createTicketToken(params: {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + (params.expiresInDays ?? DEFAULT_EXPIRY_DAYS));
 
-  try {
-    await db.insert(ticketTokens).values({
-      tokenHash,
-      ticketId: params.ticketId,
-      email: params.email,
-      purpose: params.purpose,
-      expiresAt,
-      createdIp: params.createdIp ?? null,
-      lastSentAt: params.lastSentAt ?? null,
-    } as NewTicketToken);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    if (!message.includes('column "token"') || !message.includes('not-null constraint')) {
-      throw error;
-    }
-
-    await db.execute(sql`
-      insert into ticket_tokens
-      (token_hash, ticket_id, email, purpose, expires_at, created_ip, last_sent_at)
-      values
-      (${tokenHash}, ${params.ticketId}, ${params.email}, ${params.purpose}, ${expiresAt.toISOString()}, ${params.createdIp ?? null}, ${params.lastSentAt ? params.lastSentAt.toISOString() : null})
-    `);
-  }
+  await db.insert(ticketTokens).values({
+    tokenHash,
+    ticketId: params.ticketId,
+    email: params.email,
+    purpose: params.purpose,
+    expiresAt,
+    createdIp: params.createdIp ?? null,
+    lastSentAt: params.lastSentAt ?? null,
+  } as NewTicketToken);
 
   return token;
 }

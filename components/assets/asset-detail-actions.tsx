@@ -31,7 +31,7 @@ export function AssetDetailActions({
   linkedTicketCount,
 }: AssetDetailActionsProps) {
   const router = useRouter();
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [showUnarchiveDialog, setShowUnarchiveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -53,8 +53,8 @@ export function AssetDetailActions({
 
       success('Asset archived successfully');
       router.refresh();
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to archive asset');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to archive asset');
     } finally {
       setIsProcessing(false);
       setShowArchiveDialog(false);
@@ -77,8 +77,8 @@ export function AssetDetailActions({
 
       success('Asset unarchived successfully');
       router.refresh();
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to unarchive asset');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to unarchive asset');
     } finally {
       setIsProcessing(false);
       setShowUnarchiveDialog(false);
@@ -104,8 +104,8 @@ export function AssetDetailActions({
       success('Asset deleted successfully');
       router.push(`${basePath}`);
       router.refresh();
-    } catch (error) {
-      error(err instanceof Error ? err.message : 'Failed to delete asset');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to delete asset');
     } finally {
       setIsProcessing(false);
       setShowDeleteDialog(false);

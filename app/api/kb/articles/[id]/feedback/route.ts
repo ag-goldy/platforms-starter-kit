@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { kbArticles, kbArticleFeedback, organizations } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { kbArticles, kbArticleFeedback } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 
 // POST /api/kb/articles/[id]/feedback - Submit feedback for an article

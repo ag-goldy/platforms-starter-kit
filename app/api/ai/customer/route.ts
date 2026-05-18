@@ -22,7 +22,7 @@ import { z } from 'zod';
 import { auth } from '@/auth';
 import { headers } from 'next/headers';
 import { getClientIP } from '@/lib/rate-limit';
-import { checkRateLimit as rateLimit } from '@/lib/rate-limit';
+import { rateLimit } from '@/lib/rate-limit';
 import { db } from '@/db';
 import { aiAuditLog, memberships } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';

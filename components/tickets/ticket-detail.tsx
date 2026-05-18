@@ -39,17 +39,42 @@ import { TicketLinks } from './ticket-links';
 import { LinkedAssets } from '@/components/tickets/linked-assets';
 import { TicketWatchers } from './ticket-watchers';
 import { TicketAIInsight } from './ticket-ai-insight';
+import { TimeTracking } from './time-tracking';
+import { Subtasks } from './subtasks';
+import { TicketDependencies } from './ticket-dependencies';
 import type { SLAMetrics } from '@/lib/tickets/sla';
+import {
+  getTimeEntriesAction,
+  addTimeEntryAction,
+  deleteTimeEntryAction,
+  startTimerAction,
+  stopTimerAction,
+  getActiveTimerAction,
+} from '@/app/app/actions/time-tracking';
+import {
+  getSubtasksAction,
+  addSubtaskAction,
+  updateSubtaskAction,
+  deleteSubtaskAction,
+} from '@/app/app/actions/subtasks';
+import {
+  getTicketDependenciesAction,
+  addDependencyAction,
+  removeDependencyAction,
+  getAvailableTicketsForDependency,
+} from '@/app/app/actions/dependencies';
 
 interface TicketDetailProps {
   ticket: Ticket & {
-    organization: { name: string };
+    organization: { name: string } | null;
+    requesterEmail?: string | null;
     requestType?: { name: string } | null;
     site?: { name: string } | null;
     area?: { name: string } | null;
     requester: { name: string | null; email: string } | null;
     assignee: { name: string | null; email: string } | null;
     comments: (TicketComment & {
+      authorEmail?: string | null;
       user: { name: string | null; email: string } | null;
     })[];
     attachments: Attachment[];
@@ -115,6 +140,94 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Time tracking state
+  const [timeEntries, setTimeEntries] = useState<Array<{
+    id: string;
+    startedAt: Date;
+    endedAt?: Date;
+    durationMinutes?: number;
+    description?: string;
+    isBillable: boolean;
+    hourlyRate?: number;
+    user: { id: string; name: string };
+  }>>([]);
+  const [activeTimer, setActiveTimer] = useState<{ id: string; startedAt: Date } | null>(null);
+
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState<Array<{
+    id: string;
+    title: string;
+    description?: string;
+    status: 'todo' | 'in_progress' | 'done';
+    assignee?: { id: string; name: string } | null;
+    dueDate?: Date;
+    sortOrder: number;
+  }>>([]);
+
+  // Dependencies state
+  interface Dependency {
+    id: string;
+    ticketId: string;
+    dependsOnTicketId: string;
+    dependencyType: 'blocks' | 'blocked_by' | 'relates_to';
+    ticket: {
+      id: string;
+      key: string;
+      subject: string;
+      status: string;
+    };
+  }
+
+  const [dependencies, setDependencies] = useState<{
+    blocks: Dependency[];
+    blockedBy: Dependency[];
+    relatesTo: Dependency[];
+    blockedByReverse: Dependency[];
+    blocksReverse: Dependency[];
+    relatedReverse: Dependency[];
+  }>({ blocks: [], blockedBy: [], relatesTo: [], blockedByReverse: [], blocksReverse: [], relatedReverse: [] });
+  const [availableTickets, setAvailableTickets] = useState<Array<{ id: string; key: string; subject: string; status: string }>>([]);
+
+  // Load data on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // Load time entries
+        const entries = await getTimeEntriesAction(ticket.id);
+        setTimeEntries(entries.map(e => ({
+          ...e,
+          user: e.user || { id: '', name: 'Unknown' },
+        })));
+
+        // Check for active timer
+        const timer = await getActiveTimerAction(ticket.id);
+        if (timer) {
+          setActiveTimer({ id: timer.id, startedAt: new Date(timer.startedAt) });
+        }
+
+        // Load subtasks
+        const tasks = await getSubtasksAction(ticket.id);
+        setSubtasks(tasks.map(t => ({
+          ...t,
+          assignee: t.assignee || null,
+        })));
+
+        // Load dependencies
+        const deps = await getTicketDependenciesAction(ticket.id);
+        setDependencies(deps);
+
+        // Load available tickets for dependency linking
+        if (ticket.orgId) {
+          const tickets = await getAvailableTicketsForDependency(ticket.id, ticket.orgId);
+          setAvailableTickets(tickets);
+        }
+      } catch (err) {
+        console.error('Failed to load ticket data:', err);
+      }
+    }
+    loadData();
+  }, [ticket.id, ticket.orgId]);
+
   useEffect(() => {
     async function loadTemplates() {
       try {
@@ -134,8 +247,8 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       // Replace placeholders with actual values
       let content = template.content;
       content = content.replace(/\{\{ticket\.subject\}\}/g, ticket.subject);
-      content = content.replace(/\{\{requester\.name\}\}/g, ticket.requester?.name || ticket.requester?.email || 'Customer');
-      content = content.replace(/\{\{requester\.email\}\}/g, ticket.requester?.email || '');
+      content = content.replace(/\{\{requester\.name\}\}/g, ticket.requester?.name || ticket.requester?.email || ticket.requesterEmail || 'Customer');
+      content = content.replace(/\{\{requester\.email\}\}/g, ticket.requester?.email || ticket.requesterEmail || '');
       setComment(content);
     }
   };
@@ -202,6 +315,68 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       setIsUploading(false);
     }
   }
+
+  // Time tracking handlers
+  const handleAddTimeEntry = async (data: { durationMinutes: number; description: string; isBillable: boolean }) => {
+    const entry = await addTimeEntryAction(ticket.id, data);
+    setTimeEntries(prev => [{
+      ...entry,
+      user: { id: entry.userId, name: 'You' },
+      startedAt: new Date(entry.startedAt),
+      endedAt: entry.endedAt ? new Date(entry.endedAt) : undefined,
+    }, ...prev]);
+  };
+
+  const handleDeleteTimeEntry = async (entryId: string) => {
+    await deleteTimeEntryAction(ticket.id, entryId);
+    setTimeEntries(prev => prev.filter(e => e.id !== entryId));
+  };
+
+  const handleStartTimer = async () => {
+    const entry = await startTimerAction(ticket.id);
+    setActiveTimer({ id: entry.id, startedAt: new Date() });
+  };
+
+  const handleStopTimer = async () => {
+    if (!activeTimer) return;
+    await stopTimerAction(ticket.id, activeTimer.id);
+    setActiveTimer(null);
+    // Refresh time entries
+    const entries = await getTimeEntriesAction(ticket.id);
+    setTimeEntries(entries.map(e => ({
+      ...e,
+      user: e.user || { id: '', name: 'Unknown' },
+    })));
+  };
+
+  // Subtask handlers
+  const handleAddSubtask = async (data: { title: string; description?: string; assigneeId?: string; dueDate?: Date }) => {
+    const subtask = await addSubtaskAction(ticket.id, data);
+    setSubtasks(prev => [...prev, { ...subtask, assignee: null }]);
+  };
+
+  const handleUpdateSubtask = async (id: string, updates: Partial<typeof subtasks[0]>) => {
+    const subtask = await updateSubtaskAction(ticket.id, id, updates);
+    setSubtasks(prev => prev.map(s => s.id === id ? { ...s, ...subtask, assignee: updates.assignee || s.assignee } : s));
+  };
+
+  const handleDeleteSubtask = async (id: string) => {
+    await deleteSubtaskAction(ticket.id, id);
+    setSubtasks(prev => prev.filter(s => s.id !== id));
+  };
+
+  // Dependency handlers
+  const handleAddDependency = async (dependsOnTicketId: string, type: 'blocks' | 'blocked_by' | 'relates_to') => {
+    await addDependencyAction(ticket.id, { dependsOnTicketId, dependencyType: type });
+    const deps = await getTicketDependenciesAction(ticket.id);
+    setDependencies(deps);
+  };
+
+  const handleRemoveDependency = async (dependencyId: string) => {
+    await removeDependencyAction(ticket.id, dependencyId);
+    const deps = await getTicketDependenciesAction(ticket.id);
+    setDependencies(deps);
+  };
 
   const publicComments = ticket.comments.filter((c: { isInternal: boolean }) => !c.isInternal);
   const internalComments = ticket.comments.filter((c: { isInternal: boolean }) => c.isInternal);
@@ -391,6 +566,41 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
         scope="internal"
       />
 
+      {/* Time Tracking */}
+      <TimeTracking
+        ticketId={ticket.id}
+        entries={timeEntries}
+        currentUserId={/* TODO: get from session */ 'current-user'}
+        onAddEntry={handleAddTimeEntry}
+        onDeleteEntry={handleDeleteTimeEntry}
+        onStartTimer={handleStartTimer}
+        onStopTimer={handleStopTimer}
+        activeTimer={activeTimer}
+      />
+
+      {/* Subtasks */}
+      <Subtasks
+        ticketId={ticket.id}
+        subtasks={subtasks}
+        currentUserId={/* TODO: get from session */ 'current-user'}
+        users={internalUsers.map(u => ({ id: u.id, name: u.name || u.email }))}
+        onAdd={handleAddSubtask}
+        onUpdate={handleUpdateSubtask}
+        onDelete={handleDeleteSubtask}
+        onReorder={async () => { /* TODO: implement */ }}
+      />
+
+      {/* Dependencies */}
+      <TicketDependencies
+        ticketId={ticket.id}
+        dependencies={dependencies.blocks}
+        blockedBy={[...dependencies.blockedBy, ...dependencies.blockedByReverse]}
+        related={[...dependencies.relatesTo, ...dependencies.relatedReverse]}
+        availableTickets={availableTickets}
+        onAdd={handleAddDependency}
+        onRemove={handleRemoveDependency}
+      />
+
       <TicketAIInsight ticketId={ticket.id} />
 
       <Card>
@@ -403,7 +613,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <strong className="text-sm">
-                    {comment.user?.name || comment.user?.email || 'Unknown'}
+                    {comment.user?.name || comment.user?.email || comment.authorEmail || 'Unknown'}
                   </strong>
                   <span className="text-xs text-gray-500">
                     {formatDateTime(comment.createdAt)}

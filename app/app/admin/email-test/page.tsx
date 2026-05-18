@@ -2,6 +2,20 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+
+interface EmailTestResult {
+  success?: boolean;
+  message?: string;
+  config?: {
+    graph: boolean;
+    smtp: boolean;
+    from: string;
+  };
+  error?: string;
+  code?: string;
+  statusCode?: number;
+  details?: Record<string, unknown>;
+}
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Mail, CheckCircle, XCircle } from 'lucide-react';
@@ -9,7 +23,7 @@ import { Loader2, Mail, CheckCircle, XCircle } from 'lucide-react';
 export default function EmailTestPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<EmailTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sendTestEmail = async () => {
@@ -34,8 +48,8 @@ export default function EmailTestPage() {
         setError(data.error || 'Failed to send email');
         setResult(data);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: Error | unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }

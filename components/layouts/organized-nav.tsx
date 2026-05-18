@@ -7,8 +7,9 @@ import {
   ChevronDown, Menu, X, 
   LayoutDashboard, Ticket, BookOpen, 
   Building2, Users, 
-  Settings, BarChart3, Shield, Database, Zap,
-  Cog, FileText, Clock, Wrench, FolderOpen
+ BarChart3, Shield, Database, Zap,
+  Cog, FileText, Clock, Wrench, FolderOpen,
+  Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,6 +88,7 @@ export function OrganizedNav() {
       href: '/app/admin',
       links: [
         { href: '/app/admin/audit', label: 'Audit Logs', icon: <Shield className="w-4 h-4" /> },
+        { href: '/app/admin/ai-audit', label: 'AI Audit', icon: <Bot className="w-4 h-4" /> },
         { href: '/app/admin/health', label: 'System Health', icon: <Database className="w-4 h-4" /> },
         { href: '/app/admin/ops', label: 'Operations', icon: <FolderOpen className="w-4 h-4" /> },
         { href: '/app/admin/jobs', label: 'Job Queue', icon: <Database className="w-4 h-4" /> },

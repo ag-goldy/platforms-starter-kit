@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { tickets, organizations, memberships, users, ticketComments, attachments } from '@/db/schema';
+import { tickets, organizations, memberships, ticketComments, attachments } from '@/db/schema';
 import { eq, and, desc, or, like } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query conditions
-    let conditions = [eq(tickets.orgId, orgId)];
+    const conditions = [eq(tickets.orgId, orgId)];
 
     // Apply filters
     switch (filter) {
@@ -153,13 +153,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { orgId, subject, description, priority, category } = body;
+    const { orgId: requestedOrgId, subdomain, subject, description, priority, category } = body;
 
-    if (!orgId || !subject || !description) {
+    if ((!requestedOrgId && !subdomain) || !subject || !description) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    let orgId = requestedOrgId as string | null;
+
+    if (!orgId && subdomain) {
+      const orgBySubdomain = await db.query.organizations.findFirst({
+        where: eq(organizations.subdomain, subdomain),
+      });
+
+      if (!orgBySubdomain) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      }
+
+      orgId = orgBySubdomain.id;
+    }
+
+    if (!orgId) {
+      return NextResponse.json({ error: 'Organization ID required' }, { status: 400 });
     }
 
     // Check membership

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getOrgCSATSurveys, getCSATAnalytics } from '@/lib/csat/queries';
-import { requireOrgAccess } from '@/lib/auth/permissions';
+import { requireInternalRole } from '@/lib/auth/permissions';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,11 +17,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Organization ID required' }, { status: 400 });
     }
 
-    // Check permissions
-    const hasAccess = await requireOrgAccess(session.user.id, orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     const responded = searchParams.get('responded');
     const includeAnalytics = searchParams.get('analytics') === 'true';

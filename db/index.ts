@@ -93,7 +93,7 @@ export async function testConnection(): Promise<{ success: boolean; error?: stri
   try {
     const db = getDbClient();
     // Simple query to test connection
-    const result = await db.execute('SELECT 1 as test');
+    await db.execute('SELECT 1 as test');
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

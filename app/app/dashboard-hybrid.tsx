@@ -1,7 +1,7 @@
 'use client';
 
 import { useFastData } from '@/hooks/use-fast-data';
-import { DashboardSkeleton } from '@/components/ui/skeleton';
+
 import { MetricsCards } from '@/components/dashboard/metrics-cards';
 import { DashboardOverview } from '@/components/dashboard/dashboard-overview';
 import { StatusDistribution } from '@/components/dashboard/status-distribution';

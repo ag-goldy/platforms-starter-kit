@@ -2,7 +2,8 @@
  * Job handler for cleaning up blob storage after organization deletion
  */
 
-import { del } from '@vercel/blob';
+// Note: Vercel Blob delete operation not currently used
+// import { del } from '@vercel/blob';
 import type { JobResult } from '../types';
 
 export async function handleCleanupOrgStorage(data: { orgId: string }): Promise<JobResult> {

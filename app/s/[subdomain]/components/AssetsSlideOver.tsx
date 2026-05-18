@@ -32,12 +32,12 @@ interface AssetsSlideOverProps {
   onClose: () => void;
 }
 
-export function AssetsSlideOver({ subdomain, org, onClose }: AssetsSlideOverProps) {
+export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
   const [assets, setAssets] = useState<(Asset & { zabbixHost?: ZabbixHost })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const { showToast } = useToast();
+  const { error: showError, info } = useToast();
 
   const fetchAssets = async () => {
     if (!org?.id) return;
@@ -48,17 +48,31 @@ export function AssetsSlideOver({ subdomain, org, onClose }: AssetsSlideOverProp
       if (!response.ok) throw new Error('Failed to fetch assets');
       const data = await response.json();
       setAssets(data.assets || []);
-    } catch (error) {
-      console.error('Error fetching assets:', error);
-      showToast('Failed to load assets. Please try again.', 'error');
+    } catch {
+      showError('Failed to load assets. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAssets();
-  }, [org?.id]);
+    const fetchAssetsData = async () => {
+      if (!org?.id) return;
+      
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/assets/org/${org.id}`);
+        if (!response.ok) throw new Error('Failed to fetch assets');
+        const data = await response.json();
+        setAssets(data.assets || []);
+      } catch {
+        showError('Failed to load assets. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAssetsData();
+  }, [org?.id, showError]);
 
   const handleSyncWithZabbix = async () => {
     try {
@@ -67,12 +81,12 @@ export function AssetsSlideOver({ subdomain, org, onClose }: AssetsSlideOverProp
       });
       if (!response.ok) throw new Error('Sync failed');
       
-      showToast('Zabbix synchronization has been initiated.', 'info');
+      info('Zabbix synchronization has been initiated.');
       
       // Refresh after a delay
       setTimeout(fetchAssets, 3000);
-    } catch (error) {
-      showToast('Could not sync with Zabbix. Please check your configuration.', 'error');
+    } catch {
+      showError('Could not sync with Zabbix. Please check your configuration.');
     }
   };
 

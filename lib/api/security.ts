@@ -9,21 +9,27 @@ import { getServerSession } from '@/lib/auth/session';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { getCorrelationId } from '@/lib/monitoring/correlation';
 import { trackError } from '@/lib/monitoring/error-tracking';
+import { bearerTokenMatches, constantTimeEquals } from '@/lib/security/secrets';
 
 /**
- * Verify CRON secret from request headers
- * Returns true if valid, false otherwise
+ * Verify CRON secret from request headers.
+ * Returns true only when CRON_SECRET is set AND the header matches.
+ *
+ * Fail-closed: if CRON_SECRET is not configured this returns false regardless
+ * of environment. Use verifyCronAuth() from lib/auth/cron.ts in route handlers
+ * for the full fail-closed NextResponse pattern.
  */
 export async function verifyCronSecret(request: NextRequest): Promise<boolean> {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  
+
+  // Fail-closed: never allow when the secret is not configured
   if (!cronSecret) {
-    // If no secret configured, allow in development
-    return process.env.NODE_ENV !== 'production';
+    console.error('[SECURITY] CRON_SECRET is not configured — rejecting cron request');
+    return false;
   }
-  
-  return authHeader === `Bearer ${cronSecret}`;
+
+  return bearerTokenMatches(authHeader, cronSecret);
 }
 
 /**
@@ -40,7 +46,8 @@ export async function verifyInternalAuth() {
 }
 
 /**
- * Verify API secret from custom header
+ * Verify API secret from custom header.
+ * Fail-closed: if the env var is not set, returns false always.
  */
 export function verifyApiSecret(
   request: NextRequest,
@@ -49,11 +56,12 @@ export function verifyApiSecret(
 ): boolean {
   const secret = process.env[secretName];
   if (!secret) {
-    return process.env.NODE_ENV !== 'production';
+    // Fail-closed — do not allow when secret is not configured
+    return false;
   }
   
   const headerValue = request.headers.get(headerName);
-  return headerValue === secret;
+  return constantTimeEquals(headerValue, secret);
 }
 
 /**

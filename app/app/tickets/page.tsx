@@ -3,7 +3,7 @@ import { getTickets, type TicketPriority, type TicketStatus } from '@/lib/ticket
 import { ticketPriorityEnum, ticketStatusEnum, Ticket } from '@/db/schema';
 
 interface TicketWithRelations extends Ticket {
-  organization: { id: string; name: string };
+  organization: { id: string; name: string } | null;
   requestType?: { id: string; name: string; slug: string } | null;
   site?: { id: string; name: string; slug: string } | null;
   area?: { id: string; name: string } | null;
@@ -21,6 +21,8 @@ import { SavedViews } from '@/components/tickets/saved-views';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Filter, MessageSquarePlus, ShieldCheck, TicketIcon } from 'lucide-react';
 
 export default async function TicketsPage({
   searchParams,
@@ -55,6 +57,7 @@ export default async function TicketsPage({
   const filters = {
     status: statusValue ? [statusValue] : undefined,
     orgId: params.orgId,
+    publicIntake: params.orgId === 'public',
     priority: priorityValue ? [priorityValue] : undefined,
     assigneeId: params.assigneeId === 'unassigned' ? null : params.assigneeId,
     search: params.search,
@@ -72,46 +75,107 @@ export default async function TicketsPage({
 
   const user = await requireInternalRole();
 
+  const activeFilterCount = [
+    params.status,
+    params.priority,
+    params.orgId,
+    params.assigneeId,
+    params.search,
+    params.tagIds,
+    params.dateFrom,
+    params.dateTo,
+    params.searchInComments,
+  ].filter(Boolean).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Ticket Queue</h1>
-        <Link href="/app/tickets/new">
-          <Button>New Ticket</Button>
-        </Link>
+    <div className="space-y-5">
+      <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-orange-600">
+              <TicketIcon className="h-4 w-4" />
+              Service Desk
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight">Ticket Queue</h1>
+            <p className="mt-2 max-w-3xl text-sm text-slate-500">
+              Dense operations view for lifecycle, SLA, assignment, public intake, comments, attachments, linking, merge review, and audit context.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="h-9 px-3">
+              <Filter className="mr-2 h-4 w-4" />
+              {activeFilterCount} active filters
+            </Badge>
+            <Button asChild variant="outline">
+              <Link href="/app/admin/audit">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Audit context
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/app/tickets/new">
+                <MessageSquarePlus className="mr-2 h-4 w-4" />
+                New Ticket
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base">Saved Views</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SavedViews currentUserId={user.user.id} />
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base">Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketFilters
+                organizations={organizations}
+                internalUsers={internalUsers}
+                initialFilters={{
+                  status: params.status,
+                  priority: params.priority,
+                  orgId: params.orgId,
+                  assigneeId: params.assigneeId,
+                  search: params.search,
+                  tagIds: params.tagIds,
+                  dateFrom: params.dateFrom,
+                  dateTo: params.dateTo,
+                  searchInComments: params.searchInComments,
+                }}
+              />
+            </CardContent>
+          </Card>
+        </aside>
+
+        <Card className="min-w-0 border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">All Tickets</CardTitle>
+              <p className="mt-1 text-sm text-slate-500">
+                {ticketList.length} matching records, including public intake when selected.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TicketList
+              tickets={ticketList as unknown as TicketWithRelations[]}
+              internalUsers={internalUsers}
+              searchTerm={params.search}
+              currentUserId={user.user.id}
+            />
+          </CardContent>
+        </Card>
       </div>
-
-      <SavedViews currentUserId={user.id} />
-
-      <TicketFilters
-        organizations={organizations}
-        internalUsers={internalUsers}
-        initialFilters={{
-          status: params.status,
-          priority: params.priority,
-          orgId: params.orgId,
-          assigneeId: params.assigneeId,
-          search: params.search,
-          tagIds: params.tagIds,
-          dateFrom: params.dateFrom,
-          dateTo: params.dateTo,
-          searchInComments: params.searchInComments,
-        }}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Tickets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TicketList
-            tickets={ticketList as unknown as TicketWithRelations[]}
-            internalUsers={internalUsers}
-            searchTerm={params.search}
-            currentUserId={user.id}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

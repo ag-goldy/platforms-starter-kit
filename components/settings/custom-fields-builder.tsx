@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,7 +49,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 
 export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilderProps) {
   const router = useRouter();
-  const [fields, setFields] = useState<Field[]>(initialFields);
+  const [fields] = useState<Field[]>(initialFields);
   const [isOpen, setIsOpen] = useState(false);
   const [editingField, setEditingField] = useState<Field | null>(null);
   const [isLoading, setIsLoading] = useState(false);

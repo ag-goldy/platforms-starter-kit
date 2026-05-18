@@ -11,9 +11,13 @@
  */
 
 import crypto from 'crypto';
+import { constantTimeEquals, getRequiredSecret } from '@/lib/security/secrets';
 
 const SIGNED_URL_EXPIRY_SECONDS = 15 * 60; // 15 minutes
-const SIGNED_URL_SECRET = process.env.ATTACHMENT_SIGNED_URL_SECRET || 'change-me-in-production';
+
+function getSignedUrlSecret(): string {
+  return getRequiredSecret('ATTACHMENT_SIGNED_URL_SECRET');
+}
 
 export interface SignedUrlParams {
   attachmentId: string;
@@ -41,7 +45,7 @@ export function generateSignedUrl(params: SignedUrlParams): string {
   const payloadBase64 = Buffer.from(payloadString).toString('base64url');
 
   // Generate signature
-  const hmac = crypto.createHmac('sha256', SIGNED_URL_SECRET);
+  const hmac = crypto.createHmac('sha256', getSignedUrlSecret());
   hmac.update(payloadString);
   const signature = hmac.digest('base64url');
 
@@ -74,11 +78,11 @@ export function validateSignedUrl(signedUrl: string): SignedUrlData | null {
     const payload = JSON.parse(payloadString) as SignedUrlData;
 
     // Verify signature
-    const hmac = crypto.createHmac('sha256', SIGNED_URL_SECRET);
+    const hmac = crypto.createHmac('sha256', getSignedUrlSecret());
     hmac.update(payloadString);
     const expectedSignature = hmac.digest('base64url');
 
-    if (signature !== expectedSignature) {
+    if (!constantTimeEquals(signature, expectedSignature)) {
       return null; // Invalid signature
     }
 

@@ -7,14 +7,13 @@ import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { PublicSiteHeader } from '@/components/public/site-header';
 import { 
   Ticket, 
   Mail, 
   MessageSquare,
-  ArrowLeft,
   Sparkles,
   Bot,
   Send,
@@ -40,13 +39,19 @@ interface Stats {
   threshold: number;
 }
 
-// Real-world IT support suggestions for hospitality industry
-const quickSuggestions = [
-  'Room 405 WiFi is not working',
-  'How do I connect to the hotel network?',
-  'CCTV camera is offline in lobby',
-  'IPTV channels are not loading',
-];
+interface TicketData {
+  ticket: {
+    key: string;
+    status: string;
+    subject: string;
+  };
+  ticketUrl: string;
+}
+
+interface Suggestion {
+  title: string;
+  url?: string;
+}
 
 export default function SupportPage() {
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
@@ -60,16 +65,11 @@ export default function SupportPage() {
   const [aiInput, setAiInput] = useState('');
   const [isAITyping, setIsAITyping] = useState(false);
   const [aiSessionId] = useState<string>(() => {
-    const hasCrypto = typeof self !== 'undefined' && (self as any).crypto && (self as any).crypto.randomUUID;
-    if (hasCrypto) return (self as any).crypto.randomUUID();
+    const hasCrypto = typeof self !== 'undefined' && 'crypto' in self && self.crypto && 'randomUUID' in self.crypto;
+    if (hasCrypto) return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [showSupportForm, setShowSupportForm] = useState(false);
-  const [supportEmail, setSupportEmail] = useState('');
-  const [supportName, setSupportName] = useState('');
-  const [supportPhone, setSupportPhone] = useState('');
   const [supportIssue, setSupportIssue] = useState('');
-  const [supportPriority, setSupportPriority] = useState<'P1' | 'P2' | 'P3' | 'P4'>('P3');
   const [ticketSubmitted, setTicketSubmitted] = useState(false);
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
@@ -125,7 +125,6 @@ export default function SupportPage() {
     if (!aiInput.trim()) return;
     const intent = /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
     if (intent.test(aiInput)) {
-      setShowSupportForm(true);
       setSupportIssue(aiInput);
       return;
     }
@@ -154,11 +153,11 @@ export default function SupportPage() {
         const data = await res.json();
         console.log('[Chat] API data:', { hasAnswer: !!data.answer, success: data.success });
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Related Articles\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
         content = (data.answer || '') + suggestions;
       } else {
-        const errorData = await res.json().catch(() => ({}));
+        const errorData = await res.json().catch(() => ({})) as { error?: string };
         console.error('[Chat] API error:', { status: res.status, error: errorData });
         content = errorData.error || `Error ${res.status}: Failed to get AI response.`;
       }
@@ -197,7 +196,7 @@ export default function SupportPage() {
       if (res.ok) {
         const data = await res.json();
         const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${data.suggestions.map((s: any) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
+          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
           : '';
         const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
         const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
@@ -212,10 +211,6 @@ export default function SupportPage() {
         content,
       };
       setChatMessages((prev) => [...prev, aiMessage]);
-      setShowSupportForm(false);
-      setSupportEmail('');
-      setSupportName('');
-      setSupportPhone('');
       setSupportIssue('');
     } catch {
       const aiMessage: ChatMessage = {
@@ -230,7 +225,7 @@ export default function SupportPage() {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ticketData, setTicketData] = useState<any>(null);
+  const [ticketData, setTicketData] = useState<TicketData | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleTicketSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -256,12 +251,12 @@ export default function SupportPage() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        setTicketData(result);
+        setTicketData(result as TicketData);
         setTicketSubmitted(true);
       } else {
         setSubmitError(result.error || 'Failed to submit ticket');
       }
-    } catch (error) {
+    } catch {
       setSubmitError('Network error. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -270,24 +265,11 @@ export default function SupportPage() {
 
   if (ticketSubmitted && ticketData) {
     return (
-      <div className="min-h-screen bg-white">
-        {/* Header */}
-        <header className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <Link href="/" className="flex items-center gap-2">
-                <img 
-                  src="/logo/atlas-logo.png" 
-                  alt="atlas.logo" 
-                  className="h-8 w-auto"
-                />
-              </Link>
-            </div>
-          </div>
-        </header>
+      <div className="min-h-screen bg-white text-gray-900">
+        <PublicSiteHeader />
 
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <Card>
+          <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-8 w-8 text-green-600" />
@@ -299,7 +281,7 @@ export default function SupportPage() {
                 We&apos;ve received your request and will respond shortly.
               </p>
               
-              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left text-sm">
+              <div className="mb-6 rounded-lg bg-gray-50 p-4 text-left text-sm">
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <div>
                     <p className="text-gray-500">Ticket ID</p>
@@ -339,7 +321,7 @@ export default function SupportPage() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-gray-200 mt-auto">
+        <footer className="mt-auto border-t border-gray-200 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-sm text-gray-500">
@@ -361,45 +343,21 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <img 
-                src="/logo/atlas-logo.png" 
-                alt="atlas.logo" 
-                className="h-8 w-auto"
-              />
-            </Link>
-            <nav className="flex items-center gap-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hidden md:inline-flex gap-2"
-                onClick={() => setIsAIChatOpen(true)}
-              >
-                <Sparkles className="h-4 w-4 text-orange-500" />
-                Ask Zeus AI
-              </Button>
-              <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white text-gray-900">
+      <PublicSiteHeader onAskAI={() => setIsAIChatOpen(true)} />
 
       {/* Hero Section */}
-      <section className="bg-gray-900 py-10">
+      <section className="bg-gray-900 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
-            <h1 className="text-3xl font-bold text-white mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500/20 rounded-full text-orange-400 text-sm mb-4">
+              <Sparkles className="h-4 w-4" />
+              AI-Powered Support
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-4">
               Contact Support
             </h1>
-            <p className="text-gray-400">
+            <p className="text-lg text-gray-400">
               Submit a ticket and our team will get back to you as soon as possible.
             </p>
           </div>
@@ -410,12 +368,12 @@ export default function SupportPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Form */}
           <div className="lg:col-span-2">
-            <Card>
+            <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
               <CardContent className="p-6">
                 <form onSubmit={handleTicketSubmit} className="space-y-5">
                   <div className="grid sm:grid-cols-2 gap-5">
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-gray-700">
+                      <Label htmlFor="email" className="text-gray-900">
                         Email <span className="text-red-500">*</span>
                       </Label>
                       <Input
@@ -424,11 +382,11 @@ export default function SupportPage() {
                         type="email"
                         placeholder="you@company.com"
                         required
-                        className="h-11"
+                        className="h-11 border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-gray-700">
+                      <Label htmlFor="name" className="text-gray-900">
                         Name
                       </Label>
                       <Input
@@ -436,13 +394,13 @@ export default function SupportPage() {
                         name="name"
                         type="text"
                         placeholder="John Smith"
-                        className="h-11"
+                        className="h-11 border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="subject" className="text-gray-700">
+                    <Label htmlFor="subject" className="text-gray-900">
                       Subject <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -450,12 +408,12 @@ export default function SupportPage() {
                       name="subject"
                       placeholder="Brief description of your issue"
                       required
-                      className="h-11"
+                      className="h-11 border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description" className="text-gray-700">
+                    <Label htmlFor="description" className="text-gray-900">
                       Description <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
@@ -464,7 +422,7 @@ export default function SupportPage() {
                       placeholder="Please describe your issue in detail..."
                       rows={5}
                       required
-                      className="resize-none"
+                      className="resize-none border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                     />
                   </div>
 
@@ -498,8 +456,27 @@ export default function SupportPage() {
 
           {/* Sidebar */}
           <div className="space-y-4">
+            <Card className="bg-gray-900 text-white">
+              <CardContent className="p-4">
+                <h3 className="mb-2 font-medium">Priority Support Channels</h3>
+                <p className="mb-3 text-sm text-gray-300">
+                  For urgent assistance, contact our team directly.
+                </p>
+                <div className="space-y-2 text-sm text-gray-300">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-orange-500" />
+                    <span>support@agrnetworks.com</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-orange-500" />
+                    <span>Live chat (9am-6pm SGT)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card 
-              className="cursor-pointer hover:shadow-sm transition-shadow"
+              className="cursor-pointer border-gray-200 bg-white text-gray-900 shadow-sm transition-shadow hover:shadow-md"
               onClick={() => setIsAIChatOpen(true)}
             >
               <CardContent className="p-4">
@@ -509,7 +486,7 @@ export default function SupportPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900">Try AI Assistant</h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="mt-1 text-sm text-gray-500">
                       Get instant answers to common questions.
                     </p>
                   </div>
@@ -517,7 +494,7 @@ export default function SupportPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
@@ -525,7 +502,7 @@ export default function SupportPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900">Response Time</h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="mt-1 text-sm text-gray-500">
                       {statsLoading ? 'Loading...' : (
                         <>Typically within <span className="font-medium text-orange-600">{stats.responseTimeDisplay}</span></>
                       )}
@@ -535,7 +512,7 @@ export default function SupportPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
@@ -545,7 +522,7 @@ export default function SupportPage() {
                     <h3 className="font-medium text-gray-900">
                       {statsLoading ? 'Loading...' : <>{stats.articleCount}+ Articles</>}
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="mt-1 text-sm text-gray-500">
                       Check our{' '}
                       <Link href="/kb" className="text-orange-600 hover:underline">
                         Knowledge Base
@@ -556,27 +533,12 @@ export default function SupportPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-900 text-white">
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-3">Other Ways to Reach Us</h3>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-orange-500" />
-                    <span>support@agrnetworks.com</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-orange-500" />
-                    <span>Live chat (9am-6pm EST)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 mt-12">
+      <footer className="mt-12 border-t border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-gray-500">
@@ -596,14 +558,14 @@ export default function SupportPage() {
 
       {isAIChatOpen && (
         <div
-          className="fixed right-0 top-0 z-50 h-screen w-full bg-white shadow-xl border-l flex flex-col"
+          className="fixed right-0 top-0 z-50 h-screen w-full border-l border-gray-200 bg-white text-gray-900 shadow-xl flex flex-col"
           style={panelWidth ? { width: `${panelWidth}px` } : undefined}
         >
           <div
             onMouseDown={() => setIsResizing(true)}
             className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-orange-200/50 hidden lg:block"
           />
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-orange-600" />
@@ -654,7 +616,7 @@ export default function SupportPage() {
               </div>
             )}
           </div>
-          <div className="p-4 border-t">
+          <div className="p-4 border-t border-gray-200">
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Textarea
@@ -673,7 +635,7 @@ export default function SupportPage() {
                       handleAIAsk();
                     }
                   }}
-                  className="flex-1 min-h-[80px]"
+                  className="flex-1 min-h-[80px] border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
                   rows={3}
                 />
                 <Button
@@ -690,7 +652,7 @@ export default function SupportPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleSupportSubmit}
-                  className="h-7 px-2"
+                  className="h-7 px-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   Create Ticket
                 </Button>

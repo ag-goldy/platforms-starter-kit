@@ -2,30 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { zabbixConfigs, services } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { requireInternalRole } from '@/lib/auth/permissions';
+import { bearerTokenMatches } from '@/lib/security/secrets';
 
 // POST /api/admin/zabbix/sync - Trigger manual sync for an org or all orgs
 export async function POST(request: NextRequest) {
   try {
-    // Check cron secret or session auth
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    
-    let isAuthorized = false;
-    
-    // Try cron auth first
-    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-      isAuthorized = true;
-    } else {
-      // Fall back to session auth
-      const session = await auth();
-      if (session?.user) {
-        isAuthorized = true;
+
+    if (authHeader) {
+      if (!cronSecret) {
+        return NextResponse.json({ error: 'Cron endpoint not configured' }, { status: 503 });
       }
-    }
-    
-    if (!isAuthorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (!bearerTokenMatches(authHeader, cronSecret)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    } else {
+      await requireInternalRole(['ADMIN']);
     }
 
     const body = await request.json().catch(() => ({}));

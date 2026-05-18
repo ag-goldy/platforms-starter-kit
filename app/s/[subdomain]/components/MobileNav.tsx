@@ -8,26 +8,24 @@ import {
   BookOpen,
   Users,
   Plus,
-  X,
   MessageSquare,
   Activity,
 } from 'lucide-react';
 import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+import type { Organization } from '@/db/schema';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface MobileNavProps {
   subdomain: string;
-  org: any;
+  org: Organization;
 }
 
-export function MobileNav({ subdomain, org }: MobileNavProps) {
+export function MobileNav({ subdomain, org: _org }: MobileNavProps) {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const { openSlideOver } = useCustomerPortal();
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentView = searchParams.get('view') || 'dashboard';
-
-  const features = org.features || {};
 
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: Home },

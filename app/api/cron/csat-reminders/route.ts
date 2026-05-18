@@ -6,22 +6,20 @@ import {
   incrementReminderCount,
 } from '@/lib/csat/queries';
 import { sendEmail } from '@/lib/email';
+import { verifyCronAuth } from '@/lib/auth/cron';
 
 export async function GET(req: NextRequest) {
-  try {
-    // Verify cron secret
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
+  // Fail-closed: rejects if CRON_SECRET not set or header mismatch
+  const rejection = verifyCronAuth(req);
+  if (rejection) return rejection;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  try {
 
     // Get pending surveys that need reminders
     const reminders = await sendCSATReminders(2); // Max 2 reminders
 
     const results = [];
-    for (const { survey, org } of reminders) {
+    for (const { survey } of reminders) {
       try {
         // Send reminder email
         const surveyUrl = `${process.env.APP_BASE_URL}/csat/${survey.tokenHash}`;

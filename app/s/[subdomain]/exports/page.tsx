@@ -4,7 +4,8 @@ import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { CustomerExportManager } from '@/components/customer/export-manager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getOrgExportRequestsAction } from '@/app/s/[subdomain]/actions/exports';
-import { Download, Shield, Clock, FileText } from 'lucide-react';
+import { Download, Shield } from 'lucide-react';
+import type { ExportRequest } from '@/db/schema';
 
 export default async function CustomerExportsPage({
   params,
@@ -37,7 +38,7 @@ export default async function CustomerExportsPage({
           </p>
         </div>
 
-        <CustomerExportManager orgId={org.id} requests={requests as any} />
+        <CustomerExportManager orgId={org.id} requests={requests as ExportRequest[]} />
       </div>
     );
   } catch {

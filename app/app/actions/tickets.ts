@@ -1,245 +1,25 @@
 'use server';
 
-import { db } from '@/db';
-import { attachments, tickets, ticketComments, organizations, sites, areas, type Ticket } from '@/db/schema';
-import { requireInternalRole, canViewTicket } from '@/lib/auth/permissions';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { logAudit } from '@/lib/audit/log';
-import {
-  sendAgentReplyNotification,
-  sendTicketStatusChangedNotification,
-  sendAdminCreatedTicketNotification,
-} from '@/lib/email/notifications';
-import { getTicketById } from '@/lib/tickets/queries';
-import { revalidatePath } from 'next/cache';
-import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
-import crypto from 'crypto';
+import { randomUUID } from 'crypto';
 import { put } from '@vercel/blob';
-import { validateAttachmentFile } from '@/lib/attachments/validation';
-import { appBaseUrl } from '@/lib/utils';
-import { getOrgSLATargets, updateFirstResponseTime, updateResolutionTime } from '@/lib/tickets/sla';
-import { updateSLAPauseStatus } from '@/lib/tickets/sla-pause';
-import { checkQuota, incrementStorageUsage } from '@/lib/attachments/quota';
-import { enqueueJob } from '@/lib/jobs/queue';
-import { triggerOnTicketCreate, triggerOnTicketUpdate } from '@/lib/automation/rules';
-import { processMentions } from '@/lib/mentions';
-import { invalidateStatusSummary } from '@/lib/cache-invalidation';
+import { and, eq, isNull } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+import { db } from '@/db';
+import { attachments, ticketComments, tickets, users } from '@/db/schema';
+import { canEditTicket, requireAuth, requireInternalRole } from '@/lib/auth/permissions';
+import { logAudit } from '@/lib/audit/log';
+import { assertTicketMutable } from '@/lib/tickets/lifecycle';
+import { generateTicketKey } from '@/lib/tickets/keys';
+import { getOrgSLATargets } from '@/lib/tickets/sla';
 
-const ticketStatusSchema = z.enum(['NEW', 'OPEN', 'WAITING_ON_CUSTOMER', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
-const ticketPrioritySchema = z.enum(['P1', 'P2', 'P3', 'P4']);
-const ticketCategorySchema = z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST']);
-const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+type TicketStatus = typeof tickets.$inferSelect.status;
+type TicketPriority = typeof tickets.$inferSelect.priority;
+type TicketCategory = typeof tickets.$inferSelect.category;
+type EditableTicket = NonNullable<Awaited<ReturnType<typeof canEditTicket>>['ticket']> & {
+  orgId: string | null;
+};
 
-async function uploadAttachment(ticketId: string, file: File) {
-  if (!blobToken) {
-    throw new Error('Blob storage is not configured');
-  }
-
-  const validated = validateAttachmentFile(file);
-  const safeName = validated.filename;
-  const path = `tickets/${ticketId}/${crypto.randomUUID()}-${safeName}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  // Note: In @vercel/blob 0.24+, blobs are private by default
-  // We use signed URLs for secure access, so files don't need to be public
-  const blob = await put(path, buffer, {
-    contentType: validated.contentType,
-    token: blobToken,
-    // Explicitly set access to 'public' if required by SDK version
-    // Files are still secured via signed URLs in the download route
-    access: 'public' as const,
-  });
-
-  return {
-    filename: safeName,
-    contentType: validated.contentType,
-    size: validated.size,
-    blobPathname: blob.pathname,
-    // For public blobs, store the URL directly; for private, store pathname
-    storageKey: blob.url || blob.pathname,
-  };
-}
-
-export async function updateTicketStatusAction(
-  ticketId: string,
-  status: string
-) {
-  const user = await requireInternalRole();
-  const result = await canViewTicket(ticketId);
-  
-  const validatedStatus = ticketStatusSchema.parse(status);
-  const oldStatus = result.ticket.status;
-
-  if (validatedStatus === oldStatus) {
-    return;
-  }
-
-  await db
-    .update(tickets)
-    .set({ status: validatedStatus, updatedAt: new Date() })
-    .where(eq(tickets.id, ticketId));
-
-  // Update resolution time if ticket is being resolved/closed
-  await updateResolutionTime(ticketId, validatedStatus);
-
-  // Trigger automation rules for ticket update
-  const updatedTicket = await getTicketById(ticketId, result.ticket.orgId ?? undefined);
-  if (updatedTicket) {
-    await triggerOnTicketUpdate(updatedTicket, user.id);
-  }
-
-  // Update SLA pause status based on new status
-  // For public tickets (no org), skip business hours config
-  let businessHoursConfig = null;
-  if (result.ticket.orgId) {
-    const org = await db.query.organizations.findFirst({
-      where: eq(organizations.id, result.ticket.orgId),
-      columns: {
-        businessHours: true,
-      },
-    });
-    if (org?.businessHours) {
-      businessHoursConfig = org.businessHours;
-    }
-  }
-
-  await updateSLAPauseStatus(ticketId, validatedStatus, businessHoursConfig);
-
-  await logAudit({
-    userId: user.id,
-    orgId: result.ticket.orgId ?? undefined,
-    ticketId,
-    action: 'TICKET_STATUS_CHANGED',
-    details: JSON.stringify({ oldStatus, newStatus: validatedStatus }),
-  });
-
-    const fullTicket = await getTicketById(ticketId, result.ticket.orgId ?? undefined);
-    if (fullTicket && 'requester' in fullTicket) {
-      await sendTicketStatusChangedNotification(fullTicket as unknown as Ticket & {
-        requester: { email: string; name: string | null } | null;
-      }, oldStatus, validatedStatus);
-    }
-
-  revalidatePath(`/app/tickets/${ticketId}`);
-  revalidatePath('/app');
-  
-  // Invalidate status summary cache
-  if (result.ticket.orgId) {
-    await invalidateStatusSummary(result.ticket.orgId);
-  }
-}
-
-export async function assignTicketAction(
-  ticketId: string,
-  assigneeId: string | null
-) {
-  const user = await requireInternalRole();
-  const result = await canViewTicket(ticketId);
-
-  await db
-    .update(tickets)
-    .set({ assigneeId, updatedAt: new Date() })
-    .where(eq(tickets.id, ticketId));
-
-  await logAudit({
-    userId: user.id,
-    orgId: result.ticket.orgId ?? undefined,
-    ticketId,
-    action: 'TICKET_ASSIGNED',
-    details: JSON.stringify({ assigneeId }),
-  });
-
-  revalidatePath(`/app/tickets/${ticketId}`);
-  revalidatePath('/app');
-}
-
-export async function updateTicketPriorityAction(
-  ticketId: string,
-  priority: string
-) {
-  const user = await requireInternalRole();
-  const result = await canViewTicket(ticketId);
-
-  const validatedPriority = ticketPrioritySchema.parse(priority);
-
-  await db
-    .update(tickets)
-    .set({ priority: validatedPriority, updatedAt: new Date() })
-    .where(eq(tickets.id, ticketId));
-
-  await logAudit({
-    userId: user.id,
-    orgId: result.ticket.orgId ?? undefined,
-    ticketId,
-    action: 'TICKET_PRIORITY_CHANGED',
-    details: JSON.stringify({ priority: validatedPriority }),
-  });
-
-  revalidatePath(`/app/tickets/${ticketId}`);
-  revalidatePath('/app');
-}
-
-export async function addTicketCommentAction(
-  ticketId: string,
-  content: string,
-  isInternal: boolean
-) {
-  const user = await requireInternalRole();
-  const result = await canViewTicket(ticketId);
-
-  const [comment] = await db
-    .insert(ticketComments)
-    .values({
-      ticketId,
-      userId: user.id,
-      content,
-      isInternal,
-    })
-    .returning();
-
-  await logAudit({
-    userId: user.id,
-    orgId: result.ticket.orgId ?? undefined,
-    ticketId,
-    action: 'TICKET_COMMENT_ADDED',
-    details: JSON.stringify({ isInternal }),
-  });
-
-  // Send email notification if public comment from agent
-  if (!isInternal && comment) {
-    // Update first response time if this is the first internal response
-    await updateFirstResponseTime(ticketId);
-
-    const ticket = await getTicketById(ticketId);
-    if (ticket) {
-      const ticketUrl = `${appBaseUrl}/app/tickets/${ticketId}`;
-      await sendAgentReplyNotification(
-        ticket as unknown as Ticket & {
-          requester: { email: string; name: string | null } | null;
-          organization: { name: string };
-        },
-        {
-          ...comment,
-          user: { name: user.name, email: user.email },
-        },
-        ticketUrl
-      );
-    }
-  }
-
-  // Process @mentions in the comment
-  await processMentions({
-    commentId: comment.id,
-    content,
-    authorId: user.id,
-    ticketId,
-    ticketKey: result.ticket.key,
-  });
-
-  revalidatePath(`/app/tickets/${ticketId}`);
-}
-
-export async function createTicketAction(data: {
+type CreateTicketInput = {
   orgId: string;
   subject: string;
   description: string;
@@ -249,195 +29,338 @@ export async function createTicketAction(data: {
   requesterEmail?: string | null;
   siteId?: string | null;
   areaId?: string | null;
-}) {
-  const user = await requireInternalRole();
+};
 
-  const validatedPriority = ticketPrioritySchema.parse(data.priority);
-  const validatedCategory = ticketCategorySchema.parse(data.category);
+function normalizeStatus(status: string): TicketStatus {
+  const normalized = status.toUpperCase() as TicketStatus;
+  const aliases: Record<string, TicketStatus> = {
+    PENDING: 'WAITING_ON_CUSTOMER',
+    ON_HOLD: 'WAITING_ON_CUSTOMER',
+  };
 
-  const subject = z.string().min(1).parse(data.subject);
-  const description = z.string().min(1).parse(data.description);
-  const orgId = z.string().uuid().parse(data.orgId);
+  return aliases[normalized] ?? normalized;
+}
 
-  let requesterEmail: string | null = null;
-  if (data.requesterEmail && data.requesterEmail.trim()) {
-    requesterEmail = z.string().email().parse(data.requesterEmail.trim());
-  }
+function normalizePriority(priority: string): TicketPriority {
+  return priority.toUpperCase() as TicketPriority;
+}
 
-  let assigneeId: string | null = null;
-  if (data.assigneeId) {
-    assigneeId = z.string().uuid().parse(data.assigneeId);
-  }
+function normalizeCategory(category: string): TicketCategory {
+  return category.toUpperCase() as TicketCategory;
+}
 
-  let resolvedSiteId: string | null = null;
-  if (data.siteId) {
-    resolvedSiteId = z.string().uuid().parse(data.siteId);
-    const site = await db.query.sites.findFirst({
-      where: and(eq(sites.id, resolvedSiteId), eq(sites.orgId, orgId)),
-    });
-    if (!site) {
-      throw new Error('Site not found');
-    }
-  }
-
-  let resolvedAreaId: string | null = null;
-  if (data.areaId) {
-    resolvedAreaId = z.string().uuid().parse(data.areaId);
-    const area = await db.query.areas.findFirst({
-      where: eq(areas.id, resolvedAreaId),
-      with: { site: true },
-    });
-    const site = area?.site as { orgId: string } | undefined;
-    if (!area || !site || site.orgId !== orgId) {
-      throw new Error('Area not found');
-    }
-    if (resolvedSiteId && area.siteId !== resolvedSiteId) {
-      throw new Error('Area does not belong to site');
-    }
-    if (!resolvedSiteId) {
-      resolvedSiteId = area.siteId;
-    }
-  }
-
-  const ticketKey = await generateTicketKey();
-  const slaTargets = await getOrgSLATargets(orgId, validatedPriority);
-
-  const [ticket] = await db
-    .insert(tickets)
-    .values({
-      key: ticketKey,
-      orgId,
-      subject,
-      description,
-      priority: validatedPriority,
-      category: validatedCategory,
-      status: 'NEW',
-      requesterEmail,
-      assigneeId,
-      siteId: resolvedSiteId,
-      areaId: resolvedAreaId,
-      slaResponseTargetHours: slaTargets.responseHours,
-      slaResolutionTargetHours: slaTargets.resolutionHours,
-    })
-    .returning();
-
-  // Add ticket created date as public comment
-  const createdDate = new Date().toLocaleString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  await db.insert(ticketComments).values({
-    ticketId: ticket.id,
-    content: `Ticket created on ${createdDate}`,
-    isInternal: false,
-    userId: user.id,
-  });
-
-  await logAudit({
-    userId: user.id,
-    orgId,
-    ticketId: ticket.id,
-    action: 'TICKET_CREATED',
-    details: JSON.stringify({ key: ticketKey }),
-  });
-
-  // Send notification to customer admins if this is a customer organization ticket
-  const fullTicket = await getTicketById(ticket.id, orgId);
-  if (fullTicket && 'organization' in fullTicket && fullTicket.organization) {
-      await sendAdminCreatedTicketNotification(fullTicket as unknown as Ticket & {
-        organization: { name: string };
-      });
-  }
-
-  // Trigger automation rules for ticket creation
-  if (fullTicket) {
-    await triggerOnTicketCreate(fullTicket, user.id);
-    // Refetch ticket after automation rules may have modified it
-    const updatedTicket = await getTicketById(ticket.id, orgId);
-    if (updatedTicket) {
-      // Revalidate to show any changes from automation
-      revalidatePath('/app');
-      return { ticketId: ticket.id, error: null };
-    }
-  }
-
+function revalidateTicket(ticketId: string) {
   revalidatePath('/app');
-  
-  // Invalidate status summary cache
-  await invalidateStatusSummary(orgId);
-  
-  return { ticketId: ticket.id, error: null };
+  revalidatePath('/app/tickets');
+  revalidatePath(`/app/tickets/${ticketId}`);
+}
+
+async function getEditableTicket(ticketId: string, orgId?: string): Promise<EditableTicket> {
+  const { ticket } = await canEditTicket(ticketId);
+
+  if (!ticket) {
+    throw new Error('Ticket not found');
+  }
+  if (orgId && ticket.orgId !== orgId) {
+    throw new Error('Ticket organization mismatch');
+  }
+
+  assertTicketMutable(ticket);
+  return ticket as EditableTicket;
+}
+
+function ticketIdentityWhere(ticketId: string, orgId: string | null) {
+  return orgId
+    ? and(eq(tickets.id, ticketId), eq(tickets.orgId, orgId))
+    : and(eq(tickets.id, ticketId), isNull(tickets.orgId));
+}
+
+async function writeTicketAudit(input: {
+  orgId?: string | null;
+  ticketId: string;
+  actorId: string;
+  actorKind: 'user' | 'platform_admin';
+  action: string;
+  details?: Record<string, unknown>;
+}) {
+  await logAudit({
+    orgId: input.orgId ?? undefined,
+    actorId: input.actorId,
+    actorKind: input.actorKind,
+    action: input.action,
+    resource: 'ticket',
+    resourceId: input.ticketId,
+    details: input.details,
+  });
+}
+
+export async function updateTicketStatus(ticketId: string, orgId: string, status: string) {
+  await updateTicketStatusAction(ticketId, status, orgId);
+}
+
+export async function updateTicketPriority(ticketId: string, orgId: string, priority: string) {
+  await updateTicketPriorityAction(ticketId, priority, orgId);
+}
+
+export async function assignTicket(ticketId: string, orgId: string, assigneeId: string | null) {
+  await assignTicketAction(ticketId, assigneeId, orgId);
+}
+
+export async function addAgentMessage(
+  ticketId: string,
+  orgId: string,
+  content: string,
+  isInternal: boolean
+) {
+  await addTicketCommentAction(ticketId, content, isInternal, orgId);
+}
+
+export async function createTicketAction(input: CreateTicketInput): Promise<{
+  success: boolean;
+  ticketId?: string;
+  error?: string;
+}> {
+  const session = await requireInternalRole();
+  const subject = input.subject.trim();
+  const description = input.description.trim();
+
+  if (!input.orgId || !subject || !description) {
+    return { success: false, error: 'Organization, subject, and description are required.' };
+  }
+
+  try {
+    const key = await generateTicketKey(input.orgId);
+    const priority = normalizePriority(input.priority || 'P3');
+    const category = normalizeCategory(input.category || 'INCIDENT');
+    const slaTargets = await getOrgSLATargets(input.orgId, priority);
+
+    const [ticket] = await db
+      .insert(tickets)
+      .values({
+        key,
+        orgId: input.orgId,
+        subject,
+        description,
+        status: 'NEW',
+        priority,
+        category,
+        assigneeId: input.assigneeId || null,
+        requesterEmail: input.requesterEmail || null,
+        siteId: input.siteId || null,
+        areaId: input.areaId || null,
+        slaResponseTargetHours: slaTargets.responseHours,
+        slaResolutionTargetHours: slaTargets.resolutionHours,
+      })
+      .returning();
+
+    await writeTicketAudit({
+      orgId: input.orgId,
+      ticketId: ticket.id,
+      actorId: session.user.id,
+      actorKind: session.platformAdmin ? 'platform_admin' : 'user',
+      action: 'ticket.created',
+      details: { key, source: 'staff' },
+    });
+
+    revalidatePath('/app');
+    revalidatePath('/app/tickets');
+    return { success: true, ticketId: ticket.id };
+  } catch (error) {
+    console.error('[Tickets] Failed to create ticket:', error instanceof Error ? error.message : 'unknown error');
+    return { success: false, error: 'Failed to create ticket.' };
+  }
+}
+
+export async function updateTicketStatusAction(
+  ticketId: string,
+  status: string,
+  orgId?: string
+) {
+  const session = await requireInternalRole();
+  const ticket = await getEditableTicket(ticketId, orgId);
+  const targetStatus = normalizeStatus(status);
+  const actorIsPlatformAdmin = Boolean(session.platformAdmin);
+
+  await db
+    .update(tickets)
+    .set({
+      status: targetStatus,
+      resolvedAt: targetStatus === 'RESOLVED' ? new Date() : ticket.resolvedAt,
+      updatedAt: new Date(),
+    })
+    .where(ticketIdentityWhere(ticketId, ticket.orgId));
+
+  await writeTicketAudit({
+    orgId: ticket.orgId,
+    ticketId,
+    actorId: session.user.id,
+    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
+    action: 'ticket.status_changed',
+    details: { status: targetStatus },
+  });
+
+  revalidateTicket(ticketId);
+  return { success: true };
+}
+
+export async function updateTicketPriorityAction(
+  ticketId: string,
+  priority: string,
+  orgId?: string
+) {
+  const session = await requireInternalRole();
+  const ticket = await getEditableTicket(ticketId, orgId);
+  const targetPriority = normalizePriority(priority);
+  const actorIsPlatformAdmin = Boolean(session.platformAdmin);
+
+  await db
+    .update(tickets)
+    .set({ priority: targetPriority, updatedAt: new Date() })
+    .where(ticketIdentityWhere(ticketId, ticket.orgId));
+
+  await writeTicketAudit({
+    orgId: ticket.orgId,
+    ticketId,
+    actorId: session.user.id,
+    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
+    action: 'ticket.priority_changed',
+    details: { priority: targetPriority },
+  });
+
+  revalidateTicket(ticketId);
+  return { success: true };
+}
+
+export async function assignTicketAction(
+  ticketId: string,
+  assigneeId: string | null,
+  orgId?: string
+) {
+  const session = await requireInternalRole();
+  const ticket = await getEditableTicket(ticketId, orgId);
+  const actorIsPlatformAdmin = Boolean(session.platformAdmin);
+
+  if (assigneeId) {
+    const assignee = await db.query.users.findFirst({
+      where: eq(users.id, assigneeId),
+      columns: { id: true },
+    });
+
+    if (!assignee) {
+      throw new Error('Assignee must be an internal user account');
+    }
+  }
+
+  await db
+    .update(tickets)
+    .set({ assigneeId, updatedAt: new Date() })
+    .where(ticketIdentityWhere(ticketId, ticket.orgId));
+
+  await writeTicketAudit({
+    orgId: ticket.orgId,
+    ticketId,
+    actorId: session.user.id,
+    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
+    action: 'ticket.assignee_changed',
+    details: { assigneeId },
+  });
+
+  revalidateTicket(ticketId);
+  return { success: true };
+}
+
+export async function addTicketCommentAction(
+  ticketId: string,
+  content: string,
+  isInternal = false,
+  orgId?: string
+) {
+  const session = await requireAuth();
+  const ticket = await getEditableTicket(ticketId, orgId);
+  const trimmed = content.trim();
+
+  if (!trimmed) {
+    throw new Error('Comment cannot be empty');
+  }
+
+  const actorIsPlatformAdmin = Boolean(session.isPlatformAdmin);
+
+  await db.transaction(async (tx) => {
+    await tx.insert(ticketComments).values({
+      ticketId,
+      userId: actorIsPlatformAdmin ? null : session.user.id,
+      platformAdminId: actorIsPlatformAdmin ? session.user.id : null,
+      authorEmail: session.user.email,
+      content: trimmed,
+      isInternal,
+    });
+
+    await tx
+      .update(tickets)
+      .set({ updatedAt: new Date() })
+      .where(ticketIdentityWhere(ticketId, ticket.orgId));
+  });
+
+  await writeTicketAudit({
+    orgId: ticket.orgId,
+    ticketId,
+    actorId: session.user.id,
+    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
+    action: 'ticket.comment_added',
+    details: { isInternal },
+  });
+
+  revalidateTicket(ticketId);
+  return { success: true };
 }
 
 export async function addTicketAttachmentAction(formData: FormData) {
-  const user = await requireInternalRole();
-  const ticketId = formData.get('ticketId');
+  const session = await requireAuth();
+  const ticketId = String(formData.get('ticketId') || '');
+  const files = formData
+    .getAll('attachments')
+    .filter((value): value is File => value instanceof File && value.size > 0);
 
-  if (typeof ticketId !== 'string') {
-    throw new Error('Invalid ticket');
+  if (!ticketId) {
+    throw new Error('Missing ticket id');
   }
-
-  const { ticket } = await canViewTicket(ticketId);
-  const items = formData.getAll('attachments');
-  const files = items.filter((item): item is File => item instanceof File);
-
   if (files.length === 0) {
-    throw new Error('No files selected');
+    throw new Error('Please choose a file to upload');
   }
 
-  // Check quota for all files before uploading
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-  const quotaCheck = await checkQuota(ticket.orgId, totalSize);
-  
-  if (!quotaCheck.allowed) {
-    throw new Error(quotaCheck.error || 'Storage quota exceeded');
-  }
+  const ticket = await getEditableTicket(ticketId);
+  const actorIsPlatformAdmin = Boolean(session.isPlatformAdmin);
 
-  const attachmentValues = [];
   for (const file of files) {
-    const uploaded = await uploadAttachment(ticketId, file);
-    attachmentValues.push({
+    const storageKey = `tickets/${ticketId}/${randomUUID()}-${file.name}`;
+    const blob = await put(storageKey, file, {
+      access: 'private',
+      addRandomSuffix: false,
+    });
+
+    await db.insert(attachments).values({
       ticketId,
-      orgId: ticket.orgId ?? undefined,
-      filename: uploaded.filename,
-      contentType: uploaded.contentType,
-      size: uploaded.size,
-      blobPathname: uploaded.blobPathname,
-      storageKey: uploaded.storageKey,
-      uploadedBy: user.id,
-    });
-    
-    // Update storage usage after successful upload
-    await incrementStorageUsage(ticket.orgId, uploaded.size);
-  }
-
-  const insertedAttachments = await db.insert(attachments).values(attachmentValues).returning();
-
-  // Enqueue virus scanning jobs for all attachments
-  for (const attachment of insertedAttachments) {
-    await enqueueJob({
-      type: 'PROCESS_ATTACHMENT',
-      maxAttempts: 3,
-      data: {
-        attachmentId: attachment.id,
-        action: 'SCAN' as const,
-      },
+      orgId: ticket.orgId,
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      size: file.size,
+      blobPathname: blob.pathname,
+      storageKey: blob.pathname,
+      uploadedBy: actorIsPlatformAdmin ? null : session.user.id,
+      uploadedByPlatformAdmin: actorIsPlatformAdmin ? session.user.id : null,
+      scanStatus: 'PENDING',
     });
   }
 
-  await logAudit({
-    userId: user.id,
-    orgId: ticket.orgId ?? undefined,
+  await writeTicketAudit({
+    orgId: ticket.orgId,
     ticketId,
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({
-      attachmentCount: attachmentValues.length,
-    }),
+    actorId: session.user.id,
+    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
+    action: 'ticket.attachment_added',
+    details: { count: files.length },
   });
 
-  revalidatePath(`/app/tickets/${ticketId}`);
+  revalidateTicket(ticketId);
+  return { success: true };
 }

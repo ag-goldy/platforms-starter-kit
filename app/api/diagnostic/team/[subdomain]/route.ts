@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { organizations, memberships, users, tickets } from '@/db/schema';
+import { organizations, memberships, tickets } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ subdomain: string }> }
 ) {
   try {
@@ -16,7 +16,6 @@ export async function GET(
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
-      image: session.user.image,
     } : null;
 
     if (!session?.user) {
@@ -25,6 +24,10 @@ export async function GET(
         user: null,
         message: 'Not authenticated',
       }, { status: 401 });
+    }
+
+    if (!session.user.isInternal) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { subdomain } = await params;
@@ -70,7 +73,17 @@ export async function GET(
     } : null;
 
     // 4. Tickets for this organization
-    let orgTickets: any[] = [];
+    interface OrgTicket {
+      id: string;
+      key: string;
+      subject: string;
+      status: string;
+      priority: string;
+      requesterId: string | null;
+      requesterName: string | null | undefined;
+      createdAt: Date;
+    }
+    let orgTickets: OrgTicket[] = [];
     if (membership) {
       const ticketList = await db.query.tickets.findMany({
         where: eq(tickets.orgId, org.id),
@@ -129,7 +142,6 @@ export async function GET(
     console.error('Diagnostic error:', error);
     return NextResponse.json({
       error: 'Diagnostic failed',
-      details: error instanceof Error ? error.message : String(error),
     }, { status: 500 });
   }
 }

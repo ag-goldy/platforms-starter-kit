@@ -1,228 +1,257 @@
-'use client';
-
-import { useRouter } from 'next/navigation';
-import { IntegrationChooser, IntegrationType } from '@/components/integrations/integration-chooser';
-import { PageHeaderWithBack } from '@/components/navigation/back-button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Plus, Settings, ExternalLink, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import {
+  Activity,
+  Bell,
+  CheckCircle2,
+  Database,
+  ExternalLink,
+  KeyRound,
+  Mail,
+  RadioTower,
+  ShieldCheck,
+  Webhook,
+} from 'lucide-react';
+import { db } from '@/db';
+import { organizations, zabbixConfigs } from '@/db/schema';
+import { requireInternalRole } from '@/lib/auth/permissions';
+import { desc, eq } from 'drizzle-orm';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeaderWithBack } from '@/components/navigation/back-button';
 
-interface ConfiguredIntegration {
-  id: string;
-  config: {
-    id: string;
-    orgId: string;
-    isActive: boolean;
-    lastSyncedAt: string | null;
-  };
-  org: {
-    id: string;
-    name: string;
-  } | null;
+const AVAILABLE_INTEGRATIONS = [
+  {
+    id: 'zabbix',
+    name: 'Zabbix',
+    category: 'Monitoring',
+    status: 'Available',
+    description: 'Sync hosts, service health, and monitoring state from Zabbix.',
+    href: '/app/admin/zabbix',
+    icon: RadioTower,
+  },
+  {
+    id: 'smtp',
+    name: 'Email SMTP',
+    category: 'Communication',
+    status: 'Available',
+    description: 'Use SMTP as a notification and ticket update delivery channel.',
+    href: '/app/admin/email-test',
+    icon: Mail,
+  },
+  {
+    id: 'webhooks',
+    name: 'Webhooks',
+    category: 'Automation',
+    status: 'Available',
+    description: 'Send signed ticket and workflow events to external systems.',
+    href: '/app/settings/webhooks',
+    icon: Webhook,
+  },
+  {
+    id: 'sso',
+    name: 'SSO Providers',
+    category: 'Security',
+    status: 'Planned',
+    description: 'Centralized identity integrations for customer and agent access.',
+    href: null,
+    icon: ShieldCheck,
+  },
+  {
+    id: 'storage',
+    name: 'Object Storage',
+    category: 'Storage',
+    status: 'Planned',
+    description: 'External storage backends for attachments, exports, and archives.',
+    href: null,
+    icon: Database,
+  },
+  {
+    id: 'api-keys',
+    name: 'API Keys',
+    category: 'Developer',
+    status: 'Planned',
+    description: 'Programmatic access for custom tooling and private integrations.',
+    href: null,
+    icon: KeyRound,
+  },
+] as const;
+
+function statusBadge(status: string) {
+  if (status === 'Available') {
+    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Available</Badge>;
+  }
+  return <Badge variant="secondary">Planned</Badge>;
 }
 
-export default function IntegrationsPage() {
-  const router = useRouter();
-  const [configured, setConfigured] = useState<ConfiguredIntegration[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function IntegrationsPage() {
+  await requireInternalRole();
 
-  const fetchConfiguredIntegrations = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/admin/zabbix');
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      setConfigured(data.configs || []);
-    } catch (err) {
-      setError('Failed to load configured integrations');
-      console.error('Failed to fetch integrations:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchConfiguredIntegrations();
-  }, [fetchConfiguredIntegrations]);
-
-  const handleSelectIntegration = (integration: IntegrationType) => {
-    if (integration.id === 'zabbix') {
-      router.push('/app/admin/zabbix');
-    } else {
-      alert(`${integration.name} integration coming soon!`);
-    }
-  };
-
-  const handleConfigure = (type: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    router.push(`/app/admin/${type}`);
-  };
-
-  const getStatusBadge = (isActive: boolean) => {
-    if (isActive) {
-      return (
-        <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Active
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-        <AlertCircle className="h-3 w-3 mr-1" />
-        Inactive
-      </Badge>
-    );
-  };
+  const configuredZabbix = await db
+    .select({
+      id: zabbixConfigs.id,
+      isActive: zabbixConfigs.isActive,
+      lastSyncedAt: zabbixConfigs.lastSyncedAt,
+      updatedAt: zabbixConfigs.updatedAt,
+      orgName: organizations.name,
+      orgId: organizations.id,
+    })
+    .from(zabbixConfigs)
+    .leftJoin(organizations, eq(zabbixConfigs.orgId, organizations.id))
+    .orderBy(desc(zabbixConfigs.updatedAt));
 
   return (
-    <div className="space-y-8 max-w-6xl">
-      {/* Header */}
+    <div className="max-w-6xl space-y-8">
       <PageHeaderWithBack
         title="Integrations"
-        description="Connect Atlas with your favorite tools and services"
+        description="Connect Atlas to monitoring, communication, storage, and security tools."
         backHref="/app"
         backLabel="Back to Dashboard"
       />
 
-      {/* Configured Integrations */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-md bg-green-100 p-2 text-green-700">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Configured</p>
+              <p className="text-2xl font-semibold">{configuredZabbix.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-md bg-blue-100 p-2 text-blue-700">
+              <Activity className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Available</p>
+              <p className="text-2xl font-semibold">
+                {AVAILABLE_INTEGRATIONS.filter((item) => item.status === 'Available').length}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-md bg-amber-100 p-2 text-amber-700">
+              <Bell className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Planned</p>
+              <p className="text-2xl font-semibold">
+                {AVAILABLE_INTEGRATIONS.filter((item) => item.status === 'Planned').length}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div>
           <h2 className="text-lg font-semibold">Configured Integrations</h2>
-          {!isLoading && configured.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={fetchConfiguredIntegrations}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          )}
+          <p className="text-sm text-muted-foreground">
+            Active connections currently attached to tenant organizations.
+          </p>
         </div>
 
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Card key={`skeleton-${i}`} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-5 w-24" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : error ? (
-          <Card className="p-8 text-center">
-            <AlertCircle className="h-8 w-8 mx-auto text-red-500 mb-3" />
-            <p className="text-gray-600">{error}</p>
-            <Button variant="outline" className="mt-4" onClick={fetchConfiguredIntegrations}>
-              Try Again
-            </Button>
-          </Card>
-        ) : configured.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
-            <div className="p-3 bg-gray-100 rounded-full w-fit mx-auto mb-3">
-              <Settings className="h-6 w-6 text-gray-400" />
-            </div>
-            <h3 className="font-medium text-gray-900">No integrations configured</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Select an integration below to get started
-            </p>
+        {configuredZabbix.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="p-6">
+              <p className="font-medium">No integrations configured</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Start with Zabbix if you want monitoring data and service health synced into Atlas.
+              </p>
+              <Button asChild className="mt-4">
+                <Link href="/app/admin/zabbix">Configure Zabbix</Link>
+              </Button>
+            </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {configured.map((item, index) => {
-              const config = item.config;
-              const org = item.org;
-              const uniqueKey = config?.id || `config-${index}`;
-              
-              return (
-                <Card 
-                  key={uniqueKey} 
-                  className="group relative hover:shadow-md transition-shadow"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900">Zabbix</h3>
-                          {getStatusBadge(config?.isActive)}
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1 truncate">
-                          {org?.name || 'Unknown Organization'}
-                        </p>
-                        {config?.lastSyncedAt && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            Last synced: {new Date(config.lastSyncedAt).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => handleConfigure('zabbix', e)}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
+          <div className="grid gap-4 md:grid-cols-2">
+            {configuredZabbix.map((item) => (
+              <Card key={item.id}>
+                <CardContent className="flex items-start justify-between gap-4 p-5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <RadioTower className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-semibold">Zabbix</h3>
+                      {item.isActive ? (
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Active</Badge>
+                      ) : (
+                        <Badge variant="secondary">Inactive</Badge>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <p className="mt-2 truncate text-sm text-muted-foreground">
+                      {item.orgName || 'Unknown organization'}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Last sync: {item.lastSyncedAt ? item.lastSyncedAt.toLocaleString() : 'Never'}
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/app/admin/zabbix">Manage</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </section>
 
-      {/* Add New Integration */}
       <section className="space-y-4">
-        <CardHeader className="px-0 pt-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Add New Integration</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.open('/docs/integrations', '_blank')}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Documentation
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <IntegrationChooser onSelect={handleSelectIntegration} />
-      </section>
+        <div>
+          <h2 className="text-lg font-semibold">Integration Catalog</h2>
+          <p className="text-sm text-muted-foreground">
+            Choose an implemented provider or track planned integration areas.
+          </p>
+        </div>
 
-      {/* Help Card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-100 rounded-xl shrink-0">
-              <Plus className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-blue-900">Need a custom integration?</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                We can build custom integrations for your specific needs. Contact our support team to discuss your requirements.
-              </p>
-              <div className="flex gap-3 mt-4">
-                <Button 
-                  variant="link" 
-                  className="text-blue-700 p-0 h-auto font-medium"
-                  onClick={() => window.open('mailto:support@agrnetworks.com')}
-                >
-                  Contact Support →
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {AVAILABLE_INTEGRATIONS.map((integration) => {
+            const Icon = integration.icon;
+            const content = (
+              <Card className="h-full transition-shadow hover:shadow-sm">
+                <CardHeader className="space-y-0 pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-md bg-muted p-2">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{integration.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">{integration.category}</p>
+                      </div>
+                    </div>
+                    {statusBadge(integration.status)}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{integration.description}</p>
+                  {integration.href ? (
+                    <div className="mt-4 flex items-center text-sm font-medium text-primary">
+                      Configure
+                      <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm font-medium text-muted-foreground">Roadmap item</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+
+            return integration.href ? (
+              <Link key={integration.id} href={integration.href} className="block">
+                {content}
+              </Link>
+            ) : (
+              <div key={integration.id}>{content}</div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

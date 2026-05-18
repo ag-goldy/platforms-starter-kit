@@ -34,6 +34,7 @@ export function useHotkeys(key: string, handler: KeyHandler, deps: React.Depende
         handler(event);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [key, handler, ...deps]
   );
 

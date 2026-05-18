@@ -6,7 +6,6 @@ import {
   BookOpen,
   Users,
   FileText,
-  MessageSquare,
   HelpCircle,
   ExternalLink,
   Zap,
@@ -15,10 +14,10 @@ import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
 
 interface QuickActionsWidgetProps {
   subdomain: string;
-  org: any;
+  org: { id: string };
 }
 
-export function QuickActionsWidget({ subdomain, org }: QuickActionsWidgetProps) {
+export function QuickActionsWidget({ /* subdomain, org */ }: QuickActionsWidgetProps) {
   const { openSlideOver } = useCustomerPortal();
 
   const actions = [

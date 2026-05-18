@@ -7,38 +7,41 @@ import { logAudit } from '@/lib/audit/log';
 import { revalidatePath } from 'next/cache';
 import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
+import { transitionTicketStatus } from '@/lib/tickets/lifecycle';
 
 const ticketIdsSchema = z.array(z.string().uuid()).min(1);
 
 export async function bulkUpdateStatusAction(ticketIds: string[], status: string) {
-  const user = await requireInternalRole();
+  const { user } = await requireInternalRole();
   
   const validatedIds = ticketIdsSchema.parse(ticketIds);
   const validatedStatus = z.enum(['NEW', 'OPEN', 'WAITING_ON_CUSTOMER', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).parse(status);
 
-  const updatedTickets = await db
-    .update(tickets)
-    .set({ status: validatedStatus, updatedAt: new Date() })
-    .where(inArray(tickets.id, validatedIds))
-    .returning();
+  const targetTickets = await db.query.tickets.findMany({
+    where: inArray(tickets.id, validatedIds),
+    columns: { id: true, orgId: true },
+  });
 
-  // Log audit for each ticket
-  for (const ticket of updatedTickets) {
-    await logAudit({
-      userId: user.id,
-      orgId: ticket.orgId ?? undefined,
+  let updated = 0;
+  for (const ticket of targetTickets) {
+    if (!ticket.orgId) continue;
+    await transitionTicketStatus({
       ticketId: ticket.id,
-      action: 'TICKET_STATUS_CHANGED',
-      details: JSON.stringify({ newStatus: validatedStatus, bulkUpdate: true }),
+      orgId: ticket.orgId,
+      actor: { type: 'agent', userId: user.id },
+      targetStatus: validatedStatus,
+      reason: 'Bulk status update.',
+      source: 'staff',
     });
+    updated++;
   }
 
   revalidatePath('/app');
-  return { updated: updatedTickets.length, error: null };
+  return { updated, error: null };
 }
 
 export async function bulkUpdatePriorityAction(ticketIds: string[], priority: string) {
-  const user = await requireInternalRole();
+  const { user } = await requireInternalRole();
   
   const validatedIds = ticketIdsSchema.parse(ticketIds);
   const validatedPriority = z.enum(['P1', 'P2', 'P3', 'P4']).parse(priority);
@@ -56,7 +59,7 @@ export async function bulkUpdatePriorityAction(ticketIds: string[], priority: st
       orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
       action: 'TICKET_PRIORITY_CHANGED',
-      details: JSON.stringify({ priority: validatedPriority, bulkUpdate: true }),
+      details: { priority: validatedPriority, bulkUpdate: true },
     });
   }
 
@@ -65,7 +68,7 @@ export async function bulkUpdatePriorityAction(ticketIds: string[], priority: st
 }
 
 export async function bulkAssignAction(ticketIds: string[], assigneeId: string | null) {
-  const user = await requireInternalRole();
+  const { user } = await requireInternalRole();
   
   const validatedIds = ticketIdsSchema.parse(ticketIds);
   const validatedAssigneeId = assigneeId ? z.string().uuid().parse(assigneeId) : null;
@@ -83,7 +86,7 @@ export async function bulkAssignAction(ticketIds: string[], assigneeId: string |
       orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
       action: 'TICKET_ASSIGNED',
-      details: JSON.stringify({ assigneeId: validatedAssigneeId, bulkUpdate: true }),
+      details: { assigneeId: validatedAssigneeId, bulkUpdate: true },
     });
   }
 
@@ -92,7 +95,7 @@ export async function bulkAssignAction(ticketIds: string[], assigneeId: string |
 }
 
 export async function bulkAddTagAction(ticketIds: string[], tagId: string) {
-  const user = await requireInternalRole();
+  const { user } = await requireInternalRole();
   const validatedIds = ticketIdsSchema.parse(ticketIds);
   const validatedTagId = z.string().uuid().parse(tagId);
 
@@ -136,7 +139,7 @@ export async function bulkAddTagAction(ticketIds: string[], tagId: string) {
         orgId: ticket.orgId ?? undefined,
         ticketId,
         action: 'TICKET_TAG_ADDED',
-        details: JSON.stringify({ tagId: validatedTagId, bulkUpdate: true }),
+        details: { tagId: validatedTagId, bulkUpdate: true },
       });
     }
   }
@@ -146,32 +149,34 @@ export async function bulkAddTagAction(ticketIds: string[], tagId: string) {
 }
 
 export async function bulkCloseAction(ticketIds: string[]) {
-  const user = await requireInternalRole();
+  const { user } = await requireInternalRole();
   const validatedIds = ticketIdsSchema.parse(ticketIds);
 
-  const updatedTickets = await db
-    .update(tickets)
-    .set({ status: 'CLOSED', updatedAt: new Date() })
-    .where(inArray(tickets.id, validatedIds))
-    .returning();
+  const targetTickets = await db.query.tickets.findMany({
+    where: inArray(tickets.id, validatedIds),
+    columns: { id: true, orgId: true },
+  });
 
-  // Log audit for each ticket
-  for (const ticket of updatedTickets) {
-    await logAudit({
-      userId: user.id,
-      orgId: ticket.orgId ?? undefined,
+  let updated = 0;
+  for (const ticket of targetTickets) {
+    if (!ticket.orgId) continue;
+    await transitionTicketStatus({
       ticketId: ticket.id,
-      action: 'TICKET_STATUS_CHANGED',
-      details: JSON.stringify({ newStatus: 'CLOSED', bulkUpdate: true, bulkClose: true }),
+      orgId: ticket.orgId,
+      actor: { type: 'agent', userId: user.id },
+      targetStatus: 'CLOSED',
+      reason: 'Bulk close action.',
+      source: 'staff',
     });
+    updated++;
   }
 
   revalidatePath('/app');
-  return { updated: updatedTickets.length, error: null };
+  return { updated, error: null };
 }
 
 export async function bulkRemoveTagAction(ticketIds: string[], tagId: string) {
-  const user = await requireInternalRole();
+  const { user } = await requireInternalRole();
   const validatedIds = ticketIdsSchema.parse(ticketIds);
   const validatedTagId = z.string().uuid().parse(tagId);
 
@@ -194,7 +199,7 @@ export async function bulkRemoveTagAction(ticketIds: string[], tagId: string) {
         orgId: ticket.orgId ?? undefined,
         ticketId: assignment.ticketId,
         action: 'TICKET_TAG_REMOVED',
-        details: JSON.stringify({ tagId: validatedTagId, bulkUpdate: true }),
+        details: { tagId: validatedTagId, bulkUpdate: true },
       });
     }
   }
@@ -202,4 +207,3 @@ export async function bulkRemoveTagAction(ticketIds: string[], tagId: string) {
   revalidatePath('/app');
   return { updated: deletedAssignments.length, error: null };
 }
-

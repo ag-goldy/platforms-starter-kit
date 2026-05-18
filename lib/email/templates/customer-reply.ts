@@ -9,30 +9,32 @@ export function renderCustomerReplyEmail(options: {
 }) {
   const { ticketKey, subject, customerName, comment, ticketUrl } = options;
   const title = `Customer Reply: ${ticketKey}`;
+  
   const bodyHtml = `
-    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;">
-      ${escapeHtml(customerName)} replied to ticket ${escapeHtml(ticketKey)}.
-    </p>
-    <div style="margin:16px 0;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;">
-      <p style="margin:0;font-size:13px;line-height:1.6;color:#111827;">
+    <p><strong>${escapeHtml(customerName)}</strong> replied to ticket <strong>${escapeHtml(ticketKey)}</strong>:</p>
+    
+    <div style="background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 20px; margin: 25px 0;">
+      <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #111827;">
         ${formatMultilineText(comment)}
       </p>
     </div>
-    <p style="margin:0 0 12px;font-size:14px;">
-      <a href="${ticketUrl}" style="color:#2563eb;text-decoration:none;">View ticket</a>
-    </p>
-    <p style="margin:0;font-size:12px;color:#6b7280;">
-      ${escapeHtml(subject)}
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${ticketUrl}" class="btn">View Ticket</a>
+    </div>
+    
+    <p style="font-size: 12px; color: #6b7280; text-align: center;">
+      Subject: ${escapeHtml(subject)}
     </p>
   `;
 
   return {
-    subject: `Customer Reply: ${ticketKey} - ${subject}`,
+    subject: `[${ticketKey}] New reply from ${customerName}`,
     html: renderBaseTemplate({
-      title,
-      preheader: `Customer reply on ${ticketKey}`,
+      title: 'Customer Reply',
+      preheader: `${customerName} replied to ticket ${ticketKey}`,
       bodyHtml,
     }),
-    text: `Customer reply on ticket ${ticketKey}\n\n${customerName} replied:\n${comment}\n\nView ticket: ${ticketUrl}\n\nSubject: ${subject}`,
+    text: `New reply from ${customerName} on ticket ${ticketKey}\n\n${comment}\n\nView ticket: ${ticketUrl}\n\nSubject: ${subject}`,
   };
 }

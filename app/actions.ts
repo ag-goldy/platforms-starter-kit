@@ -5,11 +5,15 @@ import { isValidIcon } from '@/lib/subdomains';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { rootDomain, protocol } from '@/lib/utils';
+import { requireInternalAdmin } from '@/lib/auth/permissions';
 
 export async function createSubdomainAction(
   _prevState: unknown,
   formData: FormData
 ) {
+  // Subdomain creation is a platform-level operation — internal admins only
+  const admin = await requireInternalAdmin();
+
   const subdomain = formData.get('subdomain') as string;
   const icon = formData.get('icon') as string;
 
@@ -62,8 +66,17 @@ export async function deleteSubdomainAction(
   _prevState: unknown,
   formData: FormData
 ) {
-  const subdomain = formData.get('subdomain');
+  // Subdomain deletion is irreversible — internal admins only, with audit trail
+  const admin = await requireInternalAdmin();
+
+  const subdomain = formData.get('subdomain') as string;
+  if (!subdomain) {
+    return { success: false, error: 'Subdomain is required' };
+  }
+
   await redis.del(`subdomain:${subdomain}`);
+  // TODO: emit SUBDOMAIN_DELETED audit log once auditActionEnum is extended
+
   revalidatePath('/admin');
   return { success: 'Domain deleted successfully' };
 }

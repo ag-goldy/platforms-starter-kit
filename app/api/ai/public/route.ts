@@ -15,7 +15,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getClientIP } from '@/lib/rate-limit';
 import { headers } from 'next/headers';
 import { db } from '@/db';
-import { aiAuditLog } from '@/db/schema';
+import { aiAuditLog, orgAIMemory } from '@/db/schema';
+import { eq, and, inArray, desc } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { detectPromptInjection, getSafeResponse, logSecurityEvent } from '@/lib/ai/prompt-guard';
 import { sanitizeResponse, type AISecurityContext } from '@/lib/ai/security';
@@ -24,6 +25,9 @@ import { createHash } from 'crypto';
 
 const requestSchema = z.object({
   query: z.string().min(2).max(1000),
+  // Optional org context for embedded public chat widgets.
+  // When provided, policy/fact memories for that org are injected into the prompt.
+  orgId: z.string().uuid().optional(),
 });
 
 const client = new OpenAI({
@@ -55,8 +59,8 @@ export async function POST(req: NextRequest) {
   const ip = getClientIP(headersList);
   
   // 1. Rate limit by IP (20 per hour)
-  const rateLimitResult = await rateLimit(`ai:public:${ip}`, 20, 60 * 60);
-  if (!rateLimitResult.success) {
+  const rateLimitResult = await rateLimit(`ai:public:${ip}`, { maxRequests: 20, windowSeconds: 60 * 60 });
+  if (!rateLimitResult.allowed) {
     return NextResponse.json(
       { error: 'Rate limit exceeded. Please try again later.' },
       { status: 429 }
@@ -74,7 +78,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { query } = parsed.data;
+    const { query, orgId } = parsed.data;
 
     // 3. Run prompt injection detection
     const guardResult = detectPromptInjection(query);
@@ -92,7 +96,7 @@ export async function POST(req: NextRequest) {
         userQuery: query,
         systemPromptHash: SYSTEM_PROMPT_HASH,
         aiResponse: getSafeResponse(guardResult.threats),
-        modelUsed: 'openai/gpt-oss-120b',
+        modelUsed: 'deepseek-ai/DeepSeek-V3.1',
         responseTimeMs: Date.now() - startTime,
         wasFiltered: true,
         ipAddress: ip,
@@ -117,12 +121,33 @@ export async function POST(req: NextRequest) {
 
     const kbContext = await fetchKBForAI(securityContext, guardResult.sanitizedInput, 3);
 
+    // 4b. Inject org policy/fact memories (public tier: only policy + fact, never instructions/preferences)
+    let orgMemoryContext = '';
+    if (orgId) {
+      const memories = await db.query.orgAIMemory.findMany({
+        where: and(
+          eq(orgAIMemory.orgId, orgId),
+          eq(orgAIMemory.isActive, true),
+          inArray(orgAIMemory.memoryType, ['policy', 'fact'])
+        ),
+        orderBy: [desc(orgAIMemory.priority), desc(orgAIMemory.createdAt)],
+        limit: 5,
+        columns: { memoryType: true, content: true },
+      });
+      if (memories.length > 0) {
+        orgMemoryContext = '\n\nORG POLICIES & FACTS:\n' +
+          memories.map(m => `[${m.memoryType.toUpperCase()}] ${m.content}`).join('\n');
+      }
+    }
+
     // 5. Build system prompt
-    const systemPrompt = PUBLIC_SYSTEM_PROMPT.replace('{kb_context}', kbContext || 'No relevant articles found.');
+    const systemPrompt = PUBLIC_SYSTEM_PROMPT
+      .replace('{kb_context}', kbContext || 'No relevant articles found.')
+      + orgMemoryContext;
 
     // 6. Call OpenAI
     const completion = await client.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
+      model: 'deepseek-ai/DeepSeek-V3.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: guardResult.sanitizedInput },

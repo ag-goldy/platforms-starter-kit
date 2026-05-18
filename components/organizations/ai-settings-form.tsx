@@ -34,9 +34,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
         allowAssetInfo: config.allowAssetInfo,
         allowServiceStatus: config.allowServiceStatus,
         blockPIIInResponses: config.blockPIIInResponses,
-        maxResponseTokens: config.maxResponseTokens,
-        customerRateLimit: config.customerRateLimit,
-        systemInstructions: config.systemInstructions,
+        maxResponseTokens: config.maxResponseTokens ?? undefined,
+        customerRateLimit: config.customerRateLimit ?? undefined,
+        systemInstructions: config.systemInstructions ?? undefined,
       });
       success('AI settings saved successfully');
     } catch (err) {
@@ -186,7 +186,7 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               <Input
                 id="rateLimit"
                 type="number"
-                value={config.customerRateLimit}
+                value={config.customerRateLimit ?? 50}
                 onChange={(e) => setConfig({ ...config, customerRateLimit: parseInt(e.target.value) || 50 })}
                 min={10}
                 max={500}
@@ -198,7 +198,7 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               <Input
                 id="maxTokens"
                 type="number"
-                value={config.maxResponseTokens}
+                value={config.maxResponseTokens ?? 1000}
                 onChange={(e) => setConfig({ ...config, maxResponseTokens: parseInt(e.target.value) || 1000 })}
                 min={100}
                 max={4000}

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,6 @@ export default function Verify2FAPage() {
   const [useBackupCode, setUseBackupCode] = useState(false);
   
   const userId = searchParams.get('userId');
-  const callbackUrl = '/app'; // Always redirect to dashboard
   const urlError = searchParams.get('error');
 
   // Redirect if no userId
@@ -156,9 +156,9 @@ export default function Verify2FAPage() {
               >
                 {useBackupCode ? 'Use authenticator code' : 'Use backup code'}
               </button>
-              <a href="/login" className="text-sm text-gray-600 hover:underline">
+              <Link href="/login" className="text-sm text-gray-600 hover:underline">
                 Cancel
-              </a>
+              </Link>
             </div>
             
             <Button type="submit" className="w-full" disabled={isPending}>

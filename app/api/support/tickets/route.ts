@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { tickets, ticketComments, organizations } from '@/db/schema';
 import { generateTicketKey } from '@/lib/tickets/keys';
 import { sendEmail } from '@/lib/email';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +19,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ticketKey = await generateTicketKey();
-
     let resolvedOrgId: string | null = null;
     
     if (orgId) {
@@ -33,18 +31,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const ticketKey = await generateTicketKey(resolvedOrgId);
+
     const [ticket] = await db
       .insert(tickets)
       .values({
         key: ticketKey,
-        orgId: resolvedOrgId || sql`NULL`,
+        orgId: resolvedOrgId,
         subject,
         description,
         status: 'NEW',
         priority: 'P3',
         category: 'SERVICE_REQUEST',
         requesterEmail: email,
-      } as any)
+      })
       .returning();
 
     const createdDate = new Date().toLocaleString('en-US', {
@@ -261,10 +261,11 @@ Website: ${baseUrl}
       ticketUrl,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Support Ticket] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create ticket', details: error.message },
+      { error: 'Failed to create ticket', details: errorMessage },
       { status: 500 }
     );
   }

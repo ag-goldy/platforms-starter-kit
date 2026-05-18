@@ -15,7 +15,7 @@ const zabbixConfigSchema = z.object({
 });
 
 // GET /api/admin/zabbix - List all Zabbix configurations
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await requireAuth();
 

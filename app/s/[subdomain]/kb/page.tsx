@@ -10,6 +10,7 @@ import { getCustomerVisibleKBArticlesAction } from '@/app/s/[subdomain]/actions/
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Search, BookOpen, Plus } from 'lucide-react';
+import { PortalKBAdminLink } from '@/components/kb/portal-kb-admin-link';
 
 interface KBHomePageProps {
   params: Promise<{ subdomain: string }>;
@@ -97,12 +98,15 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
               {displayTitle}
             </h1>
           </div>
-          <Link href={`/s/${subdomain}/kb/submit`}>
-            <Button className="bg-black hover:bg-gray-800 text-white h-11 px-6 rounded-xl shadow-sm hover:shadow-md transition-all">
-              <Plus className="w-4 h-4 mr-2 text-orange-500" />
-              Submit Article
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <PortalKBAdminLink orgId={org.id} subdomain={subdomain} />
+            <Link href={`/s/${subdomain}/kb/submit`}>
+              <Button className="bg-black hover:bg-gray-800 text-white h-11 px-6 rounded-xl shadow-sm hover:shadow-md transition-all">
+                <Plus className="w-4 h-4 mr-2 text-orange-500" />
+                Submit Article
+              </Button>
+            </Link>
+          </div>
         </div>
         <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
           {displayDescription}

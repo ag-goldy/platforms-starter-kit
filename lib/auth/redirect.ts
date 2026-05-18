@@ -18,7 +18,7 @@ export async function getDefaultRedirectUrl(userId: string, isInternal: boolean)
 
   if (userMemberships.length > 0 && userMemberships[0].organization) {
     const org = userMemberships[0].organization;
-    return `/s/${org.subdomain}/tickets`;
+    return `/s/${org.subdomain}/dashboard`;
   }
 
   // Fallback if no org found

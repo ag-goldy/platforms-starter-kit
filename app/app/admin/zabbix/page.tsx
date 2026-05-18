@@ -55,7 +55,7 @@ export default function ZabbixAdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const { showToast } = useToast();
+  const { success, error: showError, info } = useToast();
 
   // Load organizations
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function ZabbixAdminPage() {
 
   const testConnection = useCallback(async () => {
     if (!apiUrl || !apiToken) {
-      showToast('Please enter API URL and Token', 'error');
+      showError('Please enter API URL and Token');
       return;
     }
 
@@ -104,25 +104,25 @@ export default function ZabbixAdminPage() {
 
       if (data.success) {
         setTestResult({ success: true, message: data.message });
-        showToast('Connection successful!', 'success');
+        success('Connection successful!');
       } else {
         setTestResult({ success: false, message: data.error });
-        showToast(data.error, 'error');
+        showError(data.error);
       }
     } catch (error) {
       setTestResult({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Test failed' 
       });
-      showToast('Connection test failed', 'error');
+      showError('Connection test failed');
     } finally {
       setIsTesting(false);
     }
-  }, [apiUrl, apiToken]);
+  }, [apiUrl, apiToken, showError]);
 
   const saveConfig = useCallback(async () => {
     if (!selectedOrgId) {
-      showToast('Please select an organization', 'error');
+      showError('Please select an organization');
       return;
     }
 
@@ -130,13 +130,13 @@ export default function ZabbixAdminPage() {
     const result = await saveZabbixConfig(selectedOrgId, { apiUrl, apiToken });
     
     if (result.success) {
-      showToast('Configuration saved', 'success');
+      success('Configuration saved');
       setConfig({ apiUrl, apiToken });
     } else {
-      showToast(result.error || 'Failed to save', 'error');
+      showError(result.error || 'Failed to save');
     }
     setIsSaving(false);
-  }, [selectedOrgId, apiUrl, apiToken]);
+  }, [selectedOrgId, apiUrl, apiToken, success, showError]);
 
   const syncNow = useCallback(async () => {
     if (!selectedOrgId) return;
@@ -145,15 +145,15 @@ export default function ZabbixAdminPage() {
     const result = await triggerZabbixSync(selectedOrgId);
     
     if (result.success) {
-      showToast(`Synced ${result.data?.length || 0} services`, 'success');
+      success(`Synced ${result.data?.length || 0} services`);
       // Refresh services
       const servicesData = await getOrgServicesAction(selectedOrgId);
       setServices(servicesData as Service[]);
     } else {
-      showToast(result.error || 'Sync failed', 'error');
+      showError(result.error || 'Sync failed');
     }
     setIsSyncing(false);
-  }, [selectedOrgId]);
+  }, [selectedOrgId, success, showError]);
 
   const loadZabbixHosts = useCallback(async () => {
     if (!selectedOrgId) return;
@@ -165,45 +165,45 @@ export default function ZabbixAdminPage() {
       console.log('[Zabbix] Hosts response:', data);
       
       if (data.error) {
-        showToast(data.error, 'error');
+        showError(data.error);
         return;
       }
       
       if (data.hosts) {
         setZabbixHosts(data.hosts);
         if (data.hosts.length === 0) {
-          showToast('No hosts found in Zabbix', 'info');
+          info('No hosts found in Zabbix');
         } else {
-          showToast(`Loaded ${data.hosts.length} hosts`, 'success');
+          success(`Loaded ${data.hosts.length} hosts`);
         }
       }
     } catch (error) {
       console.error('[Zabbix] Load hosts error:', error);
-      showToast('Failed to load Zabbix hosts', 'error');
+      showError('Failed to load Zabbix hosts');
     }
-  }, [selectedOrgId]);
+  }, [selectedOrgId, success, showError]);
 
   const linkService = useCallback(async (serviceId: string, hostId: string) => {
     const result = await linkServiceToZabbixHost(serviceId, hostId);
     if (result.success) {
-      showToast('Service linked', 'success');
+      success('Service linked');
       const servicesData = await getOrgServicesAction(selectedOrgId);
       setServices(servicesData as Service[]);
     } else {
-      showToast(result.error || 'Failed to link', 'error');
+      showError(result.error || 'Failed to link');
     }
-  }, [selectedOrgId]);
+  }, [selectedOrgId, success, showError]);
 
   const toggleMonitoring = useCallback(async (serviceId: string, enabled: boolean) => {
     const result = await toggleServiceMonitoring(serviceId, enabled);
     if (result.success) {
-      showToast(enabled ? 'Monitoring enabled' : 'Monitoring disabled', 'success');
+      success(enabled ? 'Monitoring enabled' : 'Monitoring disabled');
       const servicesData = await getOrgServicesAction(selectedOrgId);
       setServices(servicesData as Service[]);
     } else {
-      showToast(result.error || 'Failed to toggle', 'error');
+      showError(result.error || 'Failed to toggle');
     }
-  }, [selectedOrgId]);
+  }, [selectedOrgId, success, showError]);
 
   return (
     <div className="space-y-6 max-w-4xl">

@@ -45,15 +45,18 @@ export async function POST(request: NextRequest) {
         from: process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM || 'not set',
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Test Email] ❌ Failed:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const emailError = error as { body?: unknown; code?: string; statusCode?: number };
     
     return NextResponse.json({ 
       success: false, 
-      error: error.message,
-      details: error.body || null,
-      code: error.code || null,
-      statusCode: error.statusCode || null,
+      error: errorMessage,
+      details: emailError.body ?? null,
+      code: emailError.code ?? null,
+      statusCode: emailError.statusCode ?? null,
       config: {
         graph: !!process.env.MICROSOFT_GRAPH_TENANT_ID,
         smtp: !!process.env.SMTP_HOST,

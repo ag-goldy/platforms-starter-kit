@@ -3,7 +3,6 @@
  * Add purpose column and enum to ticket_tokens table
  */
 
-import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';

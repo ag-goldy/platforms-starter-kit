@@ -5,19 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Ticket,
   Clock,
-  MessageSquare,
   Paperclip,
   Send,
-  MoreHorizontal,
   CheckCircle,
   XCircle,
   User,
-  Tag,
-  AlertCircle,
-  ChevronDown,
   Link as LinkIcon,
   AlertTriangle,
-  Copy,
   Check,
   Server,
   Plus,
@@ -95,6 +89,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     description: '',
     priority: 'P3',
     category: 'INCIDENT',
+    subdomain,
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -108,6 +103,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     } else {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.ticketId, isCreating]);
 
   // Scroll to bottom of comments
@@ -122,15 +118,15 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     try {
       console.log('Fetching ticket:', ticketId);
       const res = await fetch(`/api/tickets/${ticketId}`);
-      const data = await res.json();
+      const responseData = await res.json();
       
       if (res.ok) {
-        console.log('Ticket fetched successfully:', data.key);
-        setTicket(data);
+        console.log('Ticket fetched successfully:', responseData.key);
+        setTicket(responseData);
         // Also fetch linked assets
         fetchLinkedAssets(ticketId);
       } else {
-        console.error('Failed to fetch ticket:', data.error, res.status);
+        console.error('Failed to fetch ticket:', responseData.error, res.status);
         setTicket(null);
       }
     } catch (error) {
@@ -145,8 +141,8 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/assets`);
       if (res.ok) {
-        const data = await res.json();
-        setLinkedAssets(data.assets || []);
+        const responseData = await res.json();
+        setLinkedAssets(responseData.assets || []);
       }
     } catch (error) {
       console.error('Failed to fetch linked assets:', error);
@@ -237,6 +233,10 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     }
   };
 
+  useEffect(() => {
+    setNewTicketForm((prev) => ({ ...prev, subdomain }));
+  }, [subdomain]);
+
   const handleResolveTicket = async () => {
     if (!ticket) return;
     setIsUpdating(true);
@@ -321,9 +321,18 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     return (
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-stone-100">
-          <h2 className="text-lg font-semibold text-stone-900">Create New Ticket</h2>
-          <p className="text-sm text-stone-500">Submit a new support request</p>
+        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-stone-900">Create New Ticket</h2>
+            <p className="text-sm text-stone-500">Submit a new support request</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
+            aria-label="Close"
+          >
+            <XCircle className="w-5 h-5 text-stone-500" />
+          </button>
         </div>
 
         {/* Form */}
@@ -412,7 +421,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
         <Ticket className="w-12 h-12 text-stone-300 mb-4" />
         <h3 className="text-lg font-medium text-stone-900 mb-1">Ticket not found</h3>
-        <p className="text-sm text-stone-500">The ticket you're looking for doesn't exist.</p>
+        <p className="text-sm text-stone-500">The ticket you&apos;re looking for doesn&apos;t exist.</p>
       </div>
     );
   }
@@ -435,6 +444,13 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
             </div>
             <h2 className="text-lg font-semibold text-stone-900">{ticket.subject}</h2>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-stone-100 rounded-lg transition-colors absolute top-4 right-4"
+            aria-label="Close"
+          >
+            <XCircle className="w-5 h-5 text-stone-500" />
+          </button>
         </div>
 
         <div className="flex items-center gap-4 mt-4">

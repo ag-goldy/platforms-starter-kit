@@ -24,6 +24,10 @@ const areaSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+interface SiteWithOrgId {
+  orgId: string;
+}
+
 export async function getSitesAction(orgId: string, includeInactive = true) {
   await requireInternalRole();
   return db.query.sites.findMany({
@@ -176,7 +180,7 @@ export async function updateAreaAction(
     where: eq(areas.id, areaId),
     with: { site: true },
   });
-  const site1 = area?.site as { orgId: string } | undefined;
+  const site1 = area?.site as SiteWithOrgId | undefined;
 
   if (!area || !site1 || site1.orgId !== orgId) {
     throw new Error('Area not found');
@@ -205,7 +209,7 @@ export async function toggleAreaActiveAction(orgId: string, areaId: string, isAc
     where: eq(areas.id, areaId),
     with: { site: true },
   });
-  const site2 = area?.site as { orgId: string } | undefined;
+  const site2 = area?.site as SiteWithOrgId | undefined;
 
   if (!area || !site2 || site2.orgId !== orgId) {
     throw new Error('Area not found');

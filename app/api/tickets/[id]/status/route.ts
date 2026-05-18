@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { tickets, memberships, ticketComments } from '@/db/schema';
+import { tickets, memberships, ticketStatusEnum } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { transitionTicketStatus, type TicketStatus } from '@/lib/tickets/lifecycle';
 
 export async function PATCH(
   request: NextRequest,
@@ -16,11 +17,12 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { status } = body;
+    const { status, reason } = body;
 
-    if (!status) {
+    if (!status || !ticketStatusEnum.enumValues.includes(status as TicketStatus)) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
+    const targetStatus = status as TicketStatus;
 
     // Get ticket
     const ticket = await db.query.tickets.findFirst({
@@ -29,6 +31,9 @@ export async function PATCH(
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+    if (!ticket.orgId) {
+      return NextResponse.json({ error: 'Public tickets cannot be updated through this endpoint' }, { status: 400 });
     }
 
     // Check membership
@@ -44,23 +49,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Update ticket status
-    const [updated] = await db
-      .update(tickets)
-      .set({
-        status,
-        updatedAt: new Date(),
-        resolvedAt: status === 'RESOLVED' ? new Date() : ticket.resolvedAt,
-      })
-      .where(eq(tickets.id, id))
-      .returning();
-
-    // Add a system comment about the status change
-    await db.insert(ticketComments).values({
+    const updated = await transitionTicketStatus({
       ticketId: id,
-      authorId: session.user.id,
-      content: `Status changed to ${status}`,
-      isInternal: false,
+      orgId: ticket.orgId,
+      actor: { type: session.user.isInternal ? 'agent' : 'customer', userId: session.user.id },
+      targetStatus,
+      reason: reason || 'Status changed via ticket API.',
+      source: 'api',
     });
 
     return NextResponse.json(updated);

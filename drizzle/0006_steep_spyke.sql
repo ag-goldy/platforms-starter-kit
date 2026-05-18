@@ -1,4 +1,4 @@
-CREATE TABLE "custom_field_values" (
+CREATE TABLE IF NOT EXISTS "custom_field_values" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"field_id" uuid NOT NULL,
 	"entity_id" text NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE "custom_field_values" (
 	CONSTRAINT "custom_field_values_field_id_entity_id_unique" UNIQUE("field_id","entity_id")
 );
 --> statement-breakpoint
-CREATE TABLE "custom_fields" (
+CREATE TABLE IF NOT EXISTS "custom_fields" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE "custom_fields" (
 	CONSTRAINT "custom_fields_org_id_entity_type_name_unique" UNIQUE("org_id","entity_type","name")
 );
 --> statement-breakpoint
-CREATE TABLE "data_export_requests" (
+CREATE TABLE IF NOT EXISTS "data_export_requests" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"org_id" uuid,
@@ -53,7 +53,7 @@ CREATE TABLE "data_export_requests" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "data_retention_policies" (
+CREATE TABLE IF NOT EXISTS "data_retention_policies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE "data_retention_policies" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "escalation_rules" (
+CREATE TABLE IF NOT EXISTS "escalation_rules" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE "escalation_rules" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ip_allowlist" (
+CREATE TABLE IF NOT EXISTS "ip_allowlist" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid,
 	"ip_address" text NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE "ip_allowlist" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "kb_article_templates" (
+CREATE TABLE IF NOT EXISTS "kb_article_templates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE "kb_article_templates" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "kb_article_versions" (
+CREATE TABLE IF NOT EXISTS "kb_article_versions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"article_id" uuid NOT NULL,
 	"version_number" integer NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE "kb_article_versions" (
 	CONSTRAINT "kb_article_versions_article_id_version_number_unique" UNIQUE("article_id","version_number")
 );
 --> statement-breakpoint
-CREATE TABLE "maintenance_windows" (
+CREATE TABLE IF NOT EXISTS "maintenance_windows" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"title" text NOT NULL,
@@ -151,7 +151,7 @@ CREATE TABLE "maintenance_windows" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ticket_assignment_rules" (
+CREATE TABLE IF NOT EXISTS "ticket_assignment_rules" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE "ticket_assignment_rules" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_sessions_extended" (
+CREATE TABLE IF NOT EXISTS "user_sessions_extended" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"session_token" text NOT NULL,
@@ -186,18 +186,18 @@ CREATE TABLE "user_sessions_extended" (
 	CONSTRAINT "user_sessions_extended_session_token_unique" UNIQUE("session_token")
 );
 --> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "zabbix_host_id" text;--> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "zabbix_host_name" text;--> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "zabbix_triggers" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "monitoring_enabled" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "monitoring_status" text DEFAULT 'UNKNOWN';--> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "last_synced_at" timestamp;--> statement-breakpoint
-ALTER TABLE "assets" ADD COLUMN "uptime_percentage" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "kb_articles" ADD COLUMN "is_anonymous" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "kb_articles" ADD COLUMN "submitted_by_id" uuid;--> statement-breakpoint
-ALTER TABLE "kb_articles" ADD COLUMN "approved_by_id" uuid;--> statement-breakpoint
-ALTER TABLE "kb_articles" ADD COLUMN "approved_at" timestamp;--> statement-breakpoint
-ALTER TABLE "kb_articles" ADD COLUMN "rejection_reason" text;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "zabbix_host_id" text;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "zabbix_host_name" text;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "zabbix_triggers" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "monitoring_enabled" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "monitoring_status" text DEFAULT 'UNKNOWN';--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "last_synced_at" timestamp;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "uptime_percentage" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "kb_articles" ADD COLUMN IF NOT EXISTS "is_anonymous" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "kb_articles" ADD COLUMN IF NOT EXISTS "submitted_by_id" uuid;--> statement-breakpoint
+ALTER TABLE "kb_articles" ADD COLUMN IF NOT EXISTS "approved_by_id" uuid;--> statement-breakpoint
+ALTER TABLE "kb_articles" ADD COLUMN IF NOT EXISTS "approved_at" timestamp;--> statement-breakpoint
+ALTER TABLE "kb_articles" ADD COLUMN IF NOT EXISTS "rejection_reason" text;--> statement-breakpoint
 ALTER TABLE "custom_field_values" ADD CONSTRAINT "custom_field_values_field_id_custom_fields_id_fk" FOREIGN KEY ("field_id") REFERENCES "public"."custom_fields"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "custom_fields" ADD CONSTRAINT "custom_fields_org_id_organizations_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "data_export_requests" ADD CONSTRAINT "data_export_requests_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

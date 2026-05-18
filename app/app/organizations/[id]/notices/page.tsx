@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { db } from '@/db';
-import { notices as noticesTable, organizations, sites as sitesTable } from '@/db/schema';
+import { notices as noticesTable, organizations, sites as sitesTable, type Notice, type Site } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NoticesManager } from '@/components/notices/notices-manager';
 
@@ -51,7 +51,7 @@ export default async function OrganizationNoticesPage({
         </p>
       </div>
 
-      <NoticesManager orgId={orgId} notices={notices as any} sites={sites} />
+      <NoticesManager orgId={orgId} notices={notices as (Notice & { site: Site | null })[]} sites={sites} />
     </div>
   );
 }

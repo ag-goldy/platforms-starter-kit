@@ -6,6 +6,13 @@ import { requireInternalRole } from '@/lib/auth/permissions';
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
+interface BusinessHours {
+  timezone: string;
+  workingDays: number[];
+  workingHours: { start: string; end: string };
+  holidays?: string[];
+}
+
 export async function getOrgServicesAction(orgId: string) {
   await requireInternalRole();
   return db.query.services.findMany({
@@ -68,8 +75,7 @@ export async function updateServiceAction(serviceId: string, data: {
       description: data.description ?? null,
       status: data.status,
       isUnderContract: data.isUnderContract,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      businessHours: data.businessHours as any,
+      businessHours: data.businessHours as BusinessHours | null,
       slaResponseHoursP1: data.slaResponseHoursP1 ?? null,
       slaResponseHoursP2: data.slaResponseHoursP2 ?? null,
       slaResponseHoursP3: data.slaResponseHoursP3 ?? null,
@@ -90,4 +96,3 @@ export async function deleteServiceAction(serviceId: string, orgId: string) {
   revalidatePath(`/app/organizations/${orgId}/services`, 'page');
   return { success: true };
 }
-

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, ArrowRight, Clock, Eye, Sparkles } from 'lucide-react';
 import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
 
 interface KBSuggestionsWidgetProps {
   subdomain: string;
-  org: any;
+  org: { id: string };
 }
 
 interface Article {
@@ -21,16 +21,12 @@ interface Article {
   isRecommended?: boolean;
 }
 
-export function KBSuggestionsWidget({ subdomain, org }: KBSuggestionsWidgetProps) {
+export function KBSuggestionsWidget({ subdomain, org: _org }: KBSuggestionsWidgetProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const { openSlideOver } = useCustomerPortal();
 
-  useEffect(() => {
-    fetchArticles();
-  }, [org.id]);
-
-  const fetchArticles = async () => {
+  const fetchArticles = useCallback(async () => {
     try {
       const res = await fetch(`/api/kb/${subdomain}/articles?limit=5`);
       if (res.ok) {
@@ -47,7 +43,11 @@ export function KBSuggestionsWidget({ subdomain, org }: KBSuggestionsWidgetProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [subdomain]);
+
+  useEffect(() => {
+    fetchArticles();
+  }, [fetchArticles]);
 
   const handleArticleClick = (article: Article) => {
     openSlideOver('kb', { articleSlug: article.slug });

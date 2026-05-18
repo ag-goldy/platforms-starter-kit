@@ -1,21 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
 import {
   Activity,
-  TrendingUp,
+
   AlertTriangle,
   CheckCircle,
   XCircle,
   Clock,
-  ChevronRight,
+
 } from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+
+
+interface Org {
+  id: string;
+}
 
 interface HealthStatusWidgetProps {
   subdomain: string;
-  org: any;
+  org: Org;
 }
 
 interface ServiceStatus {
@@ -35,33 +39,32 @@ interface Incident {
   resolvedAt?: string;
 }
 
-export function HealthStatusWidget({ subdomain, org }: HealthStatusWidgetProps) {
+export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
-  const { openSlideOver } = useCustomerPortal();
 
   useEffect(() => {
+    const fetchStatusData = async () => {
+      try {
+        // Use subdomain instead of internal orgId to avoid exposing internal UUIDs
+        const res = await fetch(`/api/status/${subdomain}`);
+        if (res.ok) {
+          const data = await res.json();
+          setServices(data.services || []);
+          setIncidents(data.incidents || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchStatusData();
     const interval = setInterval(fetchStatusData, 60000);
     return () => clearInterval(interval);
-  }, [org.id]);
-
-  const fetchStatusData = async () => {
-    try {
-      const res = await fetch(`/api/status/${org.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setServices(data.services || []);
-        setIncidents(data.incidents || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch status:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [subdomain]);
 
   const operationalCount = services.filter((s) => s.status === 'OPERATIONAL').length;
   const degradedCount = services.filter((s) => s.status === 'DEGRADED').length;
@@ -69,15 +72,6 @@ export function HealthStatusWidget({ subdomain, org }: HealthStatusWidgetProps) 
 
   const overallStatus =
     downCount > 0 ? 'critical' : degradedCount > 0 ? 'warning' : 'operational';
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      OPERATIONAL: 'text-emerald-600 bg-emerald-50',
-      DEGRADED: 'text-amber-600 bg-amber-50',
-      DOWN: 'text-red-600 bg-red-50',
-    };
-    return colors[status] || 'text-stone-600 bg-stone-50';
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {

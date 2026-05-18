@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { kbCategories, organizations, kbArticles } from '@/db/schema';
-import { eq, and, asc, desc, isNull } from 'drizzle-orm';
+import { eq, and, asc, isNull } from 'drizzle-orm';
 import { auth } from '@/auth';
+import { requireInternalRole, requireOrgMemberRole, requireOrgRole } from '@/lib/auth/permissions';
 
 // GET /api/kb/categories - List categories
 export async function GET(request: NextRequest) {
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
     const orgSlug = searchParams.get('org');
     const orgId = searchParams.get('orgId');
     const includeInternal = searchParams.get('includeInternal') === 'true';
+    const needsAuth = includeInternal || !!orgId;
 
     let organizationId: string | undefined;
 
@@ -28,6 +30,31 @@ export async function GET(request: NextRequest) {
       organizationId = org.id;
     } else if (orgId) {
       organizationId = orgId;
+    }
+
+    if (needsAuth) {
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      if (organizationId) {
+        if (includeInternal) {
+          try {
+            await requireOrgMemberRole(organizationId, ['CUSTOMER_ADMIN']);
+          } catch {
+            await requireInternalRole();
+          }
+        } else {
+          try {
+            await requireOrgRole(organizationId);
+          } catch {
+            await requireInternalRole();
+          }
+        }
+      } else {
+        await requireInternalRole();
+      }
     }
 
     // Build query conditions
@@ -83,6 +110,16 @@ export async function POST(request: NextRequest) {
         { error: 'Name is required' },
         { status: 400 }
       );
+    }
+
+    if (orgId) {
+      try {
+        await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+      } catch {
+        await requireInternalRole();
+      }
+    } else {
+      await requireInternalRole();
     }
 
     // Generate slug from name
@@ -180,6 +217,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
+    if (existing.orgId) {
+      try {
+        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+      } catch {
+        await requireInternalRole();
+      }
+    } else {
+      await requireInternalRole();
+    }
+
     const resolvedName = typeof name === 'string' ? name.trim() : undefined;
     if (resolvedName !== undefined && !resolvedName) {
       return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
@@ -271,6 +318,24 @@ export async function DELETE(request: NextRequest) {
         { error: 'Category ID is required' },
         { status: 400 }
       );
+    }
+
+    const existing = await db.query.kbCategories.findFirst({
+      where: eq(kbCategories.id, categoryId),
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    if (existing.orgId) {
+      try {
+        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+      } catch {
+        await requireInternalRole();
+      }
+    } else {
+      await requireInternalRole();
     }
 
     // Check if category has articles

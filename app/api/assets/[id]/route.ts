@@ -17,7 +17,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const user = await requireAuth();
+    await requireAuth();
 
     const asset = await db.query.assets.findFirst({
       where: eq(assets.id, id),

@@ -16,10 +16,24 @@ export interface RateLimitResult {
  * Rate limit check using Redis
  * Uses a sliding window counter
  */
-export async function checkRateLimit(
-  options: RateLimitOptions
+export async function rateLimit(
+  identifierOrKey: string | RateLimitOptions,
+  optionsOrUndefined?: { maxRequests?: number; limit?: number; windowSeconds: number }
 ): Promise<RateLimitResult> {
-  const { identifier, limit, windowSeconds } = options;
+  let identifier: string;
+  let limit: number;
+  let windowSeconds: number;
+
+  if (typeof identifierOrKey === 'string') {
+    identifier = identifierOrKey;
+    limit = optionsOrUndefined?.maxRequests ?? optionsOrUndefined?.limit ?? 10;
+    windowSeconds = optionsOrUndefined?.windowSeconds ?? 60;
+  } else {
+    identifier = identifierOrKey.identifier;
+    limit = identifierOrKey.limit;
+    windowSeconds = identifierOrKey.windowSeconds;
+  }
+
   const key = `rate_limit:${identifier}:${windowSeconds}`;
   
   try {
@@ -68,6 +82,9 @@ export async function checkRateLimit(
     };
   }
 }
+
+// Export alias for backward compatibility
+export const checkRateLimit = rateLimit;
 
 /**
  * Get client IP address from request headers

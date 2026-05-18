@@ -1,129 +1,27 @@
-/**
- * Job worker - processes jobs from the queue
- */
+import type { JobType } from './types';
+import { getQueueDepth } from './queue';
 
-import { dequeueJob, completeJob, failJob, type Job } from './queue';
-import { processSendEmailJob } from './handlers/send-email';
-import { processGenerateExportJob } from './handlers/generate-export';
-import { processGenerateOrgExportJob } from './handlers/generate-org-export';
-import { processRecalculateSLAJob } from './handlers/recalculate-sla';
-import { processAttachmentJob } from './handlers/process-attachment';
-import { processAuditCompactionJob } from './handlers/audit-compaction';
-import { processSLAWarningCheckJob } from './handlers/sla-warning-check';
-import { handleCleanupOrgStorage } from './handlers/cleanup-org-storage';
+const PROCESSABLE_JOB_TYPES = [
+  'SEND_EMAIL',
+  'GENERATE_EXPORT',
+  'GENERATE_ORG_EXPORT',
+  'RECALCULATE_SLA',
+  'PROCESS_ATTACHMENT',
+  'AUDIT_COMPACTION',
+] as const satisfies readonly JobType[];
 
-/**
- * Process a single job
- * Handles retries with exponential backoff
- */
-export async function processJob(job: Job): Promise<void> {
-  // Check if job is scheduled for retry (has retryAt in future)
-  const jobWithRetry = job as Job & { retryAt?: string };
-  if (jobWithRetry.retryAt) {
-    const retryAt = new Date(jobWithRetry.retryAt);
-    if (retryAt > new Date()) {
-      // Not time to retry yet, skip
-      return;
-    }
-  }
-  
-  try {
-    let result;
-    
-    switch (job.type) {
-      case 'SEND_EMAIL':
-        result = await processSendEmailJob(job);
-        break;
-      case 'GENERATE_EXPORT':
-        result = await processGenerateExportJob(job);
-        break;
-      case 'GENERATE_ORG_EXPORT':
-        result = await processGenerateOrgExportJob(job);
-        break;
-      case 'RECALCULATE_SLA':
-        result = await processRecalculateSLAJob(job);
-        break;
-      case 'PROCESS_ATTACHMENT':
-        result = await processAttachmentJob(job);
-        break;
-      case 'AUDIT_COMPACTION':
-        result = await processAuditCompactionJob(job);
-        break;
-      case 'SLA_WARNING_CHECK':
-        result = await processSLAWarningCheckJob(job);
-        break;
-      case 'CLEANUP_ORG_STORAGE':
-        result = await handleCleanupOrgStorage(job.data);
-        break;
-      default:
-        throw new Error(`Unknown job type: ${(job as Job).type}`);
-    }
+type ProcessCounts = Record<(typeof PROCESSABLE_JOB_TYPES)[number], number>;
 
-    if (result.success) {
-      await completeJob(job.id, job.type, result.data);
-    } else {
-      await failJob(job.id, job.type, result.error || 'Job failed');
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    await failJob(job.id, job.type, errorMessage);
-  }
-}
+export async function processAllQueues(_maxJobsPerType = 10): Promise<ProcessCounts> {
+  const { startWorkers, areWorkersRunning } = await import('./redis-worker');
 
-/**
- * Process jobs from a queue
- * Processes up to maxJobs jobs
- */
-export async function processJobs(type: Job['type'], maxJobs: number = 10): Promise<number> {
-  let processed = 0;
-
-  for (let i = 0; i < maxJobs; i++) {
-    const job = await dequeueJob(type);
-    if (!job) {
-      break; // No more jobs
-    }
-
-    await processJob(job);
-    processed++;
+  if (!areWorkersRunning()) {
+    startWorkers();
   }
 
-  return processed;
-}
-
-/**
- * Process all job types
- */
-export async function processAllQueues(maxJobsPerType: number = 10): Promise<{
-  [key in Job['type']]: number;
-}> {
-  const jobTypes: Job['type'][] = [
-    'SEND_EMAIL',
-    'GENERATE_EXPORT',
-    'GENERATE_ORG_EXPORT',
-    'RECALCULATE_SLA',
-    'PROCESS_ATTACHMENT',
-    'AUDIT_COMPACTION',
-    'SLA_WARNING_CHECK',
-    'CLEANUP_ORG_STORAGE',
-  ];
-
-  const results: { [key in Job['type']]: number } = {
-    SEND_EMAIL: 0,
-    GENERATE_EXPORT: 0,
-    GENERATE_ORG_EXPORT: 0,
-    RECALCULATE_SLA: 0,
-    PROCESS_ATTACHMENT: 0,
-    AUDIT_COMPACTION: 0,
-    SLA_WARNING_CHECK: 0,
-    CLEANUP_ORG_STORAGE: 0,
-  };
-
-  await Promise.all(
-    jobTypes.map(async (type) => {
-      const count = await processJobs(type, maxJobsPerType);
-      results[type] = count;
-    })
+  const entries = await Promise.all(
+    PROCESSABLE_JOB_TYPES.map(async (type) => [type, await getQueueDepth(type)] as const)
   );
 
-  return results;
+  return Object.fromEntries(entries.map(([type]) => [type, 0])) as ProcessCounts;
 }

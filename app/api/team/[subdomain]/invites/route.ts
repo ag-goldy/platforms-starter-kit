@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { organizations, memberships, userInvitations, users } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST /api/team/[subdomain]/invites - Create a new invitation
 export async function POST(
@@ -15,6 +16,10 @@ export async function POST(
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // 10 invites per hour per user — prevents bulk spam invitations
+    const rl = await rateLimit(`invites:post:${session.user.id}`, { maxRequests: 10, windowSeconds: 3600 });
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
 
     const { subdomain } = await params;
     const body = await request.json();

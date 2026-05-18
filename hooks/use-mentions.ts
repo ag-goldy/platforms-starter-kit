@@ -9,7 +9,7 @@ interface MentionUser {
 }
 
 export function useMentions(orgId: string | null) {
-  const [mentionQuery, setMentionQuery] = useState('');
+  const [, setMentionQuery] = useState('');
   const [mentionSuggestions, setMentionSuggestions] = useState<MentionUser[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);

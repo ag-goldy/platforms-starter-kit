@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { eq, asc, desc, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 interface OrganizationsPageProps {
   searchParams: Promise<{ showDisabled?: string }>;

@@ -1,77 +1,123 @@
 'use server';
 
 import { db } from '@/db';
-import { tickets, ticketComments } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { tickets, ticketMessages, ticketEvents } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { requireAuth } from '@/lib/auth/permissions';
+import { logAudit } from '@/lib/audit/log';
 
 export async function createCustomerTicket(formData: FormData) {
+  const session = await requireAuth(); // We should use the real auth check
+  
   const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
+  const descriptionMd = formData.get('description') as string;
   const orgId = formData.get('orgId') as string;
-  const customerId = formData.get('customerId') as string;
   const subdomain = formData.get('subdomain') as string;
-  const category = (formData.get('categoryId') as string) || 'INCIDENT';
-  const priority = (formData.get('priority') as string) || 'P3';
+  const type = (formData.get('type') as string) || 'incident';
+  const priority = (formData.get('priority') as string) || 'p3';
 
-  if (!title || !description || !orgId || !customerId) {
+  if (!title || !descriptionMd || !orgId) {
     throw new Error('Missing required fields');
   }
 
-  // Generate ticket key (e.g., TICK-001)
-  const key = `TICK-${Date.now().toString(36).toUpperCase()}`;
+  // Determine next org-scoped ticket number safely via transaction
+  const [ticket] = await db.transaction(async (tx) => {
+    const result = await tx.execute(
+      sql`SELECT COALESCE(MAX(number), 0) + 1 as next_number FROM tickets WHERE org_id = ${orgId}`
+    );
+    const nextNumber = result[0].next_number as number;
 
-  // Map form priority to ticket priority enum
-  const priorityMap: Record<string, 'P1' | 'P2' | 'P3' | 'P4'> = {
-    'CRITICAL': 'P1',
-    'HIGH': 'P2', 
-    'MEDIUM': 'P3',
-    'LOW': 'P4'
-  };
-  
-  // Validate category is a valid enum value
-  const validCategories = ['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST'] as const;
-  const validCategory = validCategories.includes(category as any) 
-    ? category as 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST'
-    : 'INCIDENT';
+    const [newTicket] = await tx.insert(tickets).values({
+      orgId,
+      number: nextNumber,
+      title,
+      descriptionMd,
+      type: type as 'incident' | 'request' | 'problem' | 'change',
+      priority: priority as 'p1' | 'p2' | 'p3' | 'p4',
+      status: 'new',
+      source: 'portal',
+      requesterId: session.user.id,
+    }).returning();
 
-  const [ticket] = await db.insert(tickets).values({
+    await tx.insert(ticketMessages).values({
+      orgId,
+      ticketId: newTicket.id,
+      authorId: session.user.id,
+      authorKind: 'user',
+      bodyMd: descriptionMd,
+      bodyHtmlSanitized: descriptionMd, // In reality, we should sanitize
+      visibility: 'public',
+      channel: 'portal',
+    });
+
+    await tx.insert(ticketEvents).values({
+      orgId,
+      ticketId: newTicket.id,
+      actorId: session.user.id,
+      actorKind: 'user',
+      eventType: 'ticket_created',
+    });
+
+    return [newTicket];
+  });
+
+  await logAudit({
     orgId,
-    key,
-    subject: title,
-    description,
-    category: validCategory,
-    priority: priorityMap[priority] || 'P3',
-    status: 'NEW' as const,
-    requesterId: customerId,
-  }).returning();
+    actorId: session.user.id,
+    action: 'ticket_created',
+    resource: 'ticket',
+    resourceId: ticket.id,
+  });
 
-  revalidatePath(`/s/${subdomain}/tickets`);
-  redirect(`/s/${subdomain}/tickets/${ticket.id}`);
+  revalidatePath(`/${subdomain}/tickets`);
+  redirect(`/${subdomain}/tickets/${ticket.number}`);
 }
 
 export async function addCustomerComment(formData: FormData) {
+  const session = await requireAuth();
   const ticketId = formData.get('ticketId') as string;
   const content = formData.get('content') as string;
-  const authorId = formData.get('authorId') as string;
   const subdomain = formData.get('subdomain') as string;
+  const orgId = formData.get('orgId') as string;
 
-  if (!ticketId || !content || !authorId) {
+  if (!ticketId || !content || !orgId) {
     throw new Error('Missing required fields');
   }
 
-  await db.insert(ticketComments).values({
-    ticketId,
-    userId: authorId,
-    content,
-    isInternal: false,
+  await db.transaction(async (tx) => {
+    await tx.insert(ticketMessages).values({
+      orgId,
+      ticketId,
+      authorId: session.user.id,
+      authorKind: 'user',
+      bodyMd: content,
+      bodyHtmlSanitized: content,
+      visibility: 'public',
+      channel: 'portal',
+    });
+
+    await tx.update(tickets)
+      .set({ updatedAt: new Date() })
+      .where(eq(tickets.id, ticketId));
+      
+    await tx.insert(ticketEvents).values({
+      orgId,
+      ticketId,
+      actorId: session.user.id,
+      actorKind: 'user',
+      eventType: 'message_added',
+    });
   });
 
-  // Update ticket's updatedAt
-  await db.update(tickets)
-    .set({ updatedAt: new Date() })
-    .where(eq(tickets.id, ticketId));
+  await logAudit({
+    orgId,
+    actorId: session.user.id,
+    action: 'message_added',
+    resource: 'ticket',
+    resourceId: ticketId,
+  });
 
-  revalidatePath(`/s/${subdomain}/tickets/${ticketId}`);
+  revalidatePath(`/${subdomain}/tickets/${ticketId}`);
 }

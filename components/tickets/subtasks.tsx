@@ -1,16 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
   Circle,
   Plus,
   Trash2,
-  MoreHorizontal,
   Calendar,
   User,
-  GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,14 +46,11 @@ interface SubtasksProps {
 }
 
 export function Subtasks({
-  ticketId,
   subtasks,
-  currentUserId,
   users,
   onAdd,
   onUpdate,
   onDelete,
-  onReorder,
   className,
 }: SubtasksProps) {
   const [isAdding, setIsAdding] = useState(false);
@@ -66,12 +61,7 @@ export function Subtasks({
     assigneeId: '',
     dueDate: '',
   });
-  const [items, setItems] = useState(subtasks);
-
-  // Update items when prop changes
-  useState(() => {
-    setItems(subtasks);
-  });
+  // Items state is managed by parent component via subtasks prop
 
   const handleAdd = async () => {
     if (!newSubtask.title.trim()) return;

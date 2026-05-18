@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { users, passwordResetTokens } from '@/db/schema';
+import { users, platformAdmins, passwordResetTokens } from '@/db/schema';
 import { eq, and, gt, isNull, lt } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -10,13 +10,19 @@ const TOKEN_EXPIRY_HOURS = 24;
  * Generate a password reset token for a user
  */
 export async function generatePasswordResetToken(email: string): Promise<string | null> {
-    // Find user by email
+    const normalizedEmail = email.toLowerCase();
+
     const user = await db.query.users.findFirst({
-        where: eq(users.email, email.toLowerCase()),
+        where: eq(users.email, normalizedEmail),
     });
 
-    if (!user) {
-        // Don't reveal that user doesn't exist
+    const platformAdmin = user
+        ? null
+        : await db.query.platformAdmins.findFirst({
+            where: eq(platformAdmins.email, normalizedEmail),
+        });
+
+    if (!user && !platformAdmin) {
         return null;
     }
 
@@ -28,11 +34,18 @@ export async function generatePasswordResetToken(email: string): Promise<string 
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + TOKEN_EXPIRY_HOURS);
 
-    // Insert token (delete any existing tokens for this user first)
-    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+    // Insert token (delete any existing tokens for this principal first)
+    if (user) {
+        await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+    } else if (platformAdmin) {
+        await db
+            .delete(passwordResetTokens)
+            .where(eq(passwordResetTokens.platformAdminId, platformAdmin.id));
+    }
 
     await db.insert(passwordResetTokens).values({
-        userId: user.id,
+        userId: user?.id ?? null,
+        platformAdminId: platformAdmin?.id ?? null,
         tokenHash,
         expiresAt,
     });
@@ -45,12 +58,13 @@ export async function generatePasswordResetToken(email: string): Promise<string 
  */
 export async function validatePasswordResetToken(
     token: string
-): Promise<{ userId: string; email: string } | null> {
+): Promise<{ tokenId: string; userId: string | null; platformAdminId: string | null; email: string } | null> {
     // Get all unexpired, unused tokens
     const tokens = await db
         .select({
             id: passwordResetTokens.id,
             userId: passwordResetTokens.userId,
+            platformAdminId: passwordResetTokens.platformAdminId,
             tokenHash: passwordResetTokens.tokenHash,
             expiresAt: passwordResetTokens.expiresAt,
         })
@@ -66,11 +80,32 @@ export async function validatePasswordResetToken(
     for (const t of tokens) {
         const isValid = await bcrypt.compare(token, t.tokenHash);
         if (isValid) {
-            const user = await db.query.users.findFirst({
-                where: eq(users.id, t.userId),
-            });
-            if (user) {
-                return { userId: user.id, email: user.email };
+            if (t.userId) {
+                const user = await db.query.users.findFirst({
+                    where: eq(users.id, t.userId),
+                });
+                if (user) {
+                    return {
+                        tokenId: t.id,
+                        userId: user.id,
+                        platformAdminId: null,
+                        email: user.email,
+                    };
+                }
+            }
+
+            if (t.platformAdminId) {
+                const admin = await db.query.platformAdmins.findFirst({
+                    where: eq(platformAdmins.id, t.platformAdminId),
+                });
+                if (admin) {
+                    return {
+                        tokenId: t.id,
+                        userId: null,
+                        platformAdminId: admin.id,
+                        email: admin.email,
+                    };
+                }
             }
         }
     }
@@ -94,20 +129,31 @@ export async function resetPasswordWithToken(
     // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    // Update user password
-    await db
-        .update(users)
-        .set({
-            passwordHash,
-            updatedAt: new Date(),
-        })
-        .where(eq(users.id, validation.userId));
+    if (validation.userId) {
+        await db
+            .update(users)
+            .set({
+                passwordHash,
+                updatedAt: new Date(),
+            })
+            .where(eq(users.id, validation.userId));
+    } else if (validation.platformAdminId) {
+        await db
+            .update(platformAdmins)
+            .set({
+                passwordHash,
+                updatedAt: new Date(),
+            })
+            .where(eq(platformAdmins.id, validation.platformAdminId));
+    } else {
+        return { success: false, error: 'Invalid reset token' };
+    }
 
     // Mark token as used
     await db
         .update(passwordResetTokens)
         .set({ usedAt: new Date() })
-        .where(eq(passwordResetTokens.userId, validation.userId));
+        .where(eq(passwordResetTokens.id, validation.tokenId));
 
     return { success: true };
 }
@@ -147,7 +193,7 @@ export async function cleanupExpiredTokens(): Promise<number> {
     const result = await db
         .delete(passwordResetTokens)
         .where(lt(passwordResetTokens.expiresAt, new Date()))
-        .returning({ id: passwordResetTokens.id });
+        .returning();
 
     return result.length;
 }

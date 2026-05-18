@@ -2,6 +2,7 @@
 
 import { formatDateTime } from '@/lib/utils/date';
 import * as React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import {
   MessageSquare,
@@ -166,9 +167,11 @@ export function ActivityTimeline({ events, className, showFilter = false }: Acti
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {event.actor.avatar ? (
-                        <img 
+                        <Image 
                           src={event.actor.avatar} 
                           alt={event.actor.name}
+                          width={24}
+                          height={24}
                           className="w-6 h-6 rounded-full"
                         />
                       ) : (

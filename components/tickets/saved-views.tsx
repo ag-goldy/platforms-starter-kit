@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Inbox, UserX, Clock, AlertCircle } from 'lucide-react';
+import { Globe2, Inbox, UserX, Clock, AlertCircle } from 'lucide-react';
 
 interface SavedViewsProps {
   currentUserId: string;
@@ -12,6 +12,12 @@ export function SavedViews({ currentUserId }: SavedViewsProps) {
   const router = useRouter();
   
   const views = [
+    {
+      name: 'Public Intake',
+      icon: Globe2,
+      href: '/app/tickets?orgId=public',
+      description: 'Tickets submitted without an organization',
+    },
     {
       name: 'My Open',
       icon: Inbox,

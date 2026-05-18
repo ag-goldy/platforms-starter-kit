@@ -1,8 +1,9 @@
+import React from 'react';
 import { notFound } from 'next/navigation';
 import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { db } from '@/db';
-import { assets, exportRequests, requestTypes } from '@/db/schema';
+import { exportRequests, requestTypes } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,12 +12,21 @@ import {
   FileText, 
   Download, 
   Users, 
-  Server, 
   Settings,
   Ticket,
   BookOpen,
   Activity
 } from 'lucide-react';
+
+interface ModuleItem {
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ElementType;
+  count?: number;
+  badge?: string;
+  footer?: string;
+}
 
 export default async function OrganizationManagementPage({
   params,
@@ -34,17 +44,15 @@ export default async function OrganizationManagementPage({
     await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
 
     // Fetch counts for modules
-    const [assetCountRows, requestTypeCountRows, exportCountRows] = await Promise.all([
-      db.select({ count: sql<number>`count(*)::int` }).from(assets).where(eq(assets.orgId, org.id)),
+    const [requestTypeCountRows, exportCountRows] = await Promise.all([
       db.select({ count: sql<number>`count(*)::int` }).from(requestTypes).where(eq(requestTypes.orgId, org.id)),
       db.select({ count: sql<number>`count(*)::int` }).from(exportRequests).where(eq(exportRequests.orgId, org.id)),
     ]);
 
-    const assetCount = Number(assetCountRows[0]?.count ?? 0);
     const requestTypeCount = Number(requestTypeCountRows[0]?.count ?? 0);
     const exportCount = Number(exportCountRows[0]?.count ?? 0);
 
-    const modules = [
+    const modules: ModuleItem[] = [
       {
         title: 'Service Catalog',
         description: 'Request types and dynamic forms.',
@@ -66,13 +74,6 @@ export default async function OrganizationManagementPage({
         description: 'Manage users and offboarding.',
         href: `/s/${subdomain}/team`,
         icon: Users,
-      },
-      {
-        title: 'Assets',
-        description: 'Linked infrastructure inventory.',
-        href: `/s/${subdomain}/assets`,
-        icon: Server,
-        count: assetCount,
       },
       {
         title: 'Tickets',

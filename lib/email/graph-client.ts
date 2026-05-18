@@ -174,19 +174,20 @@ export async function sendEmailViaGraph(options: SendEmailOptions): Promise<void
       console.log(`[Graph Email] ✅ Sent to ${toRecipients.join(', ')}: "${options.subject}"`);
       return; // Success - exit retry loop
       
-    } catch (error: any) {
-      lastError = error;
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
       
       // Check if it's a rate limit error (429)
-      if (error.statusCode === 429) {
-        const retryAfter = error.headers?.get('Retry-After') || 5;
+      const graphError = error as { statusCode?: number; headers?: { get?: (name: string) => string } };
+      if (graphError.statusCode === 429) {
+        const retryAfter = Number(graphError.headers?.get?.('Retry-After') || 5);
         console.warn(`[Graph Email] Rate limited. Waiting ${retryAfter}s before retry ${attempt}/${maxRetries}`);
         await sleep(retryAfter * 1000);
         continue;
       }
       
       // Check if it's an authentication error - clear token cache and retry
-      if (error.statusCode === 401) {
+      if (graphError.statusCode === 401) {
         console.warn(`[Graph Email] Auth error on attempt ${attempt}, clearing token cache`);
         tokenCache = null;
         await sleep(1000 * attempt); // Exponential backoff
@@ -284,11 +285,11 @@ export async function testGraphConfiguration(): Promise<{
     // Try to get current user info as a connectivity test
     await client.api(`/users/${FROM_EMAIL}`).get();
     return { configured: true, connected: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       configured: true,
       connected: false,
-      error: error.message || 'Connection failed',
+      error: error instanceof Error ? error.message : 'Connection failed',
     };
   }
 }

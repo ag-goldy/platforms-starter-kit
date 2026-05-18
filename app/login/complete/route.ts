@@ -16,7 +16,6 @@ import { TWO_FACTOR_LOGIN_COOKIE, verifyTwoFactorLoginToken } from '@/lib/auth/t
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const userId = searchParams.get('userId');
-  const callbackUrl = '/app'; // Always redirect to dashboard
   
   if (!userId) {
     redirect('/login?error=Invalid request');

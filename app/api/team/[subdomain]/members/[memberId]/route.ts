@@ -80,7 +80,7 @@ export async function PUT(
 
     const { subdomain, memberId } = await params;
     const body = await request.json();
-    const { name, email, phone, department, role } = body;
+    const { name, email, phone: _phone, department: _department, role } = body;
 
     // Get organization
     const org = await db.query.organizations.findFirst({
@@ -113,7 +113,7 @@ export async function PUT(
       .set({
         name,
         email,
-        // phone and department would need to be added to the users table or a separate profile table
+        // phone (_phone) and department (_department) would need to be added to the users table or a separate profile table
       })
       .where(eq(users.id, memberId))
       .returning();

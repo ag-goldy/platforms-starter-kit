@@ -1,9 +1,13 @@
+// TODO(fix-6.2): This route uses the deprecated `webhookSubscriptions` table from schema-extensions.ts.
+// Migrate to use `createWebhook` / `getOrgWebhooks` from lib/webhooks/queries.ts (canonical `webhooks` table).
+// The [id] sub-routes already use the canonical table — this mismatch means created webhooks are invisible there.
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { webhookSubscriptions } from '@/db/schema-extensions';
 import { eq } from 'drizzle-orm';
 import { requireInternalRole } from '@/lib/auth/permissions';
+import { rateLimit } from '@/lib/rate-limit';
 
 // GET - List webhooks
 export async function GET(req: NextRequest) {
@@ -50,6 +54,10 @@ export async function POST(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // 20 webhook creations per hour per user
+    const rl = await rateLimit(`webhooks:post:${session.user.id}`, { maxRequests: 20, windowSeconds: 3600 });
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
 
     await requireInternalRole();
 

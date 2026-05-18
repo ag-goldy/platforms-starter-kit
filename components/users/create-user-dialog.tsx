@@ -72,7 +72,7 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
         });
         success('User created successfully');
       }
-    } catch (error) {
+    } catch (err) {
       error(
         err instanceof Error ? err.message : 'Failed to create user'
       );

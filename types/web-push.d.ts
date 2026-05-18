@@ -36,6 +36,12 @@ declare module 'web-push' {
     privateKey: string;
   };
 
+  const webPush = {
+    setVapidDetails,
+    sendNotification,
+    generateVAPIDKeys,
+  };
+
   export {
     setVapidDetails,
     sendNotification,
@@ -43,9 +49,5 @@ declare module 'web-push' {
     PushSubscription,
     RequestOptions,
   };
-  export default {
-    setVapidDetails,
-    sendNotification,
-    generateVAPIDKeys,
-  };
+  export default webPush;
 }

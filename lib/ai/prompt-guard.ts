@@ -142,9 +142,5 @@ export function logSecurityEvent(
     inputLength: number;
   }
 ): void {
-  console.log('[AI Security]', {
-    event,
-    timestamp: new Date().toISOString(),
-    ...details,
-  });
+  // Security events are recorded in AI audit log — no console output in production
 }

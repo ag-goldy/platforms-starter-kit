@@ -6,10 +6,6 @@ import { db } from '@/db';
 vi.mock('@/db', () => ({
   db: {
     select: vi.fn(),
-    from: vi.fn(),
-    where: vi.fn(),
-    orderBy: vi.fn(),
-    limit: vi.fn(),
   },
 }));
 
@@ -18,62 +14,76 @@ describe('generateTicketKey', () => {
     vi.clearAllMocks();
   });
 
-  it('should generate a key with current year prefix', async () => {
-    const currentYear = new Date().getFullYear();
-    const expectedPrefix = `AGR-${currentYear}-`;
+  it('should generate a key with current date prefix', async () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const expectedPrefix = `AGRN${year}${month}${day}`;
 
     // Mock empty result (no existing tickets)
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
+          orderBy: vi.fn().mockResolvedValue([]),
         }),
       }),
-    } as unknown as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    } as unknown as ReturnType<typeof db.select>);
 
     const key = await generateTicketKey();
 
-    expect(key).toMatch(new RegExp(`^${expectedPrefix}\\d{6}$`));
-    expect(key).toBe(`${expectedPrefix}000001`);
+    expect(key).toMatch(new RegExp(`^${expectedPrefix}-\\d{4}$`));
   });
 
-  it('should increment sequence number for existing tickets', async () => {
-    const currentYear = new Date().getFullYear();
-    const existingKey = `AGR-${currentYear}-000005`;
+  it('should generate unique keys with random suffix', async () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const datePrefix = `AGRN${year}${month}${day}`;
 
+    // Mock one existing key
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ key: existingKey }]),
-          }),
+          orderBy: vi.fn().mockResolvedValue([{ key: `${datePrefix}-0001` }]),
         }),
       }),
-    } as unknown as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    } as unknown as ReturnType<typeof db.select>);
 
     const key = await generateTicketKey();
 
-    expect(key).toBe(`AGR-${currentYear}-000006`);
+    expect(key).toMatch(new RegExp(`^${datePrefix}-\\d{4}$`));
+    // Should not be the existing key
+    expect(key).not.toBe(`${datePrefix}-0001`);
   });
 
-  it('should handle sequence numbers correctly', async () => {
-    const currentYear = new Date().getFullYear();
-    const existingKey = `AGR-${currentYear}-999999`;
+  it('should handle collision detection with multiple existing keys', async () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const datePrefix = `AGRN${year}${month}${day}`;
 
+    // Mock multiple existing keys
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ key: existingKey }]),
-          }),
+          orderBy: vi.fn().mockResolvedValue([
+            { key: `${datePrefix}-0001` },
+            { key: `${datePrefix}-0002` },
+            { key: `${datePrefix}-0003` },
+          ]),
         }),
       }),
-    } as unknown as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    } as unknown as ReturnType<typeof db.select>);
 
     const key = await generateTicketKey();
 
-    expect(key).toBe(`AGR-${currentYear}-1000000`);
+    expect(key).toMatch(new RegExp(`^${datePrefix}-\\d{4}$`));
+    // Should not be any of the existing keys
+    expect(key).not.toBe(`${datePrefix}-0001`);
+    expect(key).not.toBe(`${datePrefix}-0002`);
+    expect(key).not.toBe(`${datePrefix}-0003`);
   });
 });

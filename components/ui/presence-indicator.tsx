@@ -2,7 +2,7 @@
 
 import { useTicketPresence } from '@/hooks/use-realtime';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Edit, Eye } from 'lucide-react';
+import { Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './avatar';
 

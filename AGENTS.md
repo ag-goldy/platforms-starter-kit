@@ -1,431 +1,302 @@
-# Atlas Helpdesk - AI Agent Guide
+# Atlas Helpdesk — Agent Guide
 
-This document provides essential context for AI coding agents working on the Atlas Helpdesk project.
+This file contains everything an AI coding agent needs to know to work effectively on the Atlas Helpdesk codebase. Atlas is a multi-tenant ITSM / support ticketing platform built on Next.js 15 with custom subdomain routing.
 
-## Project Overview
+---
 
-Atlas Helpdesk is a **multi-tenant customer support platform** built for AGR Networks. It provides:
+## 1. Project Overview
 
-- **Internal Console** (`/app/*`) - For support agents and admins to manage tickets, users, and organizations
-- **Customer Portal** (`/s/[subdomain]/*`) - Organization-branded support portals accessed via subdomains
-- **Public Pages** (`/`, `/kb`, `/support`) - Landing page, public knowledge base, and ticket submission
-- **Magic Link Access** (`/ticket/[token]`) - Secure token-based ticket access for external users
+Atlas Helpdesk is a production-ready, multi-tenant helpdesk platform. Each tenant (organization) gets a custom subdomain. The app has three distinct UI zones:
 
-### Key Domains
+- **Public marketing site** (`/`) — landing page, knowledge base, support ticket submission, status pages
+- **Internal staff dashboard** (`/app/*`) — ticket queue, organization management, reporting, admin tools
+- **Customer portals** (`/s/[subdomain]/*`) — organization-branded self-service portal for ticket tracking, KB, service catalog
 
-- Production: `atlas.agrnetworks.com`
-- Customer portals: `[org-slug].atlas.agrnetworks.com`
-- Local dev: `localhost:3000` with subdomain support via `[subdomain].localhost:3000`
+Key features: ticketing with SLA tracking, asset management, knowledge base, email-to-ticket, AI-powered suggestions (Baseten/OpenAI), Zabbix monitoring integration, CSAT surveys, automation rules, audit logging, bulk operations, and real-time notifications.
 
-## Technology Stack
+---
+
+## 2. Technology Stack
 
 | Layer | Technology |
 |-------|------------|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript 5.8 |
-| React | React 19 |
-| Styling | Tailwind CSS 4 |
-| UI Components | shadcn/ui + Radix UI primitives |
-| Database | PostgreSQL (via Drizzle ORM) |
-| Auth | NextAuth.js v5 (beta) |
-| Email | Microsoft Graph API (primary), SMTP fallback, Console dev mode |
-| File Storage | Vercel Blob |
-| Cache/Queue | Upstash Redis (optional) |
-| Testing | Vitest (unit), Playwright (e2e) |
-| Package Manager | pnpm |
+| Framework | Next.js 15 (App Router), React 19, TypeScript 5 |
+| Styling | Tailwind CSS 4, shadcn/ui primitives, `lucide-react` icons |
+| Database | PostgreSQL via Neon (`@neondatabase/serverless`); Drizzle ORM |
+| Auth | Next-Auth v5 (Auth.js) with Credentials provider, JWT sessions, bcrypt hashing |
+| Cache / Rate Limit | Upstash Redis (`@upstash/redis`) or self-hosted Redis; in-memory mock for tests |
+| File Storage | Vercel Blob (`@vercel/blob`) for attachments |
+| Email | Microsoft Graph API (priority) > SMTP (`nodemailer`) > console fallback |
+| AI | Baseten (`deepseek-ai/DeepSeek-V3.1`) via OpenAI-compatible client |
+| Jobs | Redis-backed BullMQ queues with typed handlers |
+| Testing | Vitest (unit/integration), Playwright (E2E) |
+| Package Manager | pnpm 10.12.4 |
 
-## Project Structure
+---
+
+## 3. Directory Structure
 
 ```
-/
-├── app/                          # Next.js App Router
-│   ├── app/                      # Internal console (agent/admin UI)
-│   │   ├── actions/              # Server Actions for internal operations
-│   │   ├── admin/                # Admin pages (health, audit, compliance, etc.)
-│   │   ├── organizations/[id]/   # Org management pages
-│   │   ├── tickets/              # Ticket management
-│   │   ├── users/                # User management
-│   │   ├── kb/                   # Knowledge base management
-│   │   └── settings/             # User settings (security, sessions)
-│   │   
-│   ├── s/[subdomain]/            # Customer portal (subdomain-based)
-│   │   ├── actions/              # Customer-facing server actions
-│   │   ├── tickets/              # Customer ticket views
-│   │   ├── kb/                   # Public/org KB articles
-│   │   ├── services/             # Service status pages
-│   │   └── team/                 # Team management for customers
-│   │   
-│   ├── api/                      # API routes
-│   │   ├── auth/                 # NextAuth.js endpoints
-│   │   ├── inbound-email/        # Webhook for email-to-ticket
-│   │   ├── cron/                 # Cron job endpoints
-│   │   └── [various]/            # Feature-specific APIs
-│   │   
-│   ├── ticket/[token]/           # Magic link ticket access
-│   ├── kb/                       # Public knowledge base
-│   ├── support/                  # Public ticket submission
-│   └── login/                    # Authentication pages
-│
-├── components/                   # React components
-│   ├── ui/                       # shadcn/ui components (primitive)
-│   ├── tickets/                  # Ticket-specific components
-│   ├── organizations/            # Org management components
-│   ├── customer/                 # Customer portal components
-│   └── [various]/                # Feature-specific components
-│
-├── lib/                          # Server-side utilities
-│   ├── auth/                     # Authentication utilities
-│   ├── email/                    # Email service implementations
-│   ├── tickets/                  # Ticket business logic
-│   ├── automation/               # Automation rules engine
-│   ├── jobs/                     # Background job queue
-│   ├── sla/                      # SLA calculation logic
-│   ├── db/                       # DB helpers (org scoping)
-│   └── [various]/                # Feature utilities
-│
-├── db/                           # Database
-│   ├── schema.ts                 # Drizzle schema definition
-│   └── index.ts                  # DB client setup
-│
-├── drizzle/                      # Database migrations
-│   └── [NNNN]_*.sql              # Migration files
-│
-├── hooks/                        # Custom React hooks
-├── types/                        # TypeScript type declarations
-├── tests/                        # Test files
-│   ├── e2e/                      # Playwright e2e tests
-│   └── *.test.ts                 # Vitest unit tests
-│
-└── scripts/                      # Utility scripts (migrations, testing)
+app/                 # Next.js App Router pages, layouts, API routes, Server Actions
+  actions/           # Server Actions (tickets, orgs, users, automation, etc.)
+  api/               # Route handlers (~126 endpoints: auth, tickets, AI, cron, webhooks)
+  app/               # Internal staff dashboard pages (/app/*)
+  s/[subdomain]/     # Customer portal pages + parallel @modal routes
+  login/             # Auth flows including 2FA
+components/          # React components organized by domain
+  ui/                # shadcn/ui primitives (button, dialog, table, toast, etc.)
+  tickets/           # Ticket list, detail, filters, bulk actions, SLA indicators
+  admin/             # Ops dashboard, AI audit, failed jobs, internal groups
+  customer/          # Portal shell, request catalog, team manager
+  ai/                # Smart suggestions, consent banner
+  editor/            # TipTap editor wrappers
+  providers/         # AuthProvider, ToastProvider, CommandPalette provider
+  layouts/           # OrganizedNav, mobile nav, responsive table
+db/                  # Database schema, seed script, connection layer
+  schema.ts          # ~60 Drizzle tables with relations
+  schema-extensions.ts # Additional tables (agent metrics, workflow configs, etc.)
+  index.ts           # Dual-driver DB client (Neon / postgres-js)
+drizzle/             # Migration SQL files (~59 migrations)
+docs/                # Architecture and setup docs
+  superpowers/       # Active improvement plans (security, accessibility, integrations)
+lib/                 # Server-side business logic, API clients, utilities
+  auth/              # Permissions, roles, sessions, 2FA, password reset
+  ai/                # OpenAI client, streaming helpers, domain AI wrappers
+  tickets/           # Ticket queries, SLA, escalation, magic links
+  email/             # Email service factory, Graph client, SMTP, templates
+  jobs/              # Queue/worker setup + typed handlers
+  redis/             # Client, cache, rate-limit, presence, drafts
+  api/               # Cron/API secret verification, secureEndpoint wrapper
+  db/                # Tenant scoping guards (withOrgScope)
+  monitoring/        # Correlation IDs, structured logging, error tracking
+  integrations/      # Registry for Slack, Teams, Jira, GitHub, Salesforce (stubs)
+  zabbix/            # Zabbix API client and sync logic
+hooks/               # Client-side hooks (realtime, AI streaming, keyboard shortcuts)
+tests/               # Vitest unit/integration tests + Playwright E2E tests
+scripts/             # One-off TSX utilities, diagnostics, migration runners
+aws/                 # Terraform + scripts for optional AWS real-time polling
 ```
 
-## Build and Development Commands
+---
+
+## 4. Build and Development Commands
 
 ```bash
-# Development (with Turbopack)
+# Install dependencies
+pnpm install
+
+# Dev server (Turbopack)
 pnpm dev
 
 # Production build
 pnpm build
 
-# Linting
+# Lint
 pnpm lint
 
-# Testing
-pnpm test                    # Run Vitest unit tests
-pnpm test:e2e               # Run Playwright e2e tests
-pnpm test:e2e:ui            # Run e2e tests with UI
+# Database
+pnpm db:generate      # Generate Drizzle migrations
+pnpm db:migrate       # Run migrations
+pnpm db:push          # Push schema changes (dev)
+pnpm db:studio        # Drizzle Studio GUI
+pnpm db:seed          # Seed initial data (2 internal users, sample orgs)
 
-# Database operations
-pnpm db:generate            # Generate migration from schema
-pnpm db:migrate             # Apply pending migrations
-pnpm db:push                # Push schema changes (dev only)
-pnpm db:studio              # Open Drizzle Studio
+# Tests
+pnpm test             # Vitest unit/integration tests
+pnpm test:e2e         # Playwright E2E tests
+pnpm test:e2e:ui      # Playwright with UI
+pnpm test:services    # Smoke test (DB, email, env vars)
 
-# Feature-specific migrations
-pnpm db:apply-phase1
-pnpm db:apply-sla
-pnpm db:apply-all-phase3
-# ... (many more specific migration scripts)
+# Diagnostics
+pnpm check:emails     # Check failed email diagnostics
 ```
 
-## Code Style Guidelines
+---
 
-### TypeScript Conventions
+## 5. Code Style Guidelines
 
-- **Strict mode enabled** - Avoid `any` when possible (currently warns)
-- **Prefer explicit types** for function parameters and returns
-- Use path alias `@/` for imports (e.g., `@/lib/utils`, `@/db/schema`)
-- Components use `.tsx`, utilities use `.ts`
+- **TypeScript**: Strict mode enabled. `no-explicit-any` is a **warn**, not an error. Underscore-prefixed unused vars are allowed.
+- **ESLint**: Extends `next/core-web-vitals` and `next/typescript`.
+- **Formatting**: Follow existing file conventions. Use single quotes in TS/TSX unless the file already uses double quotes.
+- **Imports**: Prefer `@/` path aliases (e.g., `@/db`, `@/lib/auth/permissions`).
+- **Server vs Client**: Default to Server Components. Use `'use client'` only when interactivity (state, effects, browser APIs) is required.
+- **Async params**: Next.js 15 makes `params` and `searchParams` async. Always await them: `const { id } = await params;`.
+- **Error handling**: Never log raw tokens, passwords, or full emails. Use `maskEmail()` for auth logging.
 
-### Naming Conventions
+---
 
-- **Components**: PascalCase (`TicketDetail.tsx`)
-- **Files**: kebab-case for pages, camelCase for utilities
-- **Database tables**: snake_case (`ticket_comments`)
-- **TypeScript types**: PascalCase with descriptive names
-- **Server Actions**: camelCase in `actions.ts` files
-- **API Routes**: Route segment convention (`route.ts`)
+## 6. Testing Strategy
 
-### Database Schema Patterns
+### Vitest (Unit / Integration)
+- Config: `vitest.config.ts`
+- Environment: `node`, globals enabled, single-threaded to avoid DB contention
+- Setup file: `tests/setup.ts` truncates `organizations` and `users` before each test
+- Tests skip gracefully when `DATABASE_URL` is missing:
+  ```ts
+  const run = process.env.DATABASE_URL ? describe : describe.skip;
+  run('suite', () => { ... });
+  ```
+- Heavy mocking of `@/lib/auth/context` for permission tests; Redis is mocked in-memory for rate-limit tests.
 
-- Primary keys: `uuid('id').defaultRandom().primaryKey()`
-- Timestamps: `createdAt`, `updatedAt` with `.defaultNow()`
-- Soft deletes: `deletedAt` timestamp (not boolean)
-- Foreign keys: `{table}Id` format with `{ onDelete: 'cascade' | 'set null' }`
-- Enums: Use `pgEnum()` for fixed value sets
-- JSON fields: Use `jsonb()` with `$type<T>()` for type safety
+### Playwright (E2E)
+- Located in `tests/e2e/`
+- Not in `package.json` devDependencies by default; tests degrade gracefully if not installed.
 
-### Component Patterns
+### Key Test Files
+- `permissions.test.ts` — role enforcement boundaries
+- `security.test.ts` — org isolation, magic-link expiry, attachment gating
+- `org-isolation.test.ts` — query-layer tenant scoping
+- `rate-limiting.test.ts` — mocked Redis counter logic
+- `cron-auth.test.ts` — fail-closed cron verification
+- `webhook-auth.test.ts` — HMAC-SHA256 payload validation
+- `email/threading.test.ts` — Message-ID / In-Reply-To parsing
 
-```typescript
-// Server Component (default)
-export default async function Page() {
-  const data = await fetchData();
-  return <Component data={data} />;
-}
+---
 
-// Client Component (when needed)
-'use client';
-export default function ClientComponent() {
-  const [state, setState] = useState();
-  // ...
-}
+## 7. Database and Migrations
 
-// Server Action
-'use server';
-export async function actionName(formData: FormData) {
-  // Validate input
-  // Check permissions via auth()
-  // Perform operation
-  // Revalidate cache if needed
-}
-```
+### Schema
+- Primary schema: `db/schema.ts`
+- Extensions: `db/schema-extensions.ts`
+- ~60 tables covering: organizations, users, platform admins, memberships, tickets, comments, attachments, services, assets, KB, automation rules, audit logs, notifications, AI usage, Zabbix configs, etc.
 
-## Testing Instructions
+### Connection
+- `db/index.ts` exports a Proxy-based singleton `db` client.
+- Supports two drivers via `DB_DRIVER` env var:
+  - `neon` (default): `@neondatabase/serverless` for serverless/edge
+  - `postgres`: `postgres-js` with connection pooling (max 10)
 
-### Unit Tests (Vitest)
+### Migrations
+- Managed with Drizzle Kit (`drizzle.config.ts`).
+- Migration files live in `drizzle/`.
+- Feature migrations were applied in phases (Phase 3, Phase 4, etc.). Historical one-off scripts are in `scripts/archive/`.
 
-- Located in `tests/*.test.ts`
-- Run with `pnpm test`
-- Uses in-memory database transactions (truncates tables before each test)
-- Tests exclude `tests/e2e/` directory
+### Seeding
+- `db/seed.ts` creates two hardcoded internal users (`ag@agrnetworks.com` admin, `help@agrnetworks.com` agent) with bcrypt-hashed passwords.
 
-### E2E Tests (Playwright)
+---
 
-- Located in `tests/e2e/*.test.ts`
-- Run with `pnpm test:e2e`
-- Tests full user flows across internal console and customer portal
-
-### Test Setup
-
-Tests automatically:
-1. Load `.env.local` for environment variables
-2. Truncate `organizations` and `users` tables before each test
-3. Use single-threaded execution to avoid DB conflicts
-
-## Authentication & Authorization
+## 8. Authentication and Authorization
 
 ### Auth Flow
+- Next-Auth v5 with Credentials provider only.
+- Config split: `auth.config.ts` (cookies, JWT callbacks, session) + `auth.ts` (authorize logic, DB queries).
+- JWT strategy, 30-day max age.
+- Cookie names prefixed with `__Secure-` in production.
+- Two separate identity tables checked in order:
+  1. `platformAdmins` — global platform admins (`SUPER_ADMIN`, `ADMIN`, `SUPPORT`)
+  2. `users` — tenant users, with `isInternal` flag distinguishing agents from customers
 
-1. **Login**: Credentials provider with optional 2FA
-2. **Session**: JWT-based via NextAuth.js v5
-3. **Middleware** (`middleware.ts`): Protects routes based on session cookie
-4. **Role Checks**: Server-side validation via `auth()` + database lookups
+### 2FA / TOTP
+- If `twoFactorEnabled` is true, password login returns `null` and issues a `loginToken`.
+- User completes 2FA on `/login/verify-2fa`.
+- Implemented in `lib/auth/two-factor-login.ts` using `otplib`.
 
-### User Types
+### Permission Guards (use these — do not reinvent)
+- `requireAuth()` — any authenticated user
+- `requireInternalRole()` — staff dashboard access (`ADMIN`, `AGENT`, `READONLY`)
+- `requireInternalAdmin()` — platform admin panel access
+- `requireOrgMemberRole()` — customer portal access
+- `canViewTicket(ticketId)` / `canReplyTicket(ticketId)` — ticket-level access
+- `withOrgScope()` / `withValidatedOrgScope()` — mandatory tenant scoping wrapper for DB queries
 
-| Type | Flag | Access |
-|------|------|--------|
-| Internal | `isInternal: true` | `/app/*` console access |
-| Customer | `isInternal: false` | `/s/[subdomain]/*` portal only |
+### Middleware (`middleware.ts`)
+- Extracts subdomain from host (local: `*.localhost`, prod: `*.rootdomain`, Vercel preview: `*---*.vercel.app`; also falls back to `/s/[subdomain]` path on localhost).
+- Protects `/app/*` and `/admin/*` — redirects to `/login` if no session cookie.
+- Blocks `/app` and `/admin` access from subdomains.
+- Checks `organizations.is_active` / `deleted_at` at the edge; redirects disabled orgs to `/disabled`.
+- Adds security headers (CSP, HSTS, X-Frame-Options, etc.).
+- Clears all auth cookie variants on `?error=SessionExpired` or `?error=SessionInvalid`.
 
-### Role Hierarchy (Organizations)
+---
 
-- `ADMIN` - Full org access
-- `AGENT` - Can manage tickets
-- `READONLY` - View-only access
-- `CUSTOMER_ADMIN` - Customer portal admin
-- `REQUESTER` - Can create/view own tickets
-- `VIEWER` - Read-only customer access
+## 9. Environment Variables
 
-### Security Patterns
+Required for local development:
 
-- Always verify `orgId` matches user's membership
-- Use `withOrgScope()` helper for DB queries
-- Magic links: single-use, purpose-bound (`VIEW` or `REPLY`)
-- Token hashing: Store SHA-256 hash, compare with HMAC
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | JWT signing secret (generate with `openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Base URL for auth callbacks (`http://localhost:3000`) |
+| `NEXT_PUBLIC_ROOT_DOMAIN` | Root domain for subdomain routing (`localhost:3000`) |
+| `APP_BASE_URL` | Internal app base URL |
+| `SUPPORT_BASE_URL` | Public support base URL |
+| `TOKEN_PEPPER` | HMAC pepper for magic links (`openssl rand -base64 32`) |
+| `EXPORT_SIGNED_URL_SECRET` | HMAC secret for customer export signed URLs |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token for attachment uploads |
 
-## Multi-Tenant Architecture
+Optional but recommended:
 
-### Subdomain Resolution
+| Variable | Purpose |
+|----------|---------|
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Upstash Redis for rate limiting and caching |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE` | SMTP fallback email |
+| `EMAIL_FROM` | Default sender address |
+| `MICROSOFT_GRAPH_TENANT_ID` / `CLIENT_ID` / `CLIENT_SECRET` | Microsoft Graph email (priority over SMTP) |
+| `GRAPH_WEBHOOK_SECRET` | Graph inbound webhook validation |
+| `INBOUND_EMAIL_SECRET` | Generic inbound email webhook auth |
+| `CRON_SECRET_TOKEN` | External cron / VPS auth |
+| `BASETEN_API_KEY` | AI inference API |
+| `INTERNAL_ADMIN_EMAILS` | Comma-separated emails with `/app/admin/health` access |
+| `HEALTHCHECK_EMAIL_TO` / `SUPPORT_INBOX_EMAIL` | Diagnostics and intake addresses |
 
-The middleware handles subdomain detection:
+---
 
-1. **Production**: `[subdomain].atlas.agrnetworks.com`
-2. **Local dev**: `[subdomain].localhost:3000` OR `/s/[subdomain]/` path
-3. **Vercel preview**: `[subdomain]---[deployment].vercel.app`
+## 10. Deployment
 
-### Organization Isolation
+### Primary: Vercel
+- Designed for Vercel with wildcard DNS (`*.yourdomain.com`).
+- `vercel.json` defines two daily cron jobs: `/api/jobs/process` and `/api/cron/graph-subscription`.
+- `next.config.ts` has `ignoreDuringBuilds: true` for ESLint and `ignoreBuildErrors: true` for TypeScript — noted as temporary.
 
-All data is scoped by `orgId`:
+### Optional AWS Real-Time Polling
+- Terraform configs in `aws/terraform/` for sub-100ms Zabbix polling.
+- Uses EC2 (`m7i-flex.large`) + ElastiCache Redis.
+- Docs: `docs/AWS_DEPLOYMENT_GUIDE.md`, `docs/AWS_1MS_ARCHITECTURE.md`.
 
-```typescript
-// Always filter by org
-const tickets = await db.query.tickets.findMany({
-  where: eq(tickets.orgId, orgId),
-});
-```
+### Optional External VPS Sync
+- Lightweight Node.js poller in `scripts/vps-sync/`.
+- Calls Vercel API endpoints on configurable intervals.
 
-### Customer Portal Features
+---
 
-Each organization can enable/disable features via `features` JSON:
+## 11. Security Considerations
 
-```typescript
-features: {
-  assets?: boolean;      // Asset inventory
-  exports?: boolean;     // Data export
-  team?: boolean;        // Team management
-  services?: boolean;    // Service catalog
-  knowledge?: boolean;   // Knowledge base
-}
-```
+- **Tenant isolation** is enforced server-side via `withOrgScope()` in `lib/db/with-org-scope.ts`. Never run tenant-scoped queries without it.
+- **Fail-open rate limiting**: if Redis is unavailable, requests are allowed (logged).
+- **Fail-closed cron/API endpoints**: if secrets are missing, return 503.
+- **Magic links**: single-use, purpose-bound tokens hashed at rest (`ticketTokens` table).
+- **Attachment downloads**: auth-gated; proxy through app, never direct Blob URLs.
+- **Email logging**: auth logs mask emails and never log passwords or tokens.
+- **Security headers**: CSP, HSTS, X-Frame-Options, etc. applied in middleware.
+- **PII / Compliance**: audit logs are immutable; retention policies and anonymization utilities exist in `lib/compliance/`.
 
-## Background Jobs
+---
 
-Job queue implemented in PostgreSQL:
+## 12. Key Conventions for Agents
 
-- **Queue**: `lib/jobs/queue.ts`
-- **Worker**: `lib/jobs/worker.ts`
-- **Handlers**: `lib/jobs/handlers/`
-- **Failed Jobs**: Stored in `failed_jobs` table with retry logic
+1. **Always use `withOrgScope()`** for any query that touches tenant data (tickets, users, orgs, assets, etc.).
+2. **Prefer Server Actions** for mutations in the staff dashboard (`/app/*`). Use API routes for file uploads, SSE streams, cron jobs, webhooks, and public endpoints.
+3. **Revalidate after mutations**: call `revalidatePath()` after Server Actions that change displayed data.
+4. **Mock auth context in tests**: `vi.mock('@/lib/auth/context')` is the standard pattern.
+5. **Use the existing AI client**: all AI calls go through `lib/ai/client.ts` (`getAIResponse`, `getEmbedding`). Do not create new OpenAI clients.
+6. **Email goes through the factory**: use `lib/email/index.ts` (`sendEmail`, `createEmailService`) so Graph > SMTP > console priority is respected.
+7. **Cache invalidation**: use helpers in `lib/cache-invalidation.ts` after creating/updating/deleting major entities.
+8. **Background jobs**: enqueue via `lib/jobs/` instead of running long tasks in request handlers.
+9. **Do not commit `.env.local`** or any secrets.
+10. **Do not run `git commit`, `git push`, `git rebase`, etc.** unless explicitly asked.
 
-### Job Types
+---
 
-- `send-email` - Email delivery
-- `generate-export` - Data export generation
-- `process-attachment` - File scanning/processing
-- `audit-compaction` - Audit log maintenance
-- `sla-warning-check` - SLA monitoring
+## 13. Active Improvement Plans
 
-## Email System
+The `docs/superpowers/` directory contains detailed execution plans for ongoing remediation work:
 
-Priority order:
-1. **Microsoft Graph API** (M365/Azure AD) - Production
-2. **SMTP** - Fallback option
-3. **Console** - Development (logs to stdout)
+- **Area 1 — TypeScript & Schema**: Eliminate `tsc --noEmit` errors, merge schema extensions, fix async params.
+- **Area 2 — Security**: Replace hardcoded 2FA encryption with `ENCRYPTION_KEY` (AES-256-GCM); fix webhook route consistency.
+- **Area 3 — Accessibility**: WCAG 2.1 AA baseline (skip links, `aria-label`, toast live regions, focus rings).
+- **Area 4 — Feature Completions**: Wire email queue triggers, CSAT dispatch, `sharp` thumbnails, fix hardcoded user IDs.
+- **Area 5 — Integrations**: Fill Slack, Teams, GitHub, Jira stubs; add `external_refs` JSONB column; wire `triggerIntegrations()`.
 
-Key files:
-- `lib/email/index.ts` - Service factory
-- `lib/email/graph-client.ts` - M365 integration
-- `lib/email/templates/*.ts` - Email templates
-
-## Cron Jobs
-
-Vercel Cron endpoints in `app/api/cron/`:
-
-- `csat-reminders` - Customer satisfaction surveys
-- `escalations` - SLA breach escalation
-- `retention` - Data retention policy enforcement
-- `scheduled-tickets` - Future ticket creation
-- `zabbix-sync` - Monitoring sync
-
-## Environment Variables
-
-Required for development:
-
-```bash
-# Database (REQUIRED)
-DATABASE_URL=postgresql://...
-
-# Auth (REQUIRED)
-NEXTAUTH_SECRET=...        # openssl rand -base64 32
-NEXTAUTH_URL=http://localhost:3000
-
-# Domains
-NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
-APP_BASE_URL=http://localhost:3000
-
-# Security (REQUIRED for magic links)
-TOKEN_PEPPER=...           # openssl rand -base64 32
-
-# Blob Storage (REQUIRED for attachments)
-BLOB_READ_WRITE_TOKEN=...
-
-# Email (pick one)
-# Option 1: Microsoft Graph
-MICROSOFT_GRAPH_TENANT_ID=...
-MICROSOFT_GRAPH_CLIENT_ID=...
-MICROSOFT_GRAPH_CLIENT_SECRET=...
-EMAIL_FROM_ADDRESS=...
-
-# Option 2: SMTP
-SMTP_HOST=...
-SMTP_PORT=...
-SMTP_USER=...
-SMTP_PASSWORD=...
-EMAIL_FROM=...
-```
-
-See `.env.local.template` for full list.
-
-## Common Development Tasks
-
-### Adding a New Database Table
-
-1. Add table definition to `db/schema.ts`
-2. Add relations if needed
-3. Run `pnpm db:generate` to create migration
-4. Run `pnpm db:migrate` to apply
-5. Add queries in `lib/[feature]/queries.ts`
-
-### Adding a Server Action
-
-1. Create or edit `app/[area]/actions/[feature].ts`
-2. Add `'use server'` at top
-3. Validate input with Zod
-4. Check permissions via `auth()` and membership lookup
-5. Perform DB operation
-6. Use `revalidatePath()` to clear caches
-
-### Adding an API Route
-
-1. Create `app/api/[path]/route.ts`
-2. Export HTTP method handlers (`GET`, `POST`, etc.)
-3. Validate session for protected routes
-4. Return `NextResponse.json()` responses
-
-### Adding a Component
-
-1. Create in `components/[category]/ComponentName.tsx`
-2. Use `'use client'` only if interactivity needed
-3. Import from `@/components/ui/*` for primitives
-4. Follow existing patterns for loading/error states
-
-## Key Files Reference
-
-| File | Purpose |
-|------|---------|
-| `middleware.ts` | Route protection, subdomain extraction |
-| `auth.ts` | NextAuth.js configuration |
-| `db/schema.ts` | Database schema (single source of truth) |
-| `lib/utils.ts` | Common utilities, domain constants |
-| `lib/auth/permissions.ts` | Permission checking helpers |
-| `lib/db/with-org-scope.ts` | Org isolation helper |
-| `drizzle.config.ts` | Migration tool config |
-| `next.config.ts` | Next.js configuration |
-| `vitest.config.ts` | Test configuration |
-
-## Troubleshooting
-
-### Common Issues
-
-**Auth session not persisting**: Check `NEXTAUTH_SECRET` is set and consistent
-
-**Subdomain not resolving**: Verify `NEXT_PUBLIC_ROOT_DOMAIN` format matches actual domain
-
-**Database connection fails**: Ensure `DATABASE_URL` uses correct format for postgres-js
-
-**Email not sending**: Check Graph API credentials or fallback to SMTP/console
-
-**Migration errors**: Review `drizzle/*.sql` files for conflicts, run `pnpm db:push` for dev
-
-## Security Considerations
-
-- **Never** expose `NEXTAUTH_SECRET` or `TOKEN_PEPPER` to client
-- **Always** validate `orgId` matches user's organization
-- **Always** check file upload types and sizes
-- **Use** `revalidatePath()` after mutations to prevent stale data
-- **Hash** sensitive tokens (magic links, passwords) with bcrypt/SHA-256
-- **Validate** file uploads with mime-type and extension checks
-- **Scan** attachments for viruses (implemented in `lib/attachments/scanning.ts`)
-
-## Deployment
-
-Primary target: **Vercel**
-
-Required Vercel settings:
-- Build command: `pnpm build`
-- Install command: `pnpm install`
-- Environment variables: All from `.env.local`
-- Cron jobs: Configured in `vercel.json`
+If your task touches any of these areas, read the relevant plan in `docs/superpowers/` before making changes.

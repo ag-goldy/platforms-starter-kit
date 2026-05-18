@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { emailOutbox } from '@/db/schema';
 import { listFailedOutbox } from '@/lib/email/outbox';
 import { isSmtpConfigured } from '@/lib/email/smtp';
-import { isRedisConfigured, redis } from '@/lib/redis';
+import { isRedisConfigured, redis } from '@/lib/redis/client';
 import { sql, eq } from 'drizzle-orm';
 import { list } from '@vercel/blob';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

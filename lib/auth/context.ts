@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { memberships, organizations, users } from '@/db/schema';
+import { memberships, organizations, users, platformAdmins } from '@/db/schema';
 import { getClientIP } from '@/lib/rate-limit';
 import { rootDomain } from '@/lib/utils';
 import { eq, and } from 'drizzle-orm';
@@ -10,7 +10,9 @@ import { getSessionTokenFromCookie } from '@/lib/auth/session-tracking';
 
 export type RequestContext = {
   user: typeof users.$inferSelect | null;
+  platformAdmin: typeof platformAdmins.$inferSelect | null;
   isInternal: boolean;
+  isPlatformAdmin: boolean;
   org: typeof organizations.$inferSelect | null;
   orgId: string | null;
   membership: typeof memberships.$inferSelect | null;
@@ -65,13 +67,16 @@ export async function getRequestContext(): Promise<RequestContext> {
 
   const session = await auth();
   let user: typeof users.$inferSelect | null = null;
+  let platformAdmin: typeof platformAdmins.$inferSelect | null = null;
   const sessionToken = await getSessionTokenFromCookie();
 
   if (!sessionToken && session?.user) {
-    console.log('[RequestContext] Session exists but no token in cookie. Session user:', session.user.email);
+    // Session without cookie token — may indicate cookie loss or SSR context
   }
 
   // Look up user by ID first (more reliable), then by email as fallback
+  let isPlatformAdmin = false;
+  
   if (session?.user?.id) {
     const foundUser = await db.query.users.findFirst({
       where: eq(users.id, session.user.id),
@@ -79,7 +84,17 @@ export async function getRequestContext(): Promise<RequestContext> {
     user = foundUser || null;
     
     if (!user) {
-      console.log('[RequestContext] Session user ID not found in DB:', session.user.id, session.user.email);
+      // Check if this is a platform admin (they're in a separate table)
+      const foundPlatformAdmin = await db.query.platformAdmins.findFirst({
+        where: eq(platformAdmins.id, session.user.id),
+      });
+      
+      if (foundPlatformAdmin) {
+        isPlatformAdmin = true;
+        platformAdmin = foundPlatformAdmin;
+      } else {
+        // User ID from session not found in users or platform_admins — stale session
+      }
     }
   } else if (session?.user?.email) {
     // Fallback to email lookup for older sessions that might not have ID
@@ -89,7 +104,17 @@ export async function getRequestContext(): Promise<RequestContext> {
     user = foundUser || null;
     
     if (!user) {
-      console.log('[RequestContext] Session user email not found in DB:', session.user.email);
+      // Check if this is a platform admin
+      const foundPlatformAdmin = await db.query.platformAdmins.findFirst({
+        where: eq(platformAdmins.email, session.user.email),
+      });
+      
+      if (foundPlatformAdmin) {
+        isPlatformAdmin = true;
+        platformAdmin = foundPlatformAdmin;
+      } else {
+        // Email fallback: not found in users or platform_admins — stale session
+      }
     }
   } else {
     if (!session) {
@@ -121,7 +146,9 @@ export async function getRequestContext(): Promise<RequestContext> {
 
   return {
     user,
-    isInternal: !!user?.isInternal,
+    platformAdmin,
+    isInternal: !!user?.isInternal || isPlatformAdmin, // Platform admins are treated as internal
+    isPlatformAdmin,
     org,
     orgId: org?.id ?? null,
     membership,

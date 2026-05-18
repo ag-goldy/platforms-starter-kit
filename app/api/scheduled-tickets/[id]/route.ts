@@ -6,7 +6,7 @@ import {
   cancelScheduledTicket,
   deleteScheduledTicket,
 } from '@/lib/scheduled-tickets/queries';
-import { requireOrgAccess } from '@/lib/auth/permissions';
+import { requireInternalRole } from '@/lib/auth/permissions';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -29,10 +29,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       );
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, scheduled.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     return NextResponse.json({ scheduledTicket: scheduled });
   } catch (error) {
@@ -61,10 +58,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, scheduled.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     if (scheduled.status !== 'pending') {
       return NextResponse.json(
@@ -103,10 +97,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, scheduled.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     // Cancel if pending, delete otherwise
     if (scheduled.status === 'pending') {

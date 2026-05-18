@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -45,7 +44,6 @@ export function ArticleList({
   categorySlug,
   emptyMessage = 'No articles found',
 }: ArticleListProps) {
-  const router = useRouter();
   const [articles, setArticles] = useState<ArticleWithRelations[]>(initialArticles);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

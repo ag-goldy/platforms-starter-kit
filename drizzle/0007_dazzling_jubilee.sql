@@ -1,6 +1,7 @@
-ALTER TYPE "public"."audit_action" ADD VALUE 'ORG_DISABLED' BEFORE 'EXPORT_REQUESTED';--> statement-breakpoint
-ALTER TYPE "public"."audit_action" ADD VALUE 'ORG_ENABLED' BEFORE 'EXPORT_REQUESTED';--> statement-breakpoint
-ALTER TYPE "public"."audit_action" ADD VALUE 'ORG_DELETED' BEFORE 'EXPORT_REQUESTED';--> statement-breakpoint
+-- These enum values may already exist from previous migrations
+-- ALTER TYPE "public"."audit_action" ADD VALUE IF NOT EXISTS 'ORG_DISABLED' BEFORE 'EXPORT_REQUESTED';
+-- ALTER TYPE "public"."audit_action" ADD VALUE IF NOT EXISTS 'ORG_ENABLED' BEFORE 'EXPORT_REQUESTED';
+-- ALTER TYPE "public"."audit_action" ADD VALUE IF NOT EXISTS 'ORG_DELETED' BEFORE 'EXPORT_REQUESTED';
 CREATE TABLE "ai_audit_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid,
@@ -51,10 +52,10 @@ CREATE TABLE "org_ai_memory" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "organizations" ADD COLUMN "is_active" boolean DEFAULT true NOT NULL;--> statement-breakpoint
-ALTER TABLE "organizations" ADD COLUMN "disabled_at" timestamp;--> statement-breakpoint
-ALTER TABLE "organizations" ADD COLUMN "disabled_by" text;--> statement-breakpoint
-ALTER TABLE "organizations" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "is_active" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "disabled_at" timestamp;--> statement-breakpoint
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "disabled_by" text;--> statement-breakpoint
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
 ALTER TABLE "org_ai_configs" ADD CONSTRAINT "org_ai_configs_org_id_organizations_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "org_ai_memory" ADD CONSTRAINT "org_ai_memory_org_id_organizations_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "org_ai_memory" ADD CONSTRAINT "org_ai_memory_added_by_users_id_fk" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

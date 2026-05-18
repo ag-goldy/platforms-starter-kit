@@ -13,11 +13,20 @@ import {
   Shield,
   ChevronRight,
 } from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+
+
+interface OrgFeatures {
+  assets?: boolean;
+}
+
+interface Org {
+  id: string;
+  features?: OrgFeatures;
+}
 
 interface AssetAlertsWidgetProps {
   subdomain: string;
-  org: any;
+  org: Org;
 }
 
 interface Asset {
@@ -29,37 +38,35 @@ interface Asset {
   alerts: number;
 }
 
-export function AssetAlertsWidget({ subdomain, org }: AssetAlertsWidgetProps) {
+export function AssetAlertsWidget({ org }: AssetAlertsWidgetProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
-  const { openSlideOver } = useCustomerPortal();
 
   const features = org.features || {};
   const hasAssets = features.assets !== false;
 
   useEffect(() => {
     if (hasAssets) {
-      fetchAssets();
-      const interval = setInterval(fetchAssets, 60000);
+      const fetchAssetsData = async () => {
+        try {
+          const res = await fetch(`/api/assets/org/${org.id}?limit=5`);
+          if (res.ok) {
+            const data = await res.json();
+            setAssets(data.assets || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch assets:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchAssetsData();
+      const interval = setInterval(fetchAssetsData, 60000);
       return () => clearInterval(interval);
     } else {
       setLoading(false);
     }
   }, [org.id, hasAssets]);
-
-  const fetchAssets = async () => {
-    try {
-      const res = await fetch(`/api/assets/org/${org.id}?limit=5`);
-      if (res.ok) {
-        const data = await res.json();
-        setAssets(data.assets || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch assets:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getAssetIcon = (type: string) => {
     switch (type.toUpperCase()) {

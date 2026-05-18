@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { auditLogs, users, organizations } from '@/db/schema';
+import { auditLogs } from '@/db/schema';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { and, eq, desc, gte, lte, sql, like, or } from 'drizzle-orm';
 import { z } from 'zod';
@@ -37,7 +37,7 @@ export async function getAuditLogs(
   }
 
   if (validated.action) {
-    conditions.push(eq(auditLogs.action, validated.action as any));
+    conditions.push(eq(auditLogs.action, validated.action));
   }
 
   if (validated.dateFrom) {

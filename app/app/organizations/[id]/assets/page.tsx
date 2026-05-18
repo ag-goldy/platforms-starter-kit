@@ -14,6 +14,7 @@ import {
 } from '@/db/schema';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { AssetsManager } from '@/components/assets/assets-manager';
+import type { Asset, Site, Area } from '@/db/schema';
 
 export default async function OrganizationAssetsPage({
   params,
@@ -145,7 +146,7 @@ export default async function OrganizationAssetsPage({
 
       <AssetsManager
         orgId={orgId}
-        assets={assets as any}
+        assets={assets as (Asset & { site?: Site | null; area?: Area | null; archivedByUser?: { id: string; name: string | null; email: string } | null; })[]}
         sites={sites}
         areas={areas}
         scope="internal"

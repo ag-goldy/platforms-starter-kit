@@ -107,7 +107,7 @@ export async function createInvitation(data: InvitationData): Promise<{
       orgName: org?.name || 'Organization',
     });
     console.log(`[Invitation] Email sent successfully to ${data.email}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Invitation] Failed to send email to ${data.email}:`, error);
     // Still return the invitation - user can resend later
   }

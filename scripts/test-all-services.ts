@@ -6,11 +6,10 @@
 
 import { db } from '../db';
 import { users, organizations, tickets, kbArticles, kbCategories } from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
-import { isGraphEmailConfigured, sendEmailViaGraph } from '../lib/email/graph-client';
+import { sql } from 'drizzle-orm';
+import { isGraphEmailConfigured } from '../lib/email/graph-client';
 import { isSmtpConfigured } from '../lib/email/smtp';
 import { sendEmail } from '../lib/email';
-import { hash } from 'bcryptjs';
 
 const TEST_EMAIL = process.env.TEST_EMAIL || 'your-test-email@example.com';
 
@@ -33,7 +32,7 @@ async function testDatabase() {
   log('DB', 'Testing database connection...', 'info');
   try {
     // Test connection
-    const result = await db.execute(sql`SELECT NOW()`);
+    await db.execute(sql`SELECT NOW()`);
     log('DB', '✅ Database connection successful', 'success');
 
     // Count records
@@ -50,8 +49,9 @@ async function testDatabase() {
     log('DB', `KB Categories: ${categoryCount[0].count}`, 'info');
 
     return true;
-  } catch (error: any) {
-    log('DB', `❌ Database error: ${error.message}`, 'error');
+  } catch (error: unknown) {
+    const err = error as Error;
+    log('DB', `❌ Database error: ${err.message}`, 'error');
     return false;
   }
 }
@@ -97,11 +97,12 @@ async function testSendEmail() {
     
     log('EMAIL', '✅ Test email sent successfully', 'success');
     return true;
-  } catch (error: any) {
-    log('EMAIL', `❌ Failed to send email: ${error.message}`, 'error');
+  } catch (error: unknown) {
+    const err = error as Error & { body?: Record<string, unknown> };
+    log('EMAIL', `❌ Failed to send email: ${err.message}`, 'error');
     // Try to get more details
-    if (error.body) {
-      log('EMAIL', `   Details: ${JSON.stringify(error.body)}`, 'error');
+    if (err.body) {
+      log('EMAIL', `   Details: ${JSON.stringify(err.body)}`, 'error');
     }
     return false;
   }
@@ -153,7 +154,7 @@ async function testUsers() {
   
   try {
     const internalUsers = await db.query.users.findMany({
-      where: eq(users.isInternal, true),
+      where: sql`${users.isInternal} = true`,
       columns: { id: true, email: true, name: true, isInternal: true },
     });
     
@@ -168,8 +169,9 @@ async function testUsers() {
     });
     
     return true;
-  } catch (error: any) {
-    log('USERS', `❌ Error: ${error.message}`, 'error');
+  } catch (error: unknown) {
+    const err = error as Error;
+    log('USERS', `❌ Error: ${err.message}`, 'error');
     return false;
   }
 }
@@ -193,8 +195,9 @@ async function testKBSystem() {
     globalArticles.forEach(a => log('KB', `   - ${a.title} (${a.status})`, 'info'));
     
     return true;
-  } catch (error: any) {
-    log('KB', `❌ Error: ${error.message}`, 'error');
+  } catch (error: unknown) {
+    const err = error as Error;
+    log('KB', `❌ Error: ${err.message}`, 'error');
     return false;
   }
 }
@@ -274,7 +277,8 @@ async function main() {
   process.exit(allPassed ? 0 : 1);
 }
 
-main().catch((error: any) => {
-  console.error('Fatal error:', error);
+main().catch((error: unknown) => {
+  const err = error as Error;
+  console.error('Fatal error:', err);
   process.exit(1);
 });

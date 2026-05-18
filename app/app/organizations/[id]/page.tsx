@@ -9,9 +9,13 @@ import { OrganizationSLAPolicy } from '@/components/organizations/organization-s
 import { OrgDangerZone } from '@/components/organizations/org-danger-zone';
 import { getPendingInvitations } from '@/lib/users/invitations';
 import { getOrganizationMembersAction } from '@/app/app/actions/users';
+import { updateOrganizationCustomerIdAction } from '@/app/app/actions/organizations';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Workflow, FileText, Layers, MapPin, Server, Bell, Shield, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Settings, Workflow, FileText, Layers, MapPin, Server, Bell, Users, Mail, Sparkles } from 'lucide-react';
 
 export default async function OrganizationDetailPage({
   params,
@@ -33,6 +37,12 @@ export default async function OrganizationDetailPage({
     notFound();
   }
 
+  async function updateCustomerId(formData: FormData) {
+    'use server';
+    const customerId = String(formData.get('customerId') || '');
+    await updateOrganizationCustomerIdAction(orgId, customerId);
+  }
+
   const [members, invitations] = await Promise.all([
     getOrganizationMembersAction(orgId),
     getPendingInvitations(orgId),
@@ -48,7 +58,34 @@ export default async function OrganizationDetailPage({
         <p className="text-sm text-gray-600">
           {org.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'}
         </p>
+        <p className="text-sm text-gray-600">
+          Customer ID: {org.customerId || 'Not set'}
+        </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Internal Customer ID</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={updateCustomerId} className="flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="customerId">Customer ID</Label>
+              <Input
+                id="customerId"
+                name="customerId"
+                defaultValue={org.customerId || ''}
+                placeholder="ACME"
+                pattern="[A-Za-z0-9]+"
+              />
+              <p className="text-xs text-gray-500">
+                Used for new ticket IDs, for example ACME(INC)123456.
+              </p>
+            </div>
+            <Button type="submit">Save</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -128,6 +165,30 @@ export default async function OrganizationDetailPage({
                 <h3 className="font-medium text-sm">Notices</h3>
                 <p className="text-xs text-gray-600 mt-0.5">
                   Maintenance and issue banners
+                </p>
+              </div>
+            </Link>
+            <Link
+              href={`/app/organizations/${orgId}/email-settings`}
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
+            >
+              <Mail className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">Email-to-Ticket</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Configure email intake and auto-replies
+                </p>
+              </div>
+            </Link>
+            <Link
+              href={`/app/organizations/${orgId}/ai-settings`}
+              className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
+            >
+              <Sparkles className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-sm">AI Settings</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Configure AI features and data access
                 </p>
               </div>
             </Link>

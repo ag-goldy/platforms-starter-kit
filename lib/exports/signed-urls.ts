@@ -1,8 +1,11 @@
 import crypto from 'crypto';
+import { constantTimeEquals, getRequiredSecret } from '@/lib/security/secrets';
 
 const EXPORT_SIGNED_URL_EXPIRY_SECONDS = 24 * 60 * 60; // 24 hours
-const EXPORT_SIGNED_URL_SECRET =
-  process.env.EXPORT_SIGNED_URL_SECRET || 'change-me-in-production';
+
+function getExportSignedUrlSecret(): string {
+  return getRequiredSecret('EXPORT_SIGNED_URL_SECRET');
+}
 
 export interface ExportSignedUrlParams {
   exportRequestId: string;
@@ -25,7 +28,7 @@ export function generateExportSignedUrl(params: ExportSignedUrlParams): string {
   const payloadString = JSON.stringify(payload);
   const payloadBase64 = Buffer.from(payloadString).toString('base64url');
 
-  const hmac = crypto.createHmac('sha256', EXPORT_SIGNED_URL_SECRET);
+  const hmac = crypto.createHmac('sha256', getExportSignedUrlSecret());
   hmac.update(payloadString);
   const signature = hmac.digest('base64url');
 
@@ -50,11 +53,11 @@ export function validateExportSignedUrl(
     const payloadString = Buffer.from(payloadBase64, 'base64url').toString('utf-8');
     const payload = JSON.parse(payloadString) as ExportSignedUrlData;
 
-    const hmac = crypto.createHmac('sha256', EXPORT_SIGNED_URL_SECRET);
+    const hmac = crypto.createHmac('sha256', getExportSignedUrlSecret());
     hmac.update(payloadString);
     const expectedSignature = hmac.digest('base64url');
 
-    if (signature !== expectedSignature) {
+    if (!constantTimeEquals(signature, expectedSignature)) {
       return null;
     }
 

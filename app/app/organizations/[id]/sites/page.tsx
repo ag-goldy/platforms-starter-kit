@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { db } from '@/db';
-import { organizations, sites as sitesTable } from '@/db/schema';
+import { organizations, sites as sitesTable, type Site, type SiteArea } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { SitesManager } from '@/components/sites/sites-manager';
 
@@ -47,7 +47,7 @@ export default async function OrganizationSitesPage({
         </p>
       </div>
 
-      <SitesManager orgId={orgId} sites={sites as any} />
+      <SitesManager orgId={orgId} sites={sites as (Site & { areas: SiteArea[] })[]} />
     </div>
   );
 }

@@ -16,8 +16,9 @@ import { TicketListSkeleton } from '@/components/ui/skeleton';
 
 interface TicketListProps {
   tickets: (Ticket & {
-    organization: { name: string };
+    organization: { name: string } | null;
     requester: { name: string | null; email: string } | null;
+    requesterEmail?: string | null;
     assignee: { id: string; name: string | null; email: string } | null;
     tagAssignments?: Array<{
       tag: { id: string; name: string; color: string | null };
@@ -208,7 +209,7 @@ export function TicketList({
               <div className="flex items-center gap-4 text-xs text-gray-500">
                 <span>{ticket.organization?.name || 'Public'}</span>
                 <span>
-                  {ticket.requester?.name || ticket.requester?.email || 'Unknown'}
+                  {ticket.requester?.name || ticket.requester?.email || ticket.requesterEmail || 'Unknown'}
                 </span>
                 {ticket.assignee && (
                   <span>Assigned to {ticket.assignee.name || ticket.assignee.email}</span>
@@ -295,4 +296,3 @@ export function TicketList({
     </div>
   );
 }
-

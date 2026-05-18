@@ -29,10 +29,18 @@ export type ActionType =
   | 'set_status'
   | 'set_priority'
   | 'set_category'
+  | 'set_assignee'
   | 'assign_to'
   | 'assign_to_round_robin'
   | 'add_tag'
+  | 'add_tags'
   | 'remove_tag'
+  | 'remove_tags'
+  | 'add_message'
+  | 'send_email'
+  | 'trigger_webhook'
+  | 'add_watchers'
+  | 'run_ai'
   | 'notify_assignee'
   | 'notify_team';
 
@@ -44,6 +52,12 @@ export interface Condition {
 export interface Action {
   type: ActionType;
   value: string | string[] | null;
+  visibility?: 'internal' | 'public';
+  subject?: string;
+  template?: string;
+  url?: string;
+  mode?: 'summarize' | 'categorize' | 'suggest_reply';
+  data?: Record<string, unknown>;
 }
 
 export interface AutomationRule {
@@ -59,4 +73,3 @@ export interface AutomationRule {
   createdAt: Date;
   updatedAt: Date;
 }
-

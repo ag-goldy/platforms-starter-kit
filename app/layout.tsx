@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { validateEnv } from '@/lib/env-validation';
+
+// Validate environment variables on startup
+validateEnv();
 import { ToastProvider } from '@/components/ui/toast';
 import { AuthProvider } from '@/components/auth-provider';
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register';

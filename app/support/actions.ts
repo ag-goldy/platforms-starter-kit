@@ -138,7 +138,7 @@ export async function createPublicTicketAction(formData: FormData) {
     redirect('/support?error=spam_detected');
   }
 
-  const ticketKey = await generateTicketKey();
+  const ticketKey = await generateTicketKey(intakeOrg.id);
   const slaTargets = await getOrgSLATargets(intakeOrg.id, 'P3');
 
   // Create the ticket

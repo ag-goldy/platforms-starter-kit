@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,11 +53,11 @@ const TRIGGER_LABELS: Record<string, string> = {
 export function EscalationRulesManager({
   orgId,
   initialRules,
-  users,
-  groups,
+  users: _users,
+  groups: _groups,
 }: EscalationRulesManagerProps) {
   const router = useRouter();
-  const [rules, setRules] = useState<Rule[]>(initialRules);
+  const [rules] = useState<Rule[]>(initialRules);
   const [isOpen, setIsOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isLoading, setIsLoading] = useState(false);

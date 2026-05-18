@@ -14,8 +14,8 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { validateAttachmentFile } from '@/lib/attachments/validation';
 import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
 import { checkQuota, incrementStorageUsage } from '@/lib/attachments/quota';
-import { getOrgSLATargets, updateResolutionTime } from '@/lib/tickets/sla';
-import { updateSLAPauseStatus } from '@/lib/tickets/sla-pause';
+import { getOrgSLATargets } from '@/lib/tickets/sla';
+import { assertTicketMutable, closeResolvedTicket, reopenTicket } from '@/lib/tickets/lifecycle';
 import { getRequestTypeById } from '@/lib/request-types/queries';
 import { requestFormSchema, validateRequestPayload } from '@/lib/request-types/validation';
 import { buildRequestDescription, buildRequestSubject } from '@/lib/request-types/format';
@@ -58,7 +58,7 @@ export async function createCustomerTicketAction(data: {
 }) {
   const { user, orgId } = await requireOrgMemberRole();
 
-  const ticketKey = await generateTicketKey();
+  const ticketKey = await generateTicketKey(orgId);
   const slaTargets = await getOrgSLATargets(orgId, data.priority);
 
   const [ticket] = await db
@@ -82,7 +82,7 @@ export async function createCustomerTicketAction(data: {
     orgId,
     ticketId: ticket.id,
     action: 'TICKET_CREATED',
-    details: JSON.stringify({ key: ticketKey }),
+    details: { key: ticketKey },
   });
 
   // Send notification for new customer ticket
@@ -250,7 +250,7 @@ export async function createCustomerTicketWithAttachmentsAction(formData: FormDa
     return { ticketId: null, error: 'Attachments are required for this request.' };
   }
 
-  const ticketKey = await generateTicketKey();
+  const ticketKey = await generateTicketKey(resolvedOrgId);
   const slaTargets = await getOrgSLATargets(resolvedOrgId, ticketPriority);
 
   const [ticket] = await db
@@ -330,7 +330,7 @@ export async function createCustomerTicketWithAttachmentsAction(formData: FormDa
     orgId: resolvedOrgId,
     ticketId: ticket.id,
     action: 'TICKET_CREATED',
-    details: JSON.stringify({ key: ticketKey, hasAttachments: files.length > 0 }),
+    details: { key: ticketKey, hasAttachments: files.length > 0 },
   });
 
   const fullTicket = await getTicketById(ticket.id, resolvedOrgId);
@@ -357,6 +357,15 @@ export async function addCustomerTicketCommentAction(
     throw new Error('Public tickets cannot be accessed through customer portal');
   }
   const { user } = await requireOrgMemberRole(result.ticket.orgId);
+  assertTicketMutable(result.ticket);
+  await (result.ticket.status === 'RESOLVED' || result.ticket.status === 'CLOSED'
+    ? reopenTicket({
+      ticketId,
+      orgId: result.ticket.orgId,
+      actor: { type: 'customer', userId: user.id },
+      reason: 'Customer replied after resolution.',
+    })
+    : Promise.resolve(result.ticket));
 
   // Customers can only add public comments (not internal notes)
   const [comment] = await db
@@ -374,7 +383,7 @@ export async function addCustomerTicketCommentAction(
     orgId: result.ticket.orgId,
     ticketId,
     action: 'TICKET_COMMENT_ADDED',
-    details: JSON.stringify({ isInternal: false }),
+    details: { isInternal: false },
   });
 
   // Send email notification to assigned agent
@@ -417,36 +426,17 @@ export async function closeCustomerTicketAction(ticketId: string) {
     throw new Error('Public tickets cannot be accessed through customer portal');
   }
   const { user } = await requireOrgMemberRole(ticket.orgId);
+  assertTicketMutable(ticket);
 
   if (ticket.status === 'CLOSED') {
     return;
   }
 
-  await db
-    .update(tickets)
-    .set({ status: 'CLOSED', updatedAt: new Date() })
-    .where(eq(tickets.id, ticketId));
-
-  await updateResolutionTime(ticketId, 'CLOSED');
-
-  const org = await db.query.organizations.findFirst({
-    where: eq(organizations.id, ticket.orgId),
-    columns: { businessHours: true },
-  });
-
-  let businessHoursConfig = null;
-  if (org?.businessHours) {
-    businessHoursConfig = org.businessHours;
-  }
-
-  await updateSLAPauseStatus(ticketId, 'CLOSED', businessHoursConfig);
-
-  await logAudit({
-    userId: user.id,
-    orgId: ticket.orgId ?? undefined,
+  await closeResolvedTicket({
     ticketId,
-    action: 'TICKET_STATUS_CHANGED',
-    details: JSON.stringify({ oldStatus: ticket.status, newStatus: 'CLOSED', closedByCustomer: true }),
+    orgId: ticket.orgId,
+    actor: { type: 'customer', userId: user.id },
+    reason: 'Customer marked ticket resolved.',
   });
 
   const fullTicket = await getTicketById(ticketId, ticket.orgId ?? undefined);

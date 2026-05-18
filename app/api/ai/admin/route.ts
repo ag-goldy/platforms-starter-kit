@@ -25,12 +25,42 @@ import { headers } from 'next/headers';
 import { getClientIP } from '@/lib/rate-limit';
 import { rateLimit } from '@/lib/rate-limit';
 import { db } from '@/db';
-import { aiAuditLog, tickets, ticketComments, users, organizations, kbArticles } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import {
+  aiAuditLog, tickets, ticketComments, users, organizations, kbArticles,
+  internalGroupMemberships, internalGroups, platformAdmins, orgAIConfigs, orgAIMemory,
+} from '@/db/schema';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { detectPromptInjection, getSafeResponse, logSecurityEvent } from '@/lib/ai/prompt-guard';
 import { sanitizeResponse, type AISecurityContext } from '@/lib/ai/security';
 import { createHash } from 'crypto';
+
+// Platform-level role types that can query any org's data
+const PLATFORM_WIDE_ROLES = [
+  'PLATFORM_SUPER_ADMIN',
+  'PLATFORM_ADMIN',
+  'SECURITY_ADMIN',
+  'COMPLIANCE_AUDITOR',
+] as const;
+
+/**
+ * Returns true if the internal user (by userId) holds a platform-wide role
+ * that grants cross-org data access.
+ */
+async function hasPlatformWideAccess(userId: string): Promise<boolean> {
+  const memberships = await db
+    .select({ roleType: internalGroups.roleType })
+    .from(internalGroupMemberships)
+    .innerJoin(internalGroups, eq(internalGroupMemberships.groupId, internalGroups.id))
+    .where(
+      and(
+        eq(internalGroupMemberships.userId, userId),
+        inArray(internalGroups.roleType, [...PLATFORM_WIDE_ROLES])
+      )
+    )
+    .limit(1);
+  return memberships.length > 0;
+}
 
 const requestSchema = z.object({
   query: z.string().min(2).max(4000),
@@ -69,26 +99,33 @@ export async function POST(req: NextRequest) {
   const ip = getClientIP(headersList);
   
   try {
-    // 1. Authenticate - must be internal user
+    // 1. Authenticate - must be internal user or platform admin
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is internal
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-      columns: { isInternal: true, name: true, email: true },
-    });
+    // Determine if the session belongs to a platform admin (separate table)
+    const isPlatformAdmin = !!(session.user as { isPlatformAdmin?: boolean }).isPlatformAdmin;
 
-    if (!user?.isInternal) {
+    let isInternal = isPlatformAdmin;
+    if (!isPlatformAdmin) {
+      // Check tenant users table
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+        columns: { isInternal: true },
+      });
+      isInternal = !!user?.isInternal;
+    }
+
+    if (!isInternal) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     // 2. Rate limit (200 per hour)
     const rateLimitKey = `ai:admin:${session.user.id}`;
-    const rateLimitResult = await rateLimit(rateLimitKey, 200, 60 * 60);
-    if (!rateLimitResult.success) {
+    const rateLimitResult = await rateLimit(rateLimitKey, { maxRequests: 200, windowSeconds: 60 * 60 });
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Rate limit exceeded' },
         { status: 429 }
@@ -103,6 +140,60 @@ export async function POST(req: NextRequest) {
     }
 
     const { query, orgId, context: queryContext } = parsed.data;
+
+    // 4a. Org-boundary check: verify the requesting admin has access to the queried org.
+    //
+    // Access rules:
+    //   - Platform admins (isPlatformAdmin = true) → unrestricted cross-org access
+    //   - Internal users with platform-wide roles  → unrestricted cross-org access
+    //   - Other internal users                     → can only query orgs they belong to
+    //     (no membership row = access denied when orgId is specified)
+    //
+    // If orgId is NOT supplied the query is org-agnostic; no restriction is needed.
+    if (orgId) {
+      let canAccessOrg = isPlatformAdmin;
+
+      if (!canAccessOrg) {
+        canAccessOrg = await hasPlatformWideAccess(session.user.id);
+      }
+
+      if (!canAccessOrg) {
+        // Last resort: check whether the org was explicitly assigned via an org-scoped
+        // internal group (internalGroups.scope = 'ORG' and orgId matches).
+        const orgMembership = await db
+          .select({ id: internalGroupMemberships.id })
+          .from(internalGroupMemberships)
+          .innerJoin(internalGroups, eq(internalGroupMemberships.groupId, internalGroups.id))
+          .where(
+            and(
+              eq(internalGroupMemberships.userId, session.user.id),
+              eq(internalGroups.orgId, orgId)
+            )
+          )
+          .limit(1);
+        canAccessOrg = orgMembership.length > 0;
+      }
+
+      if (!canAccessOrg) {
+        // Log the denied cross-org attempt to the audit log before rejecting
+        await db.insert(aiAuditLog).values({
+          orgId,
+          userId: session.user.id,
+          interface: 'admin',
+          userQuery: query,
+          systemPromptHash: 'DENIED',
+          aiResponse: 'Access denied: insufficient org-level permissions',
+          wasFiltered: true,
+          ipAddress: ip,
+          userAgent: (await headers()).get('user-agent') || undefined,
+        });
+
+        return NextResponse.json(
+          { error: 'You do not have access to this organization' },
+          { status: 403 }
+        );
+      }
+    }
 
     // 4. Run prompt injection detection (even for admins)
     const guardResult = detectPromptInjection(query);
@@ -143,12 +234,21 @@ export async function POST(req: NextRequest) {
       ipAddress: ip,
     };
 
-    // 6. Fetch context based on query type
+    // 6. Fetch org AI config to check the internal-notes toggle
+    let includeInternalNotes = false; // fail-safe default: strip internal notes
+    if (orgId) {
+      const aiConfig = await db.query.orgAIConfigs.findFirst({
+        where: eq(organizations.id, orgId), // orgId FK
+        columns: { includeInternalNotesInAI: true },
+      });
+      includeInternalNotes = aiConfig?.includeInternalNotesInAI ?? false;
+    }
+
+    // 7. Fetch context based on query type
     let contextData = '';
     const sourcesUsed: string[] = [];
 
     if (queryContext === 'tickets' && orgId) {
-      // Fetch full ticket data including internal notes
       const ticketData = await db.query.tickets.findMany({
         where: eq(tickets.orgId, orgId),
         orderBy: desc(tickets.createdAt),
@@ -158,15 +258,27 @@ export async function POST(req: NextRequest) {
           assignee: { columns: { name: true, email: true } },
           comments: {
             orderBy: desc(ticketComments.createdAt),
-            limit: 5,
+            // Fetch a few extra so we still have 5 public ones after filtering
+            limit: 20,
             with: { user: { columns: { name: true } } },
           },
         },
       });
-      
-      contextData = ticketData.map(t => 
-        `- ${t.key}: ${t.subject}\n  Status: ${t.status}, Priority: ${t.priority}\n  Requester: ${t.requester?.name || t.requester?.email}\n  Assignee: ${t.assignee?.name || 'Unassigned'}\n  Comments: ${t.comments.length}`
-      ).join('\n\n');
+
+      contextData = ticketData.map(t => {
+        // Strip internal comments unless the org has explicitly opted in.
+        // This prevents internal team notes from being sent to the external AI provider.
+        const visibleComments = includeInternalNotes
+          ? t.comments
+          : t.comments.filter((c: { isInternal?: boolean }) => !c.isInternal);
+
+        if (includeInternalNotes && t.comments.some((c: { isInternal?: boolean }) => c.isInternal)) {
+          // Audit: log that internal notes were included in this AI request
+          sourcesUsed.push('comments:internal');
+        }
+
+        return `- ${t.key}: ${t.subject}\n  Status: ${t.status}, Priority: ${t.priority}\n  Requester: ${t.requester?.name || t.requester?.email}\n  Assignee: ${t.assignee?.name || 'Unassigned'}\n  Comments (visible): ${visibleComments.slice(0, 5).length}`;
+      }).join('\n\n');
       sourcesUsed.push('tickets:full');
     } else if (queryContext === 'users' && orgId) {
       const orgUsers = await db.query.memberships.findMany({
@@ -198,13 +310,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 7. Build system prompt
-    const systemPrompt = ADMIN_SYSTEM_PROMPT.replace('{context_data}', contextData || 'No specific context loaded.');
+    // 7a. Inject org AI memories (admin tier: all memory types — instruction, fact, preference, policy)
+    let orgMemoryContext = '';
+    if (orgId) {
+      const memories = await db
+        .select({ memoryType: orgAIMemory.memoryType, content: orgAIMemory.content })
+        .from(orgAIMemory)
+        .where(
+          and(
+            eq(orgAIMemory.orgId, orgId),
+            eq(orgAIMemory.isActive, true)
+            // Admin tier: no memoryType filter — all types allowed (instruction, fact, preference, policy)
+          )
+        )
+        .orderBy(desc(orgAIMemory.priority), desc(orgAIMemory.createdAt))
+        .limit(10);
+      if (memories.length > 0) {
+        orgMemoryContext = '\n\nORG MEMORY:\n' +
+          memories.map(m => `[${m.memoryType.toUpperCase()}] ${m.content}`).join('\n');
+        sourcesUsed.push('org:memory');
+      }
+    }
+
+    // 7b. Build system prompt with context data + org memories
+    const systemPrompt = ADMIN_SYSTEM_PROMPT.replace(
+      '{context_data}',
+      (contextData || 'No specific context loaded.') + orgMemoryContext
+    );
     const systemPromptHash = createHash('sha256').update(systemPrompt).digest('hex');
 
     // 8. Call OpenAI
     const completion = await client.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
+      model: 'deepseek-ai/DeepSeek-V3.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: guardResult.sanitizedInput },

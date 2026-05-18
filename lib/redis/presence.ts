@@ -7,7 +7,7 @@
 
 import { redis } from './client';
 
-export type PresenceAction = 'viewing' | 'editing';
+export type PresenceAction = 'viewing' | 'editing' | 'typing';
 
 export interface UserPresence {
   userId: string;

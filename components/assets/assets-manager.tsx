@@ -27,7 +27,7 @@ import type { Area, Asset, Site } from '@/db/schema';
 import { AssetDialog } from '@/components/assets/asset-dialog';
 import { formatDateTime } from '@/lib/utils/date';
 import { useToast } from '@/components/ui/toast';
-import { Archive, ArchiveRestore, Trash2, Loader2, Upload } from 'lucide-react';
+import { Archive, ArchiveRestore, Trash2, Loader2 } from 'lucide-react';
 import { AssetBatchImport } from '@/components/assets/asset-batch-import';
 
 interface AssetWithRelations extends Asset {

@@ -101,9 +101,10 @@ export default async function ResetPasswordPage({
       if (!result.success) {
         redirect(`/reset-password?token=${resetToken}&error=${result.error}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Don't catch redirect errors - re-throw them
-      if (err?.message?.includes('NEXT_REDIRECT') || err?.digest?.includes('NEXT_REDIRECT')) {
+      const error = err as { message?: string; digest?: string };
+      if (error?.message?.includes('NEXT_REDIRECT') || error?.digest?.includes('NEXT_REDIRECT')) {
         throw err;
       }
       console.error('Password reset error:', err);

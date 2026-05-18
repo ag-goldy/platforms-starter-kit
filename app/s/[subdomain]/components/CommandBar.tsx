@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Ticket, BookOpen, Users, Plus, Command, ArrowRight, Clock, FileText, X } from 'lucide-react';
+import { Search, Ticket, BookOpen, Users, Plus, Command, ArrowRight, FileText, X } from 'lucide-react';
 import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
 import { useHotkeys } from '@/hooks/use-hotkeys';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface CommandBarProps {
   subdomain: string;
-  org: any;
+  org: { id: string };
 }
 
 interface CommandItem {
@@ -22,14 +22,13 @@ interface CommandItem {
   action: () => void;
 }
 
-export function CommandBar({ subdomain, org }: CommandBarProps) {
+export function CommandBar({ subdomain }: CommandBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { openSlideOver } = useCustomerPortal();
 
@@ -293,7 +292,7 @@ export function CommandBar({ subdomain, org }: CommandBarProps) {
                         {categoryLabels[category]}
                       </div>
                       <div className="space-y-1">
-                        {items.map((item, index) => {
+                        {items.map((item) => {
                           const globalIndex = filteredCommands.findIndex((c) => c.id === item.id);
                           const isSelected = globalIndex === selectedIndex;
 

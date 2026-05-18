@@ -5,15 +5,15 @@ import { useToast } from '@/components/ui/toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, Eye, AlertTriangle, Filter, Shield, Users, Globe } from 'lucide-react';
 import { getAIAuditLogsAction, getAIAuditLogDetailAction, type AIAuditFilters } from '@/app/app/actions/ai-audit';
-import type { aiAuditLog } from '@/db/schema';
+import type { AIAuditLog } from '@/db/schema';
 
-interface AuditLog extends typeof aiAuditLog.$inferSelect {
+interface AuditLog extends AIAuditLog {
   org?: { name: string } | null;
   user?: { name: string | null; email: string } | null;
 }
@@ -42,7 +42,7 @@ export function AIAuditDashboard() {
     try {
       const data = await getAIAuditLogsAction(filters, 50);
       setLogs(data as AuditLog[]);
-    } catch (err) {
+    } catch {
       error('Failed to load audit logs');
     } finally {
       setIsLoading(false);
@@ -51,13 +51,14 @@ export function AIAuditDashboard() {
 
   useEffect(() => {
     loadLogs();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const viewDetail = async (logId: string) => {
     try {
       const log = await getAIAuditLogDetailAction(logId);
       setSelectedLog(log as AuditLog);
-    } catch (err) {
+    } catch {
       error('Failed to load log detail');
     }
   };
@@ -69,7 +70,7 @@ export function AIAuditDashboard() {
         <div className="flex flex-wrap gap-4 mb-6">
           <Select
             value={filters.interface || 'all'}
-            onValueChange={(v) => setFilters({ ...filters, interface: v === 'all' ? undefined : v as any })}
+            onValueChange={(v) => setFilters({ ...filters, interface: v === 'all' ? undefined : v as 'public' | 'customer' | 'admin' })}
           >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Interface" />

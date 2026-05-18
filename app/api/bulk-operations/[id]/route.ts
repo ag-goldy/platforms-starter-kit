@@ -4,7 +4,7 @@ import {
   getBulkOperationById,
   processBulkOperation,
 } from '@/lib/bulk-operations/queries';
-import { requireOrgAccess } from '@/lib/auth/permissions';
+import { requireInternalRole } from '@/lib/auth/permissions';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -27,10 +27,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       );
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, operation.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     return NextResponse.json({ operation });
   } catch (error) {
@@ -59,10 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
-    const hasAccess = await requireOrgAccess(session.user.id, operation.orgId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireInternalRole();
 
     if (operation.status !== 'pending') {
       return NextResponse.json(

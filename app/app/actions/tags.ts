@@ -14,7 +14,7 @@ const tagSchema = z.object({
 });
 
 export async function createTagAction(data: { name: string; color?: string }) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   const validated = tagSchema.parse(data);
 
   const [tag] = await db
@@ -26,7 +26,8 @@ export async function createTagAction(data: { name: string; color?: string }) {
     .returning();
 
   await logAudit({
-    userId: user.id,
+    actorId: session.user.id,
+    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
     action: 'TICKET_UPDATED',
     details: JSON.stringify({ tagId: tag.id, action: 'TAG_CREATED' }),
   });
@@ -36,7 +37,7 @@ export async function createTagAction(data: { name: string; color?: string }) {
 }
 
 export async function updateTagAction(tagId: string, data: { name: string; color?: string }) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   const validated = tagSchema.parse(data);
 
   await db
@@ -49,7 +50,8 @@ export async function updateTagAction(tagId: string, data: { name: string; color
     .where(eq(ticketTags.id, tagId));
 
   await logAudit({
-    userId: user.id,
+    actorId: session.user.id,
+    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
     action: 'TICKET_UPDATED',
     details: JSON.stringify({ tagId, action: 'TAG_UPDATED' }),
   });
@@ -59,12 +61,13 @@ export async function updateTagAction(tagId: string, data: { name: string; color
 }
 
 export async function deleteTagAction(tagId: string) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
 
   await db.delete(ticketTags).where(eq(ticketTags.id, tagId));
 
   await logAudit({
-    userId: user.id,
+    actorId: session.user.id,
+    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
     action: 'TICKET_UPDATED',
     details: JSON.stringify({ tagId, action: 'TAG_DELETED' }),
   });
@@ -74,8 +77,11 @@ export async function deleteTagAction(tagId: string) {
 }
 
 export async function assignTagToTicketAction(ticketId: string, tagId: string) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   const { ticket } = await canViewTicket(ticketId);
+  if (!ticket) {
+    throw new Error('Ticket not found');
+  }
 
   // Check if tag is already assigned
   const existing = await db.query.ticketTagAssignments.findFirst({
@@ -92,11 +98,12 @@ export async function assignTagToTicketAction(ticketId: string, tagId: string) {
   await db.insert(ticketTagAssignments).values({
     ticketId,
     tagId,
-    assignedById: user.id,
+    assignedById: session.platformAdmin ? null : session.user.id,
   });
 
   await logAudit({
-    userId: user.id,
+    actorId: session.user.id,
+    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
     orgId: ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_TAG_ADDED',
@@ -108,8 +115,11 @@ export async function assignTagToTicketAction(ticketId: string, tagId: string) {
 }
 
 export async function removeTagFromTicketAction(ticketId: string, tagId: string) {
-  const user = await requireInternalRole();
+  const session = await requireInternalRole();
   const { ticket } = await canViewTicket(ticketId);
+  if (!ticket) {
+    throw new Error('Ticket not found');
+  }
 
   await db
     .delete(ticketTagAssignments)
@@ -121,7 +131,8 @@ export async function removeTagFromTicketAction(ticketId: string, tagId: string)
     );
 
   await logAudit({
-    userId: user.id,
+    actorId: session.user.id,
+    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
     orgId: ticket.orgId ?? undefined,
     ticketId,
     action: 'TICKET_TAG_REMOVED',
@@ -150,4 +161,3 @@ export async function getTicketTagsAction(ticketId: string) {
 
   return assignments.map((a) => a.tag);
 }
-

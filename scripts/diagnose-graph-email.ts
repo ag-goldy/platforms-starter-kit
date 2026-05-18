@@ -70,8 +70,9 @@ testGraphConfiguration().then(async (result) => {
     
     console.log(`   ✅ Test email sent successfully to ${testEmail}`);
     console.log('\n✅ Microsoft Graph email is fully configured and working!');
-  } catch (error: any) {
-    console.log(`   ❌ Failed to send test email: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`   ❌ Failed to send test email: ${message}`);
     console.log('\n❌ Email send failed. Check the error above.');
     process.exit(1);
   }

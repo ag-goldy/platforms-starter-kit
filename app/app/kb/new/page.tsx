@@ -1,24 +1,35 @@
-'use client';
+"use client";
 
-import DOMPurify from 'isomorphic-dompurify';
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import DOMPurify from "isomorphic-dompurify";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, X, Folder, Globe, Building2, RefreshCw, Eye, Code, FileText } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ArrowLeft,
+  Loader2,
+  X,
+  Folder,
+  Globe,
+  Building2,
+  RefreshCw,
+  Eye,
+  Code,
+  FileText,
+} from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface Organization {
   id: string;
@@ -38,38 +49,38 @@ export default function NewArticlePage() {
   const router = useRouter();
   const { success, error: showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tagInput, setTagInput] = useState('');
+  const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [orgId, setOrgId] = useState('public');
+  const [orgId, setOrgId] = useState("public");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
-  
+
   const [formState, setFormState] = useState({
-    title: '',
-    slug: '',
-    content: '',
-    contentType: 'markdown' as 'markdown' | 'html',
-    excerpt: '',
-    categoryId: '',
-    status: 'draft',
-    visibility: 'public',
+    title: "",
+    slug: "",
+    content: "",
+    contentType: "markdown" as "markdown" | "html",
+    excerpt: "",
+    categoryId: "",
+    status: "draft",
+    visibility: "public",
   });
 
   // Fetch organizations on mount
   useEffect(() => {
     async function loadOrganizations() {
       try {
-        const response = await fetch('/api/organizations');
+        const response = await fetch("/api/organizations");
         if (response.ok) {
           const data = await response.json();
           setOrganizations(data.organizations || []);
         }
       } catch (error) {
-        console.error('Failed to load organizations:', error);
+        console.error("Failed to load organizations:", error);
       } finally {
         setIsLoadingOrgs(false);
       }
@@ -84,25 +95,27 @@ export default function NewArticlePage() {
       try {
         // Fetch both global categories (no orgId) and org-specific categories
         const [globalRes, orgRes] = await Promise.all([
-          fetch('/api/kb/categories'), // Global categories (no orgId = global)
-          orgId !== 'public' ? fetch(`/api/kb/categories?orgId=${orgId}`) : Promise.resolve(null),
+          fetch("/api/kb/categories"), // Global categories (no orgId = global)
+          orgId !== "public"
+            ? fetch(`/api/kb/categories?orgId=${orgId}`)
+            : Promise.resolve(null),
         ]);
-        
+
         let allCategories: Category[] = [];
-        
+
         if (globalRes.ok) {
           const globalData = await globalRes.json();
           allCategories = [...(globalData.categories || [])];
         }
-        
+
         if (orgRes && orgRes.ok) {
           const orgData = await orgRes.json();
           allCategories = [...allCategories, ...(orgData.categories || [])];
         }
-        
+
         setCategories(allCategories);
       } catch (error) {
-        console.error('Failed to load categories:', error);
+        console.error("Failed to load categories:", error);
       } finally {
         setIsLoadingCategories(false);
       }
@@ -114,61 +127,71 @@ export default function NewArticlePage() {
   const generateBaseSlug = (title: string) => {
     return title
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
       .slice(0, 100);
   };
 
   // Check if slug exists and generate unique one
-  const generateUniqueSlug = useCallback(async (baseSlug: string, orgId: string) => {
-    if (!baseSlug) return '';
-    
-    setIsCheckingSlug(true);
-    setSlugError(null);
-    
-    try {
-      const checkOrgId = orgId === 'public' ? '' : orgId;
-      const response = await fetch(`/api/kb/check-slug?slug=${baseSlug}${checkOrgId ? `&orgId=${checkOrgId}` : ''}`);
-      const data = await response.json();
-      
-      if (!data.exists) {
-        return baseSlug;
-      }
-      
-      let counter = 2;
-      let uniqueSlug = `${baseSlug}-${counter}`;
-      
-      while (true) {
-        const checkResponse = await fetch(`/api/kb/check-slug?slug=${uniqueSlug}${checkOrgId ? `&orgId=${checkOrgId}` : ''}`);
-        const checkData = await checkResponse.json();
-        
-        if (!checkData.exists) {
-          return uniqueSlug;
-        }
-        
-        counter++;
-        uniqueSlug = `${baseSlug}-${counter}`;
-        
-        if (counter > 100) {
-          setSlugError('Could not generate unique slug');
+  const generateUniqueSlug = useCallback(
+    async (baseSlug: string, orgId: string) => {
+      if (!baseSlug) return "";
+
+      setIsCheckingSlug(true);
+      setSlugError(null);
+
+      try {
+        const checkOrgId = orgId === "public" ? "" : orgId;
+        const response = await fetch(
+          `/api/kb/check-slug?slug=${baseSlug}${checkOrgId ? `&orgId=${checkOrgId}` : ""}`,
+        );
+        const data = await response.json();
+
+        if (!data.exists) {
           return baseSlug;
         }
+
+        let counter = 2;
+        let uniqueSlug = `${baseSlug}-${counter}`;
+
+        while (true) {
+          const checkResponse = await fetch(
+            `/api/kb/check-slug?slug=${uniqueSlug}${checkOrgId ? `&orgId=${checkOrgId}` : ""}`,
+          );
+          const checkData = await checkResponse.json();
+
+          if (!checkData.exists) {
+            return uniqueSlug;
+          }
+
+          counter++;
+          uniqueSlug = `${baseSlug}-${counter}`;
+
+          if (counter > 100) {
+            setSlugError("Could not generate unique slug");
+            return baseSlug;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking slug:", error);
+        return baseSlug;
+      } finally {
+        setIsCheckingSlug(false);
       }
-    } catch (error) {
-      console.error('Error checking slug:', error);
-      return baseSlug;
-    } finally {
-      setIsCheckingSlug(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Handle title change with auto slug generation
   const handleTitleChange = async (value: string) => {
     setFormState((prev) => ({ ...prev, title: value }));
-    
-    if (!formState.slug || formState.slug === generateBaseSlug(formState.title)) {
+
+    if (
+      !formState.slug ||
+      formState.slug === generateBaseSlug(formState.title)
+    ) {
       const baseSlug = generateBaseSlug(value);
       if (baseSlug && value.length > 2) {
         const uniqueSlug = await generateUniqueSlug(baseSlug, orgId);
@@ -181,26 +204,28 @@ export default function NewArticlePage() {
   const handleSlugChange = async (value: string) => {
     const sanitized = value
       .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-    
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
     setFormState((prev) => ({ ...prev, slug: sanitized }));
-    
+
     if (sanitized.length > 2) {
       setIsCheckingSlug(true);
       try {
-        const checkOrgId = orgId === 'public' ? '' : orgId;
-        const response = await fetch(`/api/kb/check-slug?slug=${sanitized}${checkOrgId ? `&orgId=${checkOrgId}` : ''}`);
+        const checkOrgId = orgId === "public" ? "" : orgId;
+        const response = await fetch(
+          `/api/kb/check-slug?slug=${sanitized}${checkOrgId ? `&orgId=${checkOrgId}` : ""}`,
+        );
         const data = await response.json();
-        
+
         if (data.exists) {
-          setSlugError('This slug is already taken in this organization');
+          setSlugError("This slug is already taken in this organization");
         } else {
           setSlugError(null);
         }
       } catch (error) {
-        console.error('Error checking slug:', error);
+        console.error("Error checking slug:", error);
       } finally {
         setIsCheckingSlug(false);
       }
@@ -218,13 +243,13 @@ export default function NewArticlePage() {
   };
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       const trimmed = tagInput.trim();
       if (trimmed && !tags.includes(trimmed)) {
         setTags([...tags, trimmed]);
       }
-      setTagInput('');
+      setTagInput("");
     }
   };
 
@@ -233,11 +258,15 @@ export default function NewArticlePage() {
   };
 
   // Build category tree for display
-  const buildCategoryTree = (categories: Category[], parentId: string | null = null, depth = 0): Category[] => {
+  const buildCategoryTree = (
+    categories: Category[],
+    parentId: string | null = null,
+    depth = 0,
+  ): Category[] => {
     const result: Category[] = [];
     for (const cat of categories) {
       if (cat.parentId === parentId) {
-        result.push({ ...cat, name: '  '.repeat(depth) + cat.name });
+        result.push({ ...cat, name: "  ".repeat(depth) + cat.name });
         result.push(...buildCategoryTree(categories, cat.id, depth + 1));
       }
     }
@@ -250,20 +279,20 @@ export default function NewArticlePage() {
 
     try {
       if (!formState.title.trim()) {
-        throw new Error('Title is required');
+        throw new Error("Title is required");
       }
       if (!formState.slug.trim()) {
-        throw new Error('Slug is required');
+        throw new Error("Slug is required");
       }
       if (slugError) {
-        throw new Error('Please fix the slug error before submitting');
+        throw new Error("Please fix the slug error before submitting");
       }
       if (!formState.content.trim()) {
-        throw new Error('Content is required');
+        throw new Error("Content is required");
       }
 
       // Support global articles (null orgId) when 'public' is selected
-      const actualOrgId = orgId === 'public' ? null : orgId;
+      const actualOrgId = orgId === "public" ? null : orgId;
 
       const payload = {
         orgId: actualOrgId,
@@ -278,23 +307,23 @@ export default function NewArticlePage() {
         tags,
       };
 
-      const response = await fetch('/api/kb/articles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/kb/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create article');
+        throw new Error(data.error || "Failed to create article");
       }
 
-      success('Article created successfully');
-      router.push('/app/kb');
+      success("Article created successfully");
+      router.push("/app/kb");
       router.refresh();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'An error occurred');
+      showError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -305,7 +334,7 @@ export default function NewArticlePage() {
   // HTML Preview component
   const HtmlPreview = ({ html }: { html: string }) => {
     return (
-      <div 
+      <div
         className="prose prose-sm max-w-none border rounded-md p-4 bg-white min-h-[300px]"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
       />
@@ -332,7 +361,11 @@ export default function NewArticlePage() {
             {/* Organization Selection */}
             <div className="space-y-2">
               <Label htmlFor="org">Organization Scope *</Label>
-              <Select value={orgId} onValueChange={setOrgId} disabled={isLoadingOrgs}>
+              <Select
+                value={orgId}
+                onValueChange={setOrgId}
+                disabled={isLoadingOrgs}
+              >
                 <SelectTrigger id="org">
                   <SelectValue placeholder="Select organization scope" />
                 </SelectTrigger>
@@ -354,16 +387,19 @@ export default function NewArticlePage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
-                &quot;Public / Generic&quot; will create the article in the default organization but make it available globally.
+                &quot;Public / Generic&quot; will create the article in the
+                default organization but make it available globally.
               </p>
             </div>
 
             {/* Category Selection */}
             <div className="space-y-2">
               <Label htmlFor="category">Category / Folder</Label>
-              <Select 
-                value={formState.categoryId} 
-                onValueChange={(value) => setFormState((prev) => ({ ...prev, categoryId: value }))}
+              <Select
+                value={formState.categoryId}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({ ...prev, categoryId: value }))
+                }
                 disabled={isLoadingCategories}
               >
                 <SelectTrigger id="category">
@@ -386,7 +422,9 @@ export default function NewArticlePage() {
                         )}
                         <span>{cat.name}</span>
                         {cat.orgId === null && (
-                          <span className="text-xs text-blue-500">(Global)</span>
+                          <span className="text-xs text-blue-500">
+                            (Global)
+                          </span>
                         )}
                       </div>
                     </SelectItem>
@@ -421,26 +459,24 @@ export default function NewArticlePage() {
                     onChange={(e) => handleSlugChange(e.target.value)}
                     placeholder="article-url-slug"
                     required
-                    className={slugError ? 'border-red-500' : ''}
+                    className={slugError ? "border-red-500" : ""}
                   />
                   {isCheckingSlug && (
                     <RefreshCw className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />
                   )}
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={handleRegenerateSlug}
                   disabled={!formState.title}
                 >
                   Regenerate
                 </Button>
               </div>
-              {slugError && (
-                <p className="text-sm text-red-600">{slugError}</p>
-              )}
+              {slugError && <p className="text-sm text-red-600">{slugError}</p>}
               <p className="text-xs text-gray-500">
-                This will be the URL: /kb/{formState.slug || 'your-article'}
+                This will be the URL: /kb/{formState.slug || "your-article"}
               </p>
             </div>
 
@@ -450,7 +486,9 @@ export default function NewArticlePage() {
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={formState.status}
-                  onValueChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
+                  onValueChange={(value) =>
+                    setFormState((prev) => ({ ...prev, status: value }))
+                  }
                 >
                   <SelectTrigger id="status">
                     <SelectValue />
@@ -467,7 +505,9 @@ export default function NewArticlePage() {
                 <Label htmlFor="visibility">Visibility</Label>
                 <Select
                   value={formState.visibility}
-                  onValueChange={(value) => setFormState((prev) => ({ ...prev, visibility: value }))}
+                  onValueChange={(value) =>
+                    setFormState((prev) => ({ ...prev, visibility: value }))
+                  }
                 >
                   <SelectTrigger id="visibility">
                     <SelectValue />
@@ -484,7 +524,9 @@ export default function NewArticlePage() {
                 <Label htmlFor="contentType">Content Type</Label>
                 <Select
                   value={formState.contentType}
-                  onValueChange={(value: 'markdown' | 'html') => setFormState((prev) => ({ ...prev, contentType: value }))}
+                  onValueChange={(value: "markdown" | "html") =>
+                    setFormState((prev) => ({ ...prev, contentType: value }))
+                  }
                 >
                   <SelectTrigger id="contentType">
                     <SelectValue />
@@ -513,7 +555,9 @@ export default function NewArticlePage() {
               <Textarea
                 id="excerpt"
                 value={formState.excerpt}
-                onChange={(e) => setFormState((prev) => ({ ...prev, excerpt: e.target.value }))}
+                onChange={(e) =>
+                  setFormState((prev) => ({ ...prev, excerpt: e.target.value }))
+                }
                 placeholder="Brief summary of the article (shown in search results)"
                 rows={2}
               />
@@ -522,7 +566,7 @@ export default function NewArticlePage() {
             {/* Content with Preview */}
             <div className="space-y-2">
               <Label htmlFor="content">Content *</Label>
-              {formState.contentType === 'html' ? (
+              {formState.contentType === "html" ? (
                 <Tabs defaultValue="edit" className="w-full">
                   <TabsList className="mb-2">
                     <TabsTrigger value="edit">
@@ -538,7 +582,12 @@ export default function NewArticlePage() {
                     <Textarea
                       id="content"
                       value={formState.content}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, content: e.target.value }))}
+                      onChange={(e) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          content: e.target.value,
+                        }))
+                      }
                       placeholder="<h1>Your Article Title</h1>\n<p>Write your article content in HTML...</p>"
                       rows={15}
                       required
@@ -553,16 +602,21 @@ export default function NewArticlePage() {
                 <Textarea
                   id="content"
                   value={formState.content}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, content: e.target.value }))}
+                  onChange={(e) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      content: e.target.value,
+                    }))
+                  }
                   placeholder="# Article Title\n\nWrite your article content in Markdown..."
                   rows={15}
                   required
                 />
               )}
               <p className="text-xs text-gray-500">
-                {formState.contentType === 'markdown' 
-                  ? 'Supports Markdown formatting: # headers, **bold**, *italic*, [links](url), etc.'
-                  : 'Write raw HTML. Be careful with tags to ensure proper rendering.'}
+                {formState.contentType === "markdown"
+                  ? "Supports Markdown formatting: # headers, **bold**, *italic*, [links](url), etc."
+                  : "Write raw HTML. Be careful with tags to ensure proper rendering."}
               </p>
             </div>
 
@@ -597,17 +651,14 @@ export default function NewArticlePage() {
 
             {/* Submit Buttons */}
             <div className="flex gap-2">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting || !!slugError}
-              >
+              <Button type="submit" disabled={isSubmitting || !!slugError}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Creating...
                   </>
                 ) : (
-                  'Create Article'
+                  "Create Article"
                 )}
               </Button>
               <Link href="/app/kb">

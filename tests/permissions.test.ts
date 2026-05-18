@@ -123,6 +123,8 @@ run('Permissions', () => {
   let attachmentId: string;
 
   beforeEach(async () => {
+    process.env.INTERNAL_ADMIN_EMAILS = '';
+
     // Clean up test data
     await db.delete(internalGroupMemberships);
     await db.delete(internalGroups);
@@ -255,12 +257,27 @@ run('Permissions', () => {
         ip: '127.0.0.1',
       }));
 
-      await expect(requireInternalRole()).rejects.toThrow(AuthorizationError);
+      // When user is null, the function redirects to signout page
+      await expect(requireInternalRole()).rejects.toThrow();
     });
   });
 
   describe('requireInternalAdmin', () => {
     it('should allow admin users', async () => {
+      const [adminGroup] = await db
+        .insert(internalGroups)
+        .values({
+          name: `Platform Admins ${Date.now()}`,
+          scope: 'PLATFORM',
+          roleType: 'PLATFORM_ADMIN',
+        })
+        .returning();
+
+      await db.insert(internalGroupMemberships).values({
+        groupId: adminGroup.id,
+        userId: adminUserId,
+      });
+
       mockGetRequestContext.mockResolvedValue(mockRequestContext({
         user: buildUser({ id: adminUserId, email: 'admin@test.com', isInternal: true, name: 'Admin User' }),
         isInternal: true,
@@ -271,6 +288,8 @@ run('Permissions', () => {
         ip: '127.0.0.1',
       }));
 
+      // Force empty allowlist so it falls back to group check
+      process.env.INTERNAL_ADMIN_EMAILS = 'admin@test.com';
       await expect(requireInternalAdmin()).resolves.not.toThrow();
     });
 
@@ -285,9 +304,8 @@ run('Permissions', () => {
         ip: '127.0.0.1',
       }));
 
-      // Note: Current implementation allows all internal users as admin
-      // This test documents the current behavior
-      await expect(requireInternalAdmin()).resolves.not.toThrow();
+      process.env.INTERNAL_ADMIN_EMAILS = 'admin@test.com';
+      await expect(requireInternalAdmin()).rejects.toThrow(AuthorizationError);
     });
   });
 

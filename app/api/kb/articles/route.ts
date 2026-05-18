@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { kbArticles, kbCategories, organizations, users } from '@/db/schema';
-import { eq, and, desc, asc, like, or, sql, isNull } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/permissions';
+import { kbArticles, kbCategories, organizations } from '@/db/schema';
+import { eq, and, desc, asc, like, or, isNull } from 'drizzle-orm';
+import { requireAuth, requireInternalRole, requireOrgMemberRole } from '@/lib/auth/permissions';
+import { rateLimit } from '@/lib/rate-limit';
+import { generateKbKey } from '@/lib/kb/keys';
 
 // GET /api/kb/articles - List articles
 export async function GET(request: NextRequest) {
@@ -11,8 +13,11 @@ export async function GET(request: NextRequest) {
     const orgSlug = searchParams.get('org');
     const categorySlug = searchParams.get('category');
     const search = searchParams.get('search');
-    const status = searchParams.get('status') || 'published';
-    const visibility = searchParams.get('visibility') || 'public';
+    const includeInternal = searchParams.get('includeInternal') === 'true';
+    const statusParam = searchParams.get('status');
+    const visibilityParam = searchParams.get('visibility');
+    const status = statusParam && statusParam !== 'all' ? statusParam : includeInternal ? null : 'published';
+    const visibility = visibilityParam && visibilityParam !== 'all' ? visibilityParam : includeInternal ? null : 'public';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const global = searchParams.get('global') === 'true';
@@ -45,12 +50,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Add status filter (public access only sees published)
+    if (includeInternal) {
+      await requireAuth();
+      if (global) {
+        await requireInternalRole();
+      } else if (orgId) {
+        try {
+          await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+        } catch {
+          await requireInternalRole();
+        }
+      }
+    }
+
     if (status) {
       conditions.push(eq(kbArticles.status, status));
     }
 
-    // Add visibility filter (public access only sees public)
     if (visibility) {
       conditions.push(eq(kbArticles.visibility, visibility));
     }
@@ -129,86 +145,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function to get abbreviation from text
-function getAbbreviation(text: string): string {
-  // Split by spaces, hyphens, or special chars and take first letter of each word
-  const words = text.split(/[\s\-_,]+/).filter(w => w.length > 0);
-  if (words.length === 1 && words[0].length >= 3) {
-    // For single long words, take first 3 letters
-    return words[0].substring(0, 3).toUpperCase();
-  }
-  // Take first letter of each word (max 4 letters)
-  return words.slice(0, 4).map(w => w[0].toUpperCase()).join('');
-}
-
-// Helper function to generate KB ID
-async function generateKbId(categoryId: string | null, orgId: string | null): Promise<string> {
-  let categoryAbbr = 'GEN';
-  let parentAbbr = '';
-
-  if (categoryId) {
-    // Get category info
-    const category = await db.query.kbCategories.findFirst({
-      where: eq(kbCategories.id, categoryId),
-    });
-
-    if (category) {
-      categoryAbbr = getAbbreviation(category.name);
-
-      // Check if category has a parent
-      if (category.parentId) {
-        const parent = await db.query.kbCategories.findFirst({
-          where: eq(kbCategories.id, category.parentId),
-        });
-        if (parent) {
-          parentAbbr = getAbbreviation(parent.name);
-        }
-      }
-    }
-  }
-
-  // Generate random 4-digit number
-  let randomNum = Math.floor(1000 + Math.random() * 9000);
-
-  // Build the format: KB-CATEGORYABBR-RANDOM or KB-PARENT/CATEGORY-RANDOM
-  let kbId: string;
-  if (parentAbbr) {
-    kbId = `KB-${parentAbbr}/${categoryAbbr}-${randomNum}`;
-  } else {
-    kbId = `KB-${categoryAbbr}-${randomNum}`;
-  }
-
-  // Check for uniqueness and regenerate if needed
-  let isUnique = false;
-  let attempts = 0;
-  const maxAttempts = 100;
-
-  while (!isUnique && attempts < maxAttempts) {
-    const existing = await db.query.kbArticles.findFirst({
-      where: eq(kbArticles.slug, kbId),
-    });
-
-    if (!existing) {
-      isUnique = true;
-    } else {
-      // Generate new random number
-      randomNum = Math.floor(1000 + Math.random() * 9000);
-      if (parentAbbr) {
-        kbId = `KB-${parentAbbr}/${categoryAbbr}-${randomNum}`;
-      } else {
-        kbId = `KB-${categoryAbbr}-${randomNum}`;
-      }
-      attempts++;
-    }
-  }
-
-  return kbId;
-}
-
 // POST /api/kb/articles - Create a new article
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
+
+    // 20 article creations per hour per user
+    const rl = await rateLimit(`kb-articles:post:${user.user.id}`, { maxRequests: 20, windowSeconds: 3600 });
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+
     const body = await request.json();
 
     const {
@@ -231,8 +176,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (orgId) {
+      try {
+        await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+      } catch {
+        await requireInternalRole();
+      }
+    } else {
+      await requireInternalRole();
+    }
+
     // Generate unique KB ID
-    const kbId = await generateKbId(categoryId || null, orgId || null);
+    const kbId = await generateKbKey();
 
     // Create article with KB ID as slug
     const [article] = await db
@@ -247,7 +202,7 @@ export async function POST(request: NextRequest) {
         excerpt: excerpt || null,
         status,
         visibility,
-        authorId: user.id,
+        authorId: user.user.id,
         tags,
         publishedAt: status === 'published' ? new Date() : null,
       })

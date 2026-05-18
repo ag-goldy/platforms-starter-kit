@@ -159,8 +159,8 @@ export async function POST(req: NextRequest) {
 
         const results = await withTechFilter(kbTicketingAPI.searchKB)(
           query,
-          maxResults
-        );
+          String(maxResults)
+        ) as string[];
 
         return NextResponse.json({ 
           success: true, 

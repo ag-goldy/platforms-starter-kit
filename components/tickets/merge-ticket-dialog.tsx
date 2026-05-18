@@ -67,6 +67,9 @@ export function MergeTicketDialog({ ticketId, ticketKey, onClose }: MergeTicketD
     return (
       <Dialog open onOpenChange={onClose}>
         <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Merge Ticket</DialogTitle>
+          </DialogHeader>
           <div className="py-4">Loading tickets...</div>
         </DialogContent>
       </Dialog>

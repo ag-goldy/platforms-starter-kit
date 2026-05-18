@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { syncOrgServices, syncSingleService } from '@/lib/zabbix/sync';
+import { syncOrgAssets, syncOrgServices, syncSingleService } from '@/lib/zabbix/sync';
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,8 +46,11 @@ export async function POST(request: NextRequest) {
       const result = await syncSingleService(orgId, serviceId);
       return NextResponse.json({ results: [result] });
     } else {
-      const results = await syncOrgServices(orgId);
-      return NextResponse.json({ results });
+      const [serviceResults, assetResults] = await Promise.all([
+        syncOrgServices(orgId),
+        syncOrgAssets(orgId),
+      ]);
+      return NextResponse.json({ results: serviceResults, assetResults });
     }
   } catch (error) {
     console.error('[Zabbix Sync API] Error:', error);

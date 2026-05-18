@@ -14,6 +14,29 @@ export interface SLAMetrics {
 }
 
 export type SLAPriority = 'P1' | 'P2' | 'P3' | 'P4';
+export type SLAClockStatus = 'met' | 'warning' | 'breached' | 'paused' | 'not_applicable';
+
+export interface SLAClockInput {
+  createdAt: Date;
+  firstResponseAt?: Date | null;
+  resolvedAt?: Date | null;
+  now?: Date;
+  status?: string;
+  responseTargetHours?: number | null;
+  resolutionTargetHours?: number | null;
+  pausedAt?: Date | null;
+  totalPausedMs?: number;
+  warningThreshold?: number;
+}
+
+export interface SLAClockResult {
+  responseElapsedHours?: number;
+  resolutionElapsedHours?: number;
+  responseDueAt?: Date;
+  resolutionDueAt?: Date;
+  responseStatus: SLAClockStatus;
+  resolutionStatus: SLAClockStatus;
+}
 
 export interface OrgSLAPolicy {
   id?: string;
@@ -120,6 +143,51 @@ export function calculateSLAStatus(
   } else {
     return 'met';
   }
+}
+
+function addHours(date: Date, hours: number): Date {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
+function elapsedHours(start: Date, end: Date, totalPausedMs = 0): number {
+  return Math.max(0, end.getTime() - start.getTime() - totalPausedMs) / (1000 * 60 * 60);
+}
+
+export function calculateSLAClock(input: SLAClockInput): SLAClockResult {
+  const now = input.now ?? new Date();
+  const warningThreshold = input.warningThreshold ?? 0.8;
+  const pausedStatuses = new Set(['WAITING_ON_CUSTOMER', 'PENDING_CUSTOMER', 'PENDING_INTERNAL']);
+  const isPaused = Boolean(input.pausedAt) || (input.status ? pausedStatuses.has(input.status) : false);
+
+  const responseTarget = input.responseTargetHours ?? undefined;
+  const resolutionTarget = input.resolutionTargetHours ?? undefined;
+
+  const responseEnd = input.firstResponseAt ?? now;
+  const resolutionEnd = input.resolvedAt ?? now;
+
+  const responseElapsed = responseTarget
+    ? elapsedHours(input.createdAt, responseEnd, input.totalPausedMs)
+    : undefined;
+  const resolutionElapsed = resolutionTarget
+    ? elapsedHours(input.createdAt, resolutionEnd, input.totalPausedMs)
+    : undefined;
+
+  const toClockStatus = (elapsed: number | undefined, target: number | undefined): SLAClockStatus => {
+    if (!target || elapsed === undefined) return 'not_applicable';
+    if (isPaused) return 'paused';
+    if (elapsed >= target) return 'breached';
+    if (elapsed >= target * warningThreshold) return 'warning';
+    return 'met';
+  };
+
+  return {
+    responseElapsedHours: responseElapsed,
+    resolutionElapsedHours: resolutionElapsed,
+    responseDueAt: responseTarget ? addHours(input.createdAt, responseTarget) : undefined,
+    resolutionDueAt: resolutionTarget ? addHours(input.createdAt, resolutionTarget) : undefined,
+    responseStatus: input.firstResponseAt ? 'met' : toClockStatus(responseElapsed, responseTarget),
+    resolutionStatus: input.resolvedAt ? 'met' : toClockStatus(resolutionElapsed, resolutionTarget),
+  };
 }
 
 /**

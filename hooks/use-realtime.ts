@@ -48,7 +48,7 @@ export function useRealtime(channel: string) {
         }
       };
 
-      es.onerror = (e) => {
+      es.onerror = () => {
         setStatus('error');
         setError(new Error('Realtime connection error'));
         es.close();
@@ -338,17 +338,26 @@ export function useNetworkStatus() {
     window.addEventListener('offline', handleOffline);
 
     // Get connection info if available
-    const connection = (navigator as any).connection;
+    interface NetworkInformation {
+      effectiveType?: string;
+      addEventListener: (type: string, listener: () => void) => void;
+      removeEventListener: (type: string, listener: () => void) => void;
+    }
+    const connection = (navigator as { connection?: NetworkInformation }).connection;
+    let connectionCleanup: (() => void) | undefined;
     if (connection) {
       setConnectionType(connection.effectiveType || 'unknown');
-      connection.addEventListener('change', () => {
+      const handleChange = () => {
         setConnectionType(connection.effectiveType || 'unknown');
-      });
+      };
+      connection.addEventListener('change', handleChange);
+      connectionCleanup = () => connection.removeEventListener('change', handleChange);
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      connectionCleanup?.();
     };
   }, []);
 

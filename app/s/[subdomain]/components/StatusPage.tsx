@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import type { Organization } from '@/db/schema';
 import {
   Activity,
   CheckCircle,
@@ -15,14 +16,13 @@ import {
   Cloud,
   Shield,
   Wifi,
-  RefreshCw,
   Calendar,
-  ChevronRight,
+  BarChart3,
 } from 'lucide-react';
 
 interface StatusPageProps {
   subdomain: string;
-  org: any;
+  org: Organization;
 }
 
 interface ServiceStatus {
@@ -65,30 +65,28 @@ interface ExternalIntegration {
 }
 
 export function StatusPage({ subdomain, org }: StatusPageProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _org = org;
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [integrations, setIntegrations] = useState<ExternalIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
 
-  useEffect(() => {
-    fetchStatusData();
-  }, [org.id]);
-
-  const fetchStatusData = async () => {
+  const fetchStatusData = useCallback(async () => {
     try {
-      // Fetch services
+      // Fetch services (still org-scoped server-side; client uses subdomain)
       const servicesRes = await fetch(`/api/services/org/${org.id}`);
       if (servicesRes.ok) {
         const servicesData = await servicesRes.json();
         setServices(servicesData.services || []);
       }
 
-      // Fetch incidents
-      const incidentsRes = await fetch(`/api/status/${org.id}/incidents`);
-      if (incidentsRes.ok) {
-        const incidentsData = await incidentsRes.json();
-        setIncidents(incidentsData.incidents || []);
+      // Incidents are included in the main status response (subdomain-keyed, not orgId)
+      const statusRes = await fetch(`/api/status/${subdomain}`);
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        setIncidents(statusData.incidents || []);
       }
 
       // Fetch external integrations
@@ -102,7 +100,11 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [org.id]);
+
+  useEffect(() => {
+    fetchStatusData();
+  }, [fetchStatusData]);
 
   const getOverallStatus = () => {
     if (services.some((s) => s.status === 'outage')) return 'outage';

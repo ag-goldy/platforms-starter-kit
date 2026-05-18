@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Ticket, MessageSquare, Clock, ChevronRight } from 'lucide-react';
+import { Users, UserPlus, Ticket, MessageSquare, Clock } from 'lucide-react';
 import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
 
 interface TeamActivityWidgetProps {
   subdomain: string;
-  org: any;
+  org: { id: string };
 }
 
 interface Activity {
@@ -28,19 +28,13 @@ interface OnlineMember {
   isOnline: boolean;
 }
 
-export function TeamActivityWidget({ subdomain, org }: TeamActivityWidgetProps) {
+export function TeamActivityWidget({ subdomain }: TeamActivityWidgetProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [onlineMembers, setOnlineMembers] = useState<OnlineMember[]>([]);
   const [loading, setLoading] = useState(true);
   const { openSlideOver } = useCustomerPortal();
 
-  useEffect(() => {
-    fetchActivityData();
-    const interval = setInterval(fetchActivityData, 30000);
-    return () => clearInterval(interval);
-  }, [org.id]);
-
-  const fetchActivityData = async () => {
+  const fetchActivityData = useCallback(async () => {
     try {
       const res = await fetch(`/api/team/${subdomain}/activity`);
       if (res.ok) {
@@ -53,7 +47,13 @@ export function TeamActivityWidget({ subdomain, org }: TeamActivityWidgetProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [subdomain]);
+
+  useEffect(() => {
+    fetchActivityData();
+    const interval = setInterval(fetchActivityData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchActivityData]);
 
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
@@ -114,6 +114,7 @@ export function TeamActivityWidget({ subdomain, org }: TeamActivityWidgetProps) 
                 title={member.name}
               >
                 {member.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={member.avatar}
                     alt={member.name}

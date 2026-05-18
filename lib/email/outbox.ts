@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { emailOutbox } from '@/db/schema';
 import { emailService } from '@/lib/email';
 import { desc, eq } from 'drizzle-orm';
-import { enqueueJob } from '@/lib/jobs/queue';
+import { enqueueJob } from '@/lib/jobs';
 import type { SendEmailJob } from '@/lib/jobs/types';
 
 export type OutboxStatus = 'PENDING' | 'SENT' | 'FAILED';
@@ -96,7 +96,8 @@ export async function sendWithOutbox(params: {
 
   // In development or if Redis is not configured, deliver immediately
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const useJobs = process.env.USE_EMAIL_JOBS !== 'false' && !isDevelopment;
+  const alwaysImmediate = params.type === 'password_reset';
+  const useJobs = !alwaysImmediate && process.env.USE_EMAIL_JOBS !== 'false' && !isDevelopment;
 
   if (!useJobs) {
     // Deliver immediately (development mode or jobs disabled)
@@ -117,7 +118,11 @@ export async function sendWithOutbox(params: {
       },
     };
 
-    await enqueueJob(job);
+    await enqueueJob({
+      type: job.type,
+      maxAttempts: job.maxAttempts,
+      data: job.data,
+    });
 
     // Return immediately (job will be processed by worker)
     return {

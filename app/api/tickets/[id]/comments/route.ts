@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { ticketComments, tickets, memberships } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { assertTicketMutable, reopenTicket } from '@/lib/tickets/lifecycle';
 
 export async function POST(
   request: NextRequest,
@@ -33,6 +34,11 @@ export async function POST(
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
+    if (!ticket.orgId) {
+      return NextResponse.json({ error: 'Public tickets cannot be commented through this endpoint' }, { status: 400 });
+    }
+
+    assertTicketMutable(ticket);
 
     // Check membership
     const membership = await db.query.memberships.findFirst({
@@ -47,10 +53,19 @@ export async function POST(
       return NextResponse.json({ error: 'Not a member' }, { status: 403 });
     }
 
+    if (!session.user.isInternal && (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED')) {
+      await reopenTicket({
+        ticketId: id,
+        orgId: ticket.orgId,
+        actor: { type: 'customer', userId: session.user.id },
+        reason: 'Customer replied after resolution.',
+      });
+    }
+
     // Create comment
     const [comment] = await db.insert(ticketComments).values({
       ticketId: id,
-      authorId: session.user.id,
+      userId: session.user.id,
       content: content.trim(),
       isInternal,
     }).returning();

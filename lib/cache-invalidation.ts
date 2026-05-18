@@ -13,6 +13,17 @@ import {
 } from '@/lib/redis/cache';
 
 /**
+ * Invalidate a specific ticket cache
+ */
+export async function invalidateTicketCache(orgId: string, ticketId: string): Promise<void> {
+  await Promise.all([
+    invalidate(`ticket:${ticketId}`),
+    invalidateStatusSummary(orgId),
+  ]);
+  console.log(`[Cache] Invalidated ticket ${ticketId}`);
+}
+
+/**
  * Invalidate org settings cache
  * Call after: org settings update, branding changes
  */
