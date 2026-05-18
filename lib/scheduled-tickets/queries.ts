@@ -237,9 +237,14 @@ export async function processScheduledTicket(scheduledId: string) {
   await markScheduledTicketProcessing(scheduledId);
 
   try {
-    // Generate ticket key
+    // Generate ticket key — validate orgId is a UUID before embedding in sequence name
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(scheduled.orgId)) {
+      throw new Error(`Invalid orgId format: ${scheduled.orgId}`);
+    }
+    const seqName = `ticket_key_seq_${scheduled.orgId.replace(/-/g, '_')}`;
     const keyResult = await db.execute(sql`
-      SELECT nextval('ticket_key_seq_${sql.raw(scheduled.orgId.replace(/-/g, '_'))}') as seq
+      SELECT nextval(${seqName}::regclass) as seq
     `);
     const sequence = (keyResult[0] as { seq?: number })?.seq || 1;
     const key = `TKT-${String(sequence).padStart(5, '0')}`;

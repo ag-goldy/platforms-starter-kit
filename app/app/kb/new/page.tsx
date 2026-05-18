@@ -1,5 +1,6 @@
 'use client';
 
+import DOMPurify from 'isomorphic-dompurify';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -35,7 +36,7 @@ interface Category {
 
 export default function NewArticlePage() {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -289,11 +290,11 @@ export default function NewArticlePage() {
         throw new Error(data.error || 'Failed to create article');
       }
 
-      showToast('Article created successfully', 'success');
+      success('Article created successfully');
       router.push('/app/kb');
       router.refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'An error occurred', 'error');
+      showError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -306,7 +307,7 @@ export default function NewArticlePage() {
     return (
       <div 
         className="prose prose-sm max-w-none border rounded-md p-4 bg-white min-h-[300px]"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
       />
     );
   };

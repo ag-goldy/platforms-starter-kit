@@ -12,9 +12,14 @@ import { db } from '@/db';
 import { internalGroupMemberships, internalGroups, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 
-const GLOBAL_ADMIN_EMAIL = 'ag@agrnetworks.com';
-const GLOBAL_ADMIN_PASSWORD = 'AGRGlobal2025!';
-const GLOBAL_ADMIN_NAME = 'AGR Global Administrator';
+const GLOBAL_ADMIN_EMAIL = process.env.GLOBAL_ADMIN_EMAIL || 'ag@agrnetworks.com';
+const GLOBAL_ADMIN_PASSWORD = process.env.GLOBAL_ADMIN_PASSWORD;
+const GLOBAL_ADMIN_NAME = process.env.GLOBAL_ADMIN_NAME || 'AGR Global Administrator';
+
+if (!GLOBAL_ADMIN_PASSWORD) {
+  console.error('Error: GLOBAL_ADMIN_PASSWORD environment variable is required');
+  process.exit(1);
+}
 
 async function createGlobalAdmin() {
   console.log(`Creating/updating GLOBAL admin: ${GLOBAL_ADMIN_EMAIL}`);
