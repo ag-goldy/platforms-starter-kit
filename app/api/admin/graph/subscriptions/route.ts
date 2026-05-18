@@ -1,25 +1,25 @@
 /**
  * Admin API for Microsoft Graph Subscription Management
- * 
+ *
  * POST /api/admin/graph/subscriptions - Create new subscription
  * PATCH /api/admin/graph/subscriptions - Renew existing subscription
  * DELETE /api/admin/graph/subscriptions - Delete subscription
  * GET /api/admin/graph/subscriptions - List subscriptions
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/permissions';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth/permissions";
+import { z } from "zod";
 import {
   createEmailSubscription,
   renewSubscription,
   deleteSubscription,
   listSubscriptions,
   getStoredSubscriptionId,
-} from '@/lib/email/graph-inbound';
+} from "@/lib/email/graph-inbound";
 
 const createSchema = z.object({
-  action: z.enum(['create', 'renew', 'delete', 'list']),
+  action: z.enum(["create", "renew", "delete", "list"]),
   subscriptionId: z.string().optional(),
 });
 
@@ -30,58 +30,58 @@ export async function POST(request: NextRequest) {
     const data = createSchema.parse(body);
 
     switch (data.action) {
-      case 'create': {
+      case "create": {
         const result = await createEmailSubscription();
         if (result.success) {
           return NextResponse.json({
             success: true,
-            message: 'Subscription created successfully',
+            message: "Subscription created successfully",
             subscriptionId: result.subscriptionId,
           });
         }
         return NextResponse.json(
           { success: false, error: result.error },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
-      case 'renew': {
-        const subId = data.subscriptionId || await getStoredSubscriptionId();
+      case "renew": {
+        const subId = data.subscriptionId || (await getStoredSubscriptionId());
         if (!subId) {
           return NextResponse.json(
-            { success: false, error: 'No subscription ID provided or stored' },
-            { status: 400 }
+            { success: false, error: "No subscription ID provided or stored" },
+            { status: 400 },
           );
         }
         const result = await renewSubscription(subId);
         if (result.success) {
           return NextResponse.json({
             success: true,
-            message: 'Subscription renewed successfully',
+            message: "Subscription renewed successfully",
           });
         }
         return NextResponse.json(
           { success: false, error: result.error },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
-      case 'delete': {
-        const subId = data.subscriptionId || await getStoredSubscriptionId();
+      case "delete": {
+        const subId = data.subscriptionId || (await getStoredSubscriptionId());
         if (!subId) {
           return NextResponse.json(
-            { success: false, error: 'No subscription ID provided or stored' },
-            { status: 400 }
+            { success: false, error: "No subscription ID provided or stored" },
+            { status: 400 },
           );
         }
         await deleteSubscription(subId);
         return NextResponse.json({
           success: true,
-          message: 'Subscription deleted successfully',
+          message: "Subscription deleted successfully",
         });
       }
 
-      case 'list': {
+      case "list": {
         const subscriptions = await listSubscriptions();
         return NextResponse.json({
           success: true,
@@ -91,27 +91,24 @@ export async function POST(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { success: false, error: 'Invalid action' },
-          { status: 400 }
+          { success: false, error: "Invalid action" },
+          { status: 400 },
         );
     }
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
-        { status: 400 }
+        { error: "Invalid data", details: error.errors },
+        { status: 400 },
       );
     }
-    console.error('[Graph Subscriptions] Error:', error);
+    console.error("[Graph Subscriptions] Error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -121,7 +118,7 @@ export async function GET() {
     await requireAuth();
     const subscriptions = await listSubscriptions();
     const storedId = await getStoredSubscriptionId();
-    
+
     return NextResponse.json({
       success: true,
       subscriptions,
@@ -133,16 +130,13 @@ export async function GET() {
       ),
     });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error('[Graph Subscriptions] Error:', error);
+    console.error("[Graph Subscriptions] Error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

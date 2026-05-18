@@ -10,7 +10,7 @@ export interface MigrationTableReport {
 }
 
 export interface MigrationReport {
-  mode: 'dry-run' | 'run' | 'validate';
+  mode: "dry-run" | "run" | "validate";
   startedAt: string;
   finishedAt: string;
   since?: string;
@@ -26,7 +26,8 @@ export function summarizeMigrationReport(report: MigrationReport) {
       destinationCount: totals.destinationCount + table.destinationCount,
       skippedCount: totals.skippedCount + table.skippedCount,
       transformedCount: totals.transformedCount + table.transformedCount,
-      validationErrorCount: totals.validationErrorCount + table.validationErrors.length,
+      validationErrorCount:
+        totals.validationErrorCount + table.validationErrors.length,
     }),
     {
       sourceCount: 0,
@@ -34,18 +35,18 @@ export function summarizeMigrationReport(report: MigrationReport) {
       skippedCount: 0,
       transformedCount: 0,
       validationErrorCount: 0,
-    }
+    },
   );
 }
 
 export function maskConnectionString(value: string): string {
   try {
     const url = new URL(value);
-    if (url.password) url.password = '***';
-    if (url.username) url.username = '***';
+    if (url.password) url.password = "***";
+    if (url.username) url.username = "***";
     return url.toString();
   } catch {
-    return value ? '[provided]' : '[missing]';
+    return value ? "[provided]" : "[missing]";
   }
 }
 
@@ -53,7 +54,7 @@ export function renderMigrationMarkdown(report: MigrationReport): string {
   const totals = summarizeMigrationReport(report);
   const lines = [
     `# Migration ${report.mode}`,
-    '',
+    "",
     `- Started: ${report.startedAt}`,
     `- Finished: ${report.finishedAt}`,
     `- Source: ${maskConnectionString(report.source)}`,
@@ -65,38 +66,40 @@ export function renderMigrationMarkdown(report: MigrationReport): string {
   }
 
   lines.push(
-    '',
-    '## Totals',
-    '',
+    "",
+    "## Totals",
+    "",
     `- Source count: ${totals.sourceCount}`,
     `- Destination count: ${totals.destinationCount}`,
     `- Skipped count: ${totals.skippedCount}`,
     `- Transformed count: ${totals.transformedCount}`,
     `- Validation errors: ${totals.validationErrorCount}`,
-    '',
-    '## Tables',
-    '',
-    '| Domain | Table | Source | Destination | Skipped | Transformed | Errors | Sample IDs |',
-    '| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |'
+    "",
+    "## Tables",
+    "",
+    "| Domain | Table | Source | Destination | Skipped | Transformed | Errors | Sample IDs |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
   );
 
   for (const table of report.tables) {
     lines.push(
-      `| ${table.domain} | ${table.table} | ${table.sourceCount} | ${table.destinationCount} | ${table.skippedCount} | ${table.transformedCount} | ${table.validationErrors.length} | ${table.sampleIds.join(', ')} |`
+      `| ${table.domain} | ${table.table} | ${table.sourceCount} | ${table.destinationCount} | ${table.skippedCount} | ${table.transformedCount} | ${table.validationErrors.length} | ${table.sampleIds.join(", ")} |`,
     );
   }
 
-  const tablesWithErrors = report.tables.filter((table) => table.validationErrors.length > 0);
+  const tablesWithErrors = report.tables.filter(
+    (table) => table.validationErrors.length > 0,
+  );
   if (tablesWithErrors.length > 0) {
-    lines.push('', '## Validation Errors', '');
+    lines.push("", "## Validation Errors", "");
     for (const table of tablesWithErrors) {
       lines.push(`### ${table.domain}.${table.table}`);
       for (const error of table.validationErrors) {
         lines.push(`- ${error}`);
       }
-      lines.push('');
+      lines.push("");
     }
   }
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.join("\n")}\n`;
 }

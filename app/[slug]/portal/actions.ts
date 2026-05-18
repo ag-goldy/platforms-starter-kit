@@ -1,29 +1,41 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { and, asc, eq } from 'drizzle-orm';
-import { db } from '@/db';
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { and, asc, eq } from "drizzle-orm";
+import { db } from "@/db";
 import {
   assets,
   requestTypes,
   ticketAssets,
   ticketComments,
   tickets,
-} from '@/db/schema';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { getOrgSLATargets } from '@/lib/tickets/sla';
-import { logAudit } from '@/lib/audit/log';
-import { getTicketById } from '@/lib/tickets/queries';
-import { sendCustomerReplyNotification, sendCustomerTicketCreatedNotification } from '@/lib/email/notifications';
-import { createNotification } from '@/lib/notifications/service';
-import { publishRealtimeEvent } from '@/lib/realtime/broadcast';
-import { buildRequestDescription, buildRequestSubject } from '@/lib/request-types/format';
-import { requestFormSchema, validateRequestPayload } from '@/lib/request-types/validation';
-import { requirePortalAccess } from '@/lib/portal/access';
-import { triggerOnCommentAdd, triggerOnTicketCreate } from '@/lib/automation/rules';
-import { assertTicketMutable, reopenTicket } from '@/lib/tickets/lifecycle';
-import type { Ticket } from '@/db/schema';
+} from "@/db/schema";
+import { generateTicketKey } from "@/lib/tickets/keys";
+import { getOrgSLATargets } from "@/lib/tickets/sla";
+import { logAudit } from "@/lib/audit/log";
+import { getTicketById } from "@/lib/tickets/queries";
+import {
+  sendCustomerReplyNotification,
+  sendCustomerTicketCreatedNotification,
+} from "@/lib/email/notifications";
+import { createNotification } from "@/lib/notifications/service";
+import { publishRealtimeEvent } from "@/lib/realtime/broadcast";
+import {
+  buildRequestDescription,
+  buildRequestSubject,
+} from "@/lib/request-types/format";
+import {
+  requestFormSchema,
+  validateRequestPayload,
+} from "@/lib/request-types/validation";
+import { requirePortalAccess } from "@/lib/portal/access";
+import {
+  triggerOnCommentAdd,
+  triggerOnTicketCreate,
+} from "@/lib/automation/rules";
+import { assertTicketMutable, reopenTicket } from "@/lib/tickets/lifecycle";
+import type { Ticket } from "@/db/schema";
 
 type ActionState = {
   error?: string | null;
@@ -31,31 +43,34 @@ type ActionState = {
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === "string" ? value.trim() : "";
 }
 
 export async function createPortalTicketAction(
   _prevState: ActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<ActionState> {
-  const slug = readString(formData, 'slug');
+  const slug = readString(formData, "slug");
   const access = await requirePortalAccess(slug);
-  if (!access) return { error: 'Organization not found.' };
+  if (!access) return { error: "Organization not found." };
 
-  const requestTypeId = readString(formData, 'requestTypeId');
-  const subject = readString(formData, 'subject');
-  const description = readString(formData, 'description');
-  const assetId = readString(formData, 'assetId');
-  const priorityInput = readString(formData, 'priority');
-  const allowedPriorities = ['P2', 'P3', 'P4'] as const;
-  const priority = allowedPriorities.includes(priorityInput as (typeof allowedPriorities)[number])
+  const requestTypeId = readString(formData, "requestTypeId");
+  const subject = readString(formData, "subject");
+  const description = readString(formData, "description");
+  const assetId = readString(formData, "assetId");
+  const priorityInput = readString(formData, "priority");
+  const allowedPriorities = ["P2", "P3", "P4"] as const;
+  const priority = allowedPriorities.includes(
+    priorityInput as (typeof allowedPriorities)[number],
+  )
     ? (priorityInput as (typeof allowedPriorities)[number])
-    : 'P3';
+    : "P3";
 
   let ticketSubject = subject;
   let ticketDescription = description;
   let resolvedRequestTypeId: string | null = null;
-  let category: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' = 'SERVICE_REQUEST';
+  let category: "INCIDENT" | "SERVICE_REQUEST" | "CHANGE_REQUEST" =
+    "SERVICE_REQUEST";
   let requestPayload: Record<string, unknown> | null = null;
 
   if (requestTypeId) {
@@ -63,23 +78,27 @@ export async function createPortalTicketAction(
       where: and(
         eq(requestTypes.id, requestTypeId),
         eq(requestTypes.orgId, access.org.id),
-        eq(requestTypes.isActive, true)
+        eq(requestTypes.isActive, true),
       ),
     });
 
     if (!requestType) {
-      return { error: 'Selected request type is not available.' };
+      return { error: "Selected request type is not available." };
     }
 
-    const schema = requestFormSchema.parse(requestType.formSchema || { fields: [] });
+    const schema = requestFormSchema.parse(
+      requestType.formSchema || { fields: [] },
+    );
     const rawPayload: Record<string, unknown> = {};
 
     for (const field of schema.fields) {
-      if (field.type === 'fileHint') continue;
-      if (field.type === 'checkbox') {
-        rawPayload[field.id] = formData.get(field.id) === 'on';
-      } else if (field.type === 'multiselect') {
-        rawPayload[field.id] = formData.getAll(field.id).filter((value): value is string => typeof value === 'string');
+      if (field.type === "fileHint") continue;
+      if (field.type === "checkbox") {
+        rawPayload[field.id] = formData.get(field.id) === "on";
+      } else if (field.type === "multiselect") {
+        rawPayload[field.id] = formData
+          .getAll(field.id)
+          .filter((value): value is string => typeof value === "string");
       } else {
         rawPayload[field.id] = readString(formData, field.id);
       }
@@ -87,18 +106,24 @@ export async function createPortalTicketAction(
 
     const validation = validateRequestPayload(schema, rawPayload);
     if (validation.errors.length > 0) {
-      return { error: validation.errors.join(' ') };
+      return { error: validation.errors.join(" ") };
     }
 
-    ticketSubject = subject || buildRequestSubject(requestType.name, validation.payload);
-    ticketDescription = description || buildRequestDescription(requestType.name, schema, validation.payload);
+    ticketSubject =
+      subject || buildRequestSubject(requestType.name, validation.payload);
+    ticketDescription =
+      description ||
+      buildRequestDescription(requestType.name, schema, validation.payload);
     resolvedRequestTypeId = requestType.id;
-    category = requestType.category as 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST';
+    category = requestType.category as
+      | "INCIDENT"
+      | "SERVICE_REQUEST"
+      | "CHANGE_REQUEST";
     requestPayload = validation.payload;
   }
 
   if (ticketSubject.length < 3 || ticketDescription.length < 10) {
-    return { error: 'Add a subject and a description with enough detail.' };
+    return { error: "Add a subject and a description with enough detail." };
   }
 
   let linkedAssetId: string | null = null;
@@ -108,7 +133,7 @@ export async function createPortalTicketAction(
       columns: { id: true },
     });
     if (!asset) {
-      return { error: 'Selected asset is not available.' };
+      return { error: "Selected asset is not available." };
     }
     linkedAssetId = asset.id;
   }
@@ -125,7 +150,7 @@ export async function createPortalTicketAction(
       description: ticketDescription,
       priority,
       category,
-      status: 'NEW',
+      status: "NEW",
       requesterId: access.user.id,
       requestTypeId: resolvedRequestTypeId,
       requestPayload,
@@ -147,18 +172,18 @@ export async function createPortalTicketAction(
   await logAudit({
     orgId: access.org.id,
     actorId: access.user.id,
-    action: 'TICKET_CREATED',
-    resource: 'ticket',
+    action: "TICKET_CREATED",
+    resource: "ticket",
     resourceId: ticket.id,
-    details: { key: ticketKey, source: 'portal' },
+    details: { key: ticketKey, source: "portal" },
   });
 
   await triggerOnTicketCreate(ticket, access.user.id);
 
   await publishRealtimeEvent({
     orgId: access.org.id,
-    channel: 'tickets',
-    event: 'ticket.created',
+    channel: "tickets",
+    event: "ticket.created",
     data: {
       ticketId: ticket.id,
       ticketKey: ticket.key,
@@ -166,12 +191,12 @@ export async function createPortalTicketAction(
       requesterId: access.user.id,
     },
   }).catch((error) => {
-    console.error('[Realtime] Failed to broadcast ticket.created:', error);
+    console.error("[Realtime] Failed to broadcast ticket.created:", error);
   });
 
   await createNotification({
     userId: access.user.id,
-    type: 'TICKET_CREATED',
+    type: "TICKET_CREATED",
     title: `Request ${ticket.key} received`,
     message: ticket.subject,
     data: {
@@ -183,11 +208,13 @@ export async function createPortalTicketAction(
   });
 
   const fullTicket = await getTicketById(ticket.id, access.org.id);
-  if (fullTicket && 'organization' in fullTicket) {
-    await sendCustomerTicketCreatedNotification(fullTicket as unknown as Ticket & {
-      requester: { email: string; name: string | null } | null;
-      organization: { name: string };
-    });
+  if (fullTicket && "organization" in fullTicket) {
+    await sendCustomerTicketCreatedNotification(
+      fullTicket as unknown as Ticket & {
+        requester: { email: string; name: string | null } | null;
+        organization: { name: string };
+      },
+    );
   }
 
   revalidatePath(`/${slug}/portal`);
@@ -196,9 +223,9 @@ export async function createPortalTicketAction(
 }
 
 export async function addPortalTicketReplyAction(formData: FormData) {
-  const slug = readString(formData, 'slug');
-  const ticketId = readString(formData, 'ticketId');
-  const content = readString(formData, 'content');
+  const slug = readString(formData, "slug");
+  const ticketId = readString(formData, "ticketId");
+  const content = readString(formData, "content");
 
   if (content.length < 2) {
     return;
@@ -211,7 +238,7 @@ export async function addPortalTicketReplyAction(formData: FormData) {
     where: and(
       eq(tickets.id, ticketId),
       eq(tickets.orgId, access.org.id),
-      eq(tickets.requesterId, access.user.id)
+      eq(tickets.requesterId, access.user.id),
     ),
   });
 
@@ -220,14 +247,15 @@ export async function addPortalTicketReplyAction(formData: FormData) {
   }
 
   assertTicketMutable(ticket);
-  const lifecycleTicket = ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
-    ? await reopenTicket({
-      ticketId,
-      orgId: access.org.id,
-      actor: { type: 'customer', userId: access.user.id },
-      reason: 'Customer replied after resolution.',
-    })
-    : ticket;
+  const lifecycleTicket =
+    ticket.status === "RESOLVED" || ticket.status === "CLOSED"
+      ? await reopenTicket({
+          ticketId,
+          orgId: access.org.id,
+          actor: { type: "customer", userId: access.user.id },
+          reason: "Customer replied after resolution.",
+        })
+      : ticket;
 
   const [comment] = await db
     .insert(ticketComments)
@@ -242,23 +270,23 @@ export async function addPortalTicketReplyAction(formData: FormData) {
   await logAudit({
     orgId: access.org.id,
     actorId: access.user.id,
-    action: 'TICKET_COMMENT_ADDED',
-    resource: 'ticket',
+    action: "TICKET_COMMENT_ADDED",
+    resource: "ticket",
     resourceId: ticketId,
-    details: { source: 'portal' },
+    details: { source: "portal" },
   });
 
   await triggerOnCommentAdd(lifecycleTicket as Ticket, access.user.id);
 
   await sendCustomerReplyNotification(ticket.id, {
     ...comment,
-    user: { name: access.user.name || null, email: access.user.email || '' },
+    user: { name: access.user.name || null, email: access.user.email || "" },
     authorEmail: null,
   });
 
   await createNotification({
     userId: access.user.id,
-    type: 'TICKET_COMMENTED',
+    type: "TICKET_COMMENTED",
     title: `Reply added to ${ticket.key}`,
     message: content.slice(0, 160),
     data: {
@@ -272,8 +300,8 @@ export async function addPortalTicketReplyAction(formData: FormData) {
 
   await publishRealtimeEvent({
     orgId: access.org.id,
-    channel: 'tickets',
-    event: 'ticket.replied',
+    channel: "tickets",
+    event: "ticket.replied",
     data: {
       ticketId,
       ticketKey: ticket.key,
@@ -281,7 +309,7 @@ export async function addPortalTicketReplyAction(formData: FormData) {
       userId: access.user.id,
     },
   }).catch((error) => {
-    console.error('[Realtime] Failed to broadcast ticket.replied:', error);
+    console.error("[Realtime] Failed to broadcast ticket.replied:", error);
   });
 
   revalidatePath(`/${slug}/portal/tickets/${ticketId}`);
@@ -291,7 +319,10 @@ export async function addPortalTicketReplyAction(formData: FormData) {
 export async function getPortalRequestOptions(orgId: string) {
   const [types, orgAssets] = await Promise.all([
     db.query.requestTypes.findMany({
-      where: and(eq(requestTypes.orgId, orgId), eq(requestTypes.isActive, true)),
+      where: and(
+        eq(requestTypes.orgId, orgId),
+        eq(requestTypes.isActive, true),
+      ),
       orderBy: [asc(requestTypes.name)],
     }),
     db.query.assets.findMany({

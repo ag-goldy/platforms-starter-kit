@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from "react";
 
 interface MentionUser {
   id: string;
@@ -9,48 +9,55 @@ interface MentionUser {
 }
 
 export function useMentions(orgId: string | null) {
-  const [, setMentionQuery] = useState('');
-  const [mentionSuggestions, setMentionSuggestions] = useState<MentionUser[]>([]);
+  const [, setMentionQuery] = useState("");
+  const [mentionSuggestions, setMentionSuggestions] = useState<MentionUser[]>(
+    [],
+  );
   const [showMentions, setShowMentions] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionStartRef = useRef<number>(-1);
 
-  const handleInput = useCallback(async (e: React.FormEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget;
-    const cursorPosition = textarea.selectionStart;
-    const value = textarea.value;
+  const handleInput = useCallback(
+    async (e: React.FormEvent<HTMLTextAreaElement>) => {
+      const textarea = e.currentTarget;
+      const cursorPosition = textarea.selectionStart;
+      const value = textarea.value;
 
-    // Check if we're in a mention (after @)
-    const beforeCursor = value.slice(0, cursorPosition);
-    const afterAt = beforeCursor.match(/@([\w\s]*)$/);
+      // Check if we're in a mention (after @)
+      const beforeCursor = value.slice(0, cursorPosition);
+      const afterAt = beforeCursor.match(/@([\w\s]*)$/);
 
-    if (afterAt) {
-      const query = afterAt[1].trim();
-      setMentionQuery(query);
-      mentionStartRef.current = cursorPosition - afterAt[0].length;
+      if (afterAt) {
+        const query = afterAt[1].trim();
+        setMentionQuery(query);
+        mentionStartRef.current = cursorPosition - afterAt[0].length;
 
-      // Fetch suggestions (skip for public tickets without org)
-      if (query.length >= 1 && orgId) {
-        try {
-          const response = await fetch(`/api/users/mentions?orgId=${orgId}&q=${encodeURIComponent(query)}`);
-          if (response.ok) {
-            const users = await response.json();
-            setMentionSuggestions(users);
-            setShowMentions(users.length > 0);
-            setMentionIndex(0);
+        // Fetch suggestions (skip for public tickets without org)
+        if (query.length >= 1 && orgId) {
+          try {
+            const response = await fetch(
+              `/api/users/mentions?orgId=${orgId}&q=${encodeURIComponent(query)}`,
+            );
+            if (response.ok) {
+              const users = await response.json();
+              setMentionSuggestions(users);
+              setShowMentions(users.length > 0);
+              setMentionIndex(0);
+            }
+          } catch {
+            setShowMentions(false);
           }
-        } catch {
+        } else {
           setShowMentions(false);
         }
       } else {
         setShowMentions(false);
+        mentionStartRef.current = -1;
       }
-    } else {
-      setShowMentions(false);
-      mentionStartRef.current = -1;
-    }
-  }, [orgId]);
+    },
+    [orgId],
+  );
 
   const insertMention = useCallback((user: MentionUser) => {
     const textarea = textareaRef.current;
@@ -59,11 +66,11 @@ export function useMentions(orgId: string | null) {
     const value = textarea.value;
     const beforeMention = value.slice(0, mentionStartRef.current);
     const afterMention = value.slice(textarea.selectionStart);
-    
+
     // Insert formatted mention
     const mentionText = `@[${user.name}](${user.id}) `;
     textarea.value = beforeMention + mentionText + afterMention;
-    
+
     // Move cursor after mention
     const newPosition = mentionStartRef.current + mentionText.length;
     textarea.setSelectionRange(newPosition, newPosition);
@@ -71,32 +78,39 @@ export function useMentions(orgId: string | null) {
 
     // Clear mention state
     setShowMentions(false);
-    setMentionQuery('');
+    setMentionQuery("");
     mentionStartRef.current = -1;
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!showMentions) return;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!showMentions) return;
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setMentionIndex(prev => (prev + 1) % mentionSuggestions.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setMentionIndex(prev => (prev - 1 + mentionSuggestions.length) % mentionSuggestions.length);
-        break;
-      case 'Enter':
-      case 'Tab':
-        e.preventDefault();
-        insertMention(mentionSuggestions[mentionIndex]);
-        break;
-      case 'Escape':
-        setShowMentions(false);
-        break;
-    }
-  }, [showMentions, mentionSuggestions, mentionIndex, insertMention]);
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setMentionIndex((prev) => (prev + 1) % mentionSuggestions.length);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setMentionIndex(
+            (prev) =>
+              (prev - 1 + mentionSuggestions.length) %
+              mentionSuggestions.length,
+          );
+          break;
+        case "Enter":
+        case "Tab":
+          e.preventDefault();
+          insertMention(mentionSuggestions[mentionIndex]);
+          break;
+        case "Escape":
+          setShowMentions(false);
+          break;
+      }
+    },
+    [showMentions, mentionSuggestions, mentionIndex, insertMention],
+  );
 
   return {
     textareaRef,

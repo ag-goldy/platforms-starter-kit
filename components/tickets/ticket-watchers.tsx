@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 interface Watcher {
   id: string;
@@ -32,16 +32,16 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
     try {
       const response = await fetch(`/api/tickets/${ticketId}/watchers`);
       if (!response.ok) {
-        throw new Error('Failed to fetch watchers');
+        throw new Error("Failed to fetch watchers");
       }
       const data = await response.json();
       setWatchers(data.watchers || []);
-      
+
       // Check if current user is in the watchers list
       // Note: We don't have current user ID here, but the API will handle the toggle
       // We'll update this state after the toggle response
     } catch (error) {
-      console.error('Failed to load watchers:', error);
+      console.error("Failed to load watchers:", error);
     } finally {
       setIsLoading(false);
     }
@@ -51,28 +51,30 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
     setIsToggling(true);
     try {
       const response = await fetch(`/api/tickets/${ticketId}/watchers`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to toggle watcher status');
+        throw new Error("Failed to toggle watcher status");
       }
 
       const data = await response.json();
       setCurrentUserWatching(data.watching);
-      
+
       // Refresh watchers list
       await fetchWatchers();
-      
+
       success(
-        data.watching ? 'You are now watching this ticket' : 'You are no longer watching this ticket'
+        data.watching
+          ? "You are now watching this ticket"
+          : "You are no longer watching this ticket",
       );
     } catch (error) {
-      console.error('Failed to toggle watcher:', error);
-      showError('Failed to update watcher status');
+      console.error("Failed to toggle watcher:", error);
+      showError("Failed to update watcher status");
     } finally {
       setIsToggling(false);
     }
@@ -82,9 +84,9 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
   function getInitials(name: string | null, email: string): string {
     if (name) {
       return name
-        .split(' ')
+        .split(" ")
         .map((n) => n[0])
-        .join('')
+        .join("")
         .toUpperCase()
         .slice(0, 2);
     }
@@ -99,14 +101,14 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
   // Generate a consistent color based on user ID
   function getAvatarColor(userId: string): string {
     const colors = [
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-yellow-500',
-      'bg-red-500',
-      'bg-purple-500',
-      'bg-pink-500',
-      'bg-indigo-500',
-      'bg-teal-500',
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-red-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+      "bg-teal-500",
     ];
     let hash = 0;
     for (let i = 0; i < userId.length; i++) {
@@ -136,7 +138,7 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
               <div
                 key={watcher.id}
                 className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full ${getAvatarColor(
-                  watcher.id
+                  watcher.id,
                 )} text-xs font-medium text-white ring-2 ring-white`}
                 title={getDisplayName(watcher)}
               >
@@ -155,7 +157,7 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
       {/* Watch count */}
       {watchers.length > 0 && (
         <span className="text-sm text-gray-600">
-          {watchers.length} {watchers.length === 1 ? 'watcher' : 'watchers'}
+          {watchers.length} {watchers.length === 1 ? "watcher" : "watchers"}
         </span>
       )}
 
@@ -174,11 +176,7 @@ export function TicketWatchers({ ticketId }: TicketWatchersProps) {
         ) : (
           <Eye className="mr-1 h-4 w-4" />
         )}
-        {isToggling
-          ? 'Updating...'
-          : currentUserWatching
-          ? 'Unwatch'
-          : 'Watch'}
+        {isToggling ? "Updating..." : currentUserWatching ? "Unwatch" : "Watch"}
       </Button>
     </div>
   );

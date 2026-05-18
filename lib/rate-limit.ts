@@ -1,4 +1,4 @@
-import { redis } from './redis';
+import { redis } from "./redis";
 
 export interface RateLimitOptions {
   identifier: string; // IP address, email, or user ID
@@ -18,13 +18,17 @@ export interface RateLimitResult {
  */
 export async function rateLimit(
   identifierOrKey: string | RateLimitOptions,
-  optionsOrUndefined?: { maxRequests?: number; limit?: number; windowSeconds: number }
+  optionsOrUndefined?: {
+    maxRequests?: number;
+    limit?: number;
+    windowSeconds: number;
+  },
 ): Promise<RateLimitResult> {
   let identifier: string;
   let limit: number;
   let windowSeconds: number;
 
-  if (typeof identifierOrKey === 'string') {
+  if (typeof identifierOrKey === "string") {
     identifier = identifierOrKey;
     limit = optionsOrUndefined?.maxRequests ?? optionsOrUndefined?.limit ?? 10;
     windowSeconds = optionsOrUndefined?.windowSeconds ?? 60;
@@ -35,7 +39,7 @@ export async function rateLimit(
   }
 
   const key = `rate_limit:${identifier}:${windowSeconds}`;
-  
+
   try {
     // Get current count
     const count = await redis.get<number>(key);
@@ -46,7 +50,7 @@ export async function rateLimit(
       const ttl = await redis.ttl(key);
       const resetSeconds = ttl > 0 ? ttl : windowSeconds;
       const resetAt = new Date(Date.now() + resetSeconds * 1000);
-      
+
       return {
         allowed: false,
         remaining: 0,
@@ -56,7 +60,7 @@ export async function rateLimit(
 
     // Increment counter
     const newCount = await redis.incr(key);
-    
+
     // Set expiration on first increment
     if (newCount === 1) {
       await redis.expire(key, windowSeconds);
@@ -74,7 +78,7 @@ export async function rateLimit(
     };
   } catch (error) {
     // If Redis fails, allow the request (fail open)
-    console.error('Rate limit check failed:', error);
+    console.error("Rate limit check failed:", error);
     return {
       allowed: true,
       remaining: limit,
@@ -91,16 +95,15 @@ export const checkRateLimit = rateLimit;
  */
 export function getClientIP(headers: Headers): string {
   // Check various headers for IP (common proxy headers)
-  const forwarded = headers.get('x-forwarded-for');
+  const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    return forwarded.split(",")[0].trim();
   }
-  
-  const realIP = headers.get('x-real-ip');
+
+  const realIP = headers.get("x-real-ip");
   if (realIP) {
     return realIP;
   }
 
-  return 'unknown';
+  return "unknown";
 }
-

@@ -5,31 +5,36 @@ export interface PIIRedactionResult {
   counts: Record<string, number>;
 }
 
-const PII_PATTERNS: Array<{ type: string; pattern: RegExp; replacement: string }> = [
+const PII_PATTERNS: Array<{
+  type: string;
+  pattern: RegExp;
+  replacement: string;
+}> = [
   {
-    type: 'email',
+    type: "email",
     pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
-    replacement: '[REDACTED_EMAIL]',
+    replacement: "[REDACTED_EMAIL]",
   },
   {
-    type: 'phone',
+    type: "phone",
     pattern: /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/g,
-    replacement: '[REDACTED_PHONE]',
+    replacement: "[REDACTED_PHONE]",
   },
   {
-    type: 'credit_card',
+    type: "credit_card",
     pattern: /\b(?:\d[ -]*?){13,19}\b/g,
-    replacement: '[REDACTED_CARD]',
+    replacement: "[REDACTED_CARD]",
   },
   {
-    type: 'ssn',
+    type: "ssn",
     pattern: /\b\d{3}-\d{2}-\d{4}\b/g,
-    replacement: '[REDACTED_SSN]',
+    replacement: "[REDACTED_SSN]",
   },
   {
-    type: 'ip_address',
-    pattern: /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g,
-    replacement: '[REDACTED_IP]',
+    type: "ip_address",
+    pattern:
+      /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g,
+    replacement: "[REDACTED_IP]",
   },
 ];
 
@@ -55,8 +60,8 @@ export function redactPII(input: string): PIIRedactionResult {
 }
 
 function isLikelyCreditCardFalsePositive(type: string, value: string): boolean {
-  if (type !== 'credit_card') return false;
-  const digits = value.replace(/\D/g, '');
+  if (type !== "credit_card") return false;
+  const digits = value.replace(/\D/g, "");
   return digits.length < 13 || !passesLuhn(digits);
 }
 

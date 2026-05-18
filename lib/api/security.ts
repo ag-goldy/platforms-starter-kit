@@ -1,15 +1,15 @@
 /**
  * API endpoint security utilities
- * 
+ *
  * Provides consistent authentication and authorization for operational endpoints
  */
 
-import { NextRequest } from 'next/server';
-import { getServerSession } from '@/lib/auth/session';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { getCorrelationId } from '@/lib/monitoring/correlation';
-import { trackError } from '@/lib/monitoring/error-tracking';
-import { bearerTokenMatches, constantTimeEquals } from '@/lib/security/secrets';
+import { NextRequest } from "next/server";
+import { getServerSession } from "@/lib/auth/session";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { getCorrelationId } from "@/lib/monitoring/correlation";
+import { trackError } from "@/lib/monitoring/error-tracking";
+import { bearerTokenMatches, constantTimeEquals } from "@/lib/security/secrets";
 
 /**
  * Verify CRON secret from request headers.
@@ -20,12 +20,14 @@ import { bearerTokenMatches, constantTimeEquals } from '@/lib/security/secrets';
  * for the full fail-closed NextResponse pattern.
  */
 export async function verifyCronSecret(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization');
+  const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
   // Fail-closed: never allow when the secret is not configured
   if (!cronSecret) {
-    console.error('[SECURITY] CRON_SECRET is not configured — rejecting cron request');
+    console.error(
+      "[SECURITY] CRON_SECRET is not configured — rejecting cron request",
+    );
     return false;
   }
 
@@ -39,9 +41,9 @@ export async function verifyCronSecret(request: NextRequest): Promise<boolean> {
 export async function verifyInternalAuth() {
   const session = await getServerSession();
   if (!session) {
-    throw new Error('Unauthorized: No session');
+    throw new Error("Unauthorized: No session");
   }
-  
+
   return await requireInternalRole();
 }
 
@@ -52,14 +54,14 @@ export async function verifyInternalAuth() {
 export function verifyApiSecret(
   request: NextRequest,
   secretName: string,
-  headerName: string = 'x-api-secret'
+  headerName: string = "x-api-secret",
 ): boolean {
   const secret = process.env[secretName];
   if (!secret) {
     // Fail-closed — do not allow when secret is not configured
     return false;
   }
-  
+
   const headerValue = request.headers.get(headerName);
   return constantTimeEquals(headerValue, secret);
 }
@@ -70,15 +72,18 @@ export function verifyApiSecret(
 export async function logUnauthorizedAccess(
   request: NextRequest,
   reason: string,
-  endpoint: string
+  endpoint: string,
 ): Promise<void> {
   const correlationId = await getCorrelationId();
-  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-  const userAgent = request.headers.get('user-agent') || 'unknown';
-  
+  const ip =
+    request.headers.get("x-forwarded-for") ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  const userAgent = request.headers.get("user-agent") || "unknown";
+
   await trackError(new Error(`Unauthorized access attempt: ${reason}`), {
     correlationId,
-    action: 'UNAUTHORIZED_ACCESS',
+    action: "UNAUTHORIZED_ACCESS",
     endpoint,
     ip,
     userAgent,
@@ -95,10 +100,13 @@ export async function secureEndpoint(
     allowCron?: boolean;
     requireInternal?: boolean;
     requireSecret?: string;
-  } = {}
-): Promise<{ authorized: boolean; user?: Awaited<ReturnType<typeof verifyInternalAuth>> }> {
+  } = {},
+): Promise<{
+  authorized: boolean;
+  user?: Awaited<ReturnType<typeof verifyInternalAuth>>;
+}> {
   const { allowCron = true, requireInternal = false, requireSecret } = options;
-  
+
   // Check CRON secret if allowed
   if (allowCron) {
     const cronValid = await verifyCronSecret(request);
@@ -106,7 +114,7 @@ export async function secureEndpoint(
       return { authorized: true };
     }
   }
-  
+
   // Check custom secret if required
   if (requireSecret) {
     const secretValid = verifyApiSecret(request, requireSecret);
@@ -114,7 +122,7 @@ export async function secureEndpoint(
       return { authorized: true };
     }
   }
-  
+
   // Check internal auth if required
   if (requireInternal) {
     try {
@@ -124,7 +132,7 @@ export async function secureEndpoint(
       // Will be handled below
     }
   }
-  
+
   // Not authorized
   return { authorized: false };
 }

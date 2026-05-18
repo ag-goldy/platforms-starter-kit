@@ -1,11 +1,15 @@
-import { db } from '@/db';
-import { tickets, organizations } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/permissions';
-import { notFound } from 'next/navigation';
-import InboxClient from './inbox-client';
+import { db } from "@/db";
+import { tickets, organizations } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/permissions";
+import { notFound } from "next/navigation";
+import InboxClient from "./inbox-client";
 
-export default async function InboxPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function InboxPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   await requireAuth();
   const { slug } = await params;
 

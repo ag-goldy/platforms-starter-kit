@@ -1,31 +1,31 @@
 /**
  * Public Status Page
- * 
+ *
  * A publicly accessible status page for each organization.
  * No authentication required - shows service status and incidents.
- * 
+ *
  * URL: status.agrnetworks.com/[subdomain] or atlas.agrnetworks.com/status/[subdomain]
  */
 
-import { notFound } from 'next/navigation';
-import { db } from '@/db';
-import { organizations, services, serviceMonitoringHistory } from '@/db/schema';
-import { eq, desc, gte } from 'drizzle-orm';
-import { formatDateTime, formatDuration } from '@/lib/utils/date';
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
+import { notFound } from "next/navigation";
+import { db } from "@/db";
+import { organizations, services, serviceMonitoringHistory } from "@/db/schema";
+import { eq, desc, gte } from "drizzle-orm";
+import { formatDateTime, formatDuration } from "@/lib/utils/date";
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
   Clock,
   RefreshCw,
   Calendar,
   Activity,
   TrendingUp,
-  ExternalLink
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+  ExternalLink,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 // Revalidate every 5 minutes (300 seconds)
 export const revalidate = 300;
@@ -41,8 +41,10 @@ export async function generateMetadata({ params }: StatusPageProps) {
   });
 
   return {
-    title: org ? `${org.name} Status` : 'Status Page',
-    description: org ? `Real-time status of ${org.name} services` : 'Service status page',
+    title: org ? `${org.name} Status` : "Status Page",
+    description: org
+      ? `Real-time status of ${org.name} services`
+      : "Service status page",
   };
 }
 
@@ -75,40 +77,44 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
   });
 
   // Calculate overall status
-  const activeServices = orgServices.filter(s => s.status === 'ACTIVE');
-  const monitoredServices = activeServices.filter(s => s.monitoringStatus);
-  
+  const activeServices = orgServices.filter((s) => s.status === "ACTIVE");
+  const monitoredServices = activeServices.filter((s) => s.monitoringStatus);
+
   const downServices = monitoredServices.filter(
-    s => s.monitoringStatus === 'DOWN' || s.monitoringStatus === 'PROBLEM'
+    (s) => s.monitoringStatus === "DOWN" || s.monitoringStatus === "PROBLEM",
   );
-  
+
   const degradedServices = monitoredServices.filter(
-    s => s.monitoringStatus === 'DEGRADED'
+    (s) => s.monitoringStatus === "DEGRADED",
   );
 
   // Calculate overall status
-  let overallStatus: 'operational' | 'degraded' | 'major_outage' = 'operational';
+  let overallStatus: "operational" | "degraded" | "major_outage" =
+    "operational";
   if (downServices.length > 0) {
-    overallStatus = 'major_outage';
+    overallStatus = "major_outage";
   } else if (degradedServices.length > 0) {
-    overallStatus = 'degraded';
+    overallStatus = "degraded";
   }
 
   // Calculate uptime percentage (30 days)
   const totalChecks = monitoringHistory.length;
   const upChecks = monitoringHistory.filter(
-    h => h.status === 'UP' || h.status === 'OK' || h.status === 'OPERATIONAL'
+    (h) => h.status === "UP" || h.status === "OK" || h.status === "OPERATIONAL",
   ).length;
-  const uptimePercentage = totalChecks > 0 ? (upChecks / totalChecks) * 100 : 100;
+  const uptimePercentage =
+    totalChecks > 0 ? (upChecks / totalChecks) * 100 : 100;
 
   // Get recent incidents (last 10)
   const recentIncidents = monitoringHistory
-    .filter(h => h.status === 'DOWN' || h.status === 'PROBLEM' || h.alertsCount > 0)
+    .filter(
+      (h) => h.status === "DOWN" || h.status === "PROBLEM" || h.alertsCount > 0,
+    )
     .slice(0, 10);
 
   // Get org branding
   const branding = org.branding || {};
-  const primaryColor = branding.primaryColor || '#f97316'; // Default orange
+  const primaryColor = branding.primaryColor || "#f97316"; // Default orange
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,13 +124,13 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {branding.logoUrl ? (
-                <img 
-                  src={branding.logoUrl} 
+                <img
+                  src={branding.logoUrl}
                   alt={org.name}
                   className="h-10 w-auto"
                 />
               ) : (
-                <div 
+                <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-xl"
                   style={{ backgroundColor: primaryColor }}
                 >
@@ -146,38 +152,46 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Overall Status Banner */}
-        <div className={`
+        <div
+          className={`
           rounded-2xl p-8 mb-8 text-center
-          ${overallStatus === 'operational' ? 'bg-green-50 border-2 border-green-200' : ''}
-          ${overallStatus === 'degraded' ? 'bg-yellow-50 border-2 border-yellow-200' : ''}
-          ${overallStatus === 'major_outage' ? 'bg-red-50 border-2 border-red-200' : ''}
-        `}>
+          ${overallStatus === "operational" ? "bg-green-50 border-2 border-green-200" : ""}
+          ${overallStatus === "degraded" ? "bg-yellow-50 border-2 border-yellow-200" : ""}
+          ${overallStatus === "major_outage" ? "bg-red-50 border-2 border-red-200" : ""}
+        `}
+        >
           <div className="flex items-center justify-center gap-3 mb-4">
-            {overallStatus === 'operational' && (
+            {overallStatus === "operational" && (
               <>
                 <CheckCircle className="w-12 h-12 text-green-600" />
-                <h2 className="text-3xl font-bold text-green-800">All Systems Operational</h2>
+                <h2 className="text-3xl font-bold text-green-800">
+                  All Systems Operational
+                </h2>
               </>
             )}
-            {overallStatus === 'degraded' && (
+            {overallStatus === "degraded" && (
               <>
                 <AlertTriangle className="w-12 h-12 text-yellow-600" />
-                <h2 className="text-3xl font-bold text-yellow-800">Partial System Degradation</h2>
+                <h2 className="text-3xl font-bold text-yellow-800">
+                  Partial System Degradation
+                </h2>
               </>
             )}
-            {overallStatus === 'major_outage' && (
+            {overallStatus === "major_outage" && (
               <>
                 <XCircle className="w-12 h-12 text-red-600" />
-                <h2 className="text-3xl font-bold text-red-800">Major Service Outage</h2>
+                <h2 className="text-3xl font-bold text-red-800">
+                  Major Service Outage
+                </h2>
               </>
             )}
           </div>
           <p className="text-gray-600">
-            {monitoredServices.length > 0 
+            {monitoredServices.length > 0
               ? `${monitoredServices.length - downServices.length - degradedServices.length} of ${monitoredServices.length} monitored services are up`
-              : 'No services currently monitored'
-            }
-            {monitoredServices.length > 0 && ` • ${uptimePercentage.toFixed(2)}% uptime (30 days)`}
+              : "No services currently monitored"}
+            {monitoredServices.length > 0 &&
+              ` • ${uptimePercentage.toFixed(2)}% uptime (30 days)`}
           </p>
         </div>
 
@@ -186,7 +200,11 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
           <StatCard
             icon={<CheckCircle className="w-5 h-5 text-green-600" />}
             label="Operational"
-            value={monitoredServices.length - downServices.length - degradedServices.length}
+            value={
+              monitoredServices.length -
+              downServices.length -
+              degradedServices.length
+            }
             bgColor="bg-green-50"
           />
           <StatCard
@@ -242,7 +260,9 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
             {recentIncidents.length === 0 ? (
               <div className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto text-green-400 mb-3" />
-                <p className="text-gray-500">No incidents in the last 30 days</p>
+                <p className="text-gray-500">
+                  No incidents in the last 30 days
+                </p>
                 <p className="text-sm text-gray-400 mt-1">
                   Great job! Everything has been running smoothly.
                 </p>
@@ -257,9 +277,7 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
 
         {/* Footer */}
         <footer className="text-center text-sm text-gray-500 py-8 border-t">
-          <p className="mb-2">
-            Powered by Atlas Helpdesk
-          </p>
+          <p className="mb-2">Powered by Atlas Helpdesk</p>
           <div className="flex items-center justify-center gap-4">
             <Link href={`/s/${subdomain}`}>
               <Button variant="link" size="sm" className="text-gray-500">
@@ -280,14 +298,14 @@ export default async function PublicStatusPage({ params }: StatusPageProps) {
   );
 }
 
-function StatCard({ 
-  icon, 
-  label, 
-  value, 
-  bgColor 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
+function StatCard({
+  icon,
+  label,
+  value,
+  bgColor,
+}: {
+  icon: React.ReactNode;
+  label: string;
   value: string | number;
   bgColor: string;
 }) {
@@ -302,35 +320,39 @@ function StatCard({
   );
 }
 
-function ServiceStatusRow({ service }: { service: typeof services.$inferSelect }) {
+function ServiceStatusRow({
+  service,
+}: {
+  service: typeof services.$inferSelect;
+}) {
   const getStatusConfig = (status: string | null) => {
     switch (status) {
-      case 'UP':
-      case 'OK':
-      case 'OPERATIONAL':
+      case "UP":
+      case "OK":
+      case "OPERATIONAL":
         return {
           icon: <CheckCircle className="w-5 h-5 text-green-500" />,
-          label: 'Operational',
-          badgeClass: 'bg-green-100 text-green-700 border-green-200',
+          label: "Operational",
+          badgeClass: "bg-green-100 text-green-700 border-green-200",
         };
-      case 'DEGRADED':
+      case "DEGRADED":
         return {
           icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />,
-          label: 'Degraded',
-          badgeClass: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+          label: "Degraded",
+          badgeClass: "bg-yellow-100 text-yellow-700 border-yellow-200",
         };
-      case 'DOWN':
-      case 'PROBLEM':
+      case "DOWN":
+      case "PROBLEM":
         return {
           icon: <XCircle className="w-5 h-5 text-red-500" />,
-          label: 'Major Outage',
-          badgeClass: 'bg-red-100 text-red-700 border-red-200',
+          label: "Major Outage",
+          badgeClass: "bg-red-100 text-red-700 border-red-200",
         };
       default:
         return {
           icon: <Clock className="w-5 h-5 text-gray-400" />,
-          label: 'Unknown',
-          badgeClass: 'bg-gray-100 text-gray-700 border-gray-200',
+          label: "Unknown",
+          badgeClass: "bg-gray-100 text-gray-700 border-gray-200",
         };
     }
   };
@@ -367,28 +389,34 @@ function ServiceStatusRow({ service }: { service: typeof services.$inferSelect }
   );
 }
 
-function IncidentRow({ incident }: { incident: typeof serviceMonitoringHistory.$inferSelect }) {
-  const duration = incident.timestamp && new Date(incident.timestamp).getTime() 
-    ? formatDuration(Math.floor((Date.now() - new Date(incident.timestamp).getTime()) / 60000))
-    : 'Unknown';
+function IncidentRow({
+  incident,
+}: {
+  incident: typeof serviceMonitoringHistory.$inferSelect;
+}) {
+  const duration =
+    incident.timestamp && new Date(incident.timestamp).getTime()
+      ? formatDuration(
+          Math.floor(
+            (Date.now() - new Date(incident.timestamp).getTime()) / 60000,
+          ),
+        )
+      : "Unknown";
 
   return (
     <div className="p-4 flex items-start gap-3 hover:bg-gray-50 transition-colors">
       <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
-          <h4 className="font-medium text-gray-900">
-            Service Alert
-          </h4>
+          <h4 className="font-medium text-gray-900">Service Alert</h4>
           <Badge variant="outline" className="text-xs">
             {incident.status}
           </Badge>
         </div>
         <p className="text-sm text-gray-600 mb-1">
-          {incident.alertsCount && incident.alertsCount > 0 
+          {incident.alertsCount && incident.alertsCount > 0
             ? `${incident.alertsCount} alert(s) triggered`
-            : 'Status change detected'
-          }
+            : "Status change detected"}
         </p>
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <span>{formatDateTime(incident.timestamp)}</span>
@@ -397,7 +425,9 @@ function IncidentRow({ incident }: { incident: typeof serviceMonitoringHistory.$
           {incident.uptimePercentage && (
             <>
               <span>•</span>
-              <span>Uptime: {parseFloat(incident.uptimePercentage).toFixed(1)}%</span>
+              <span>
+                Uptime: {parseFloat(incident.uptimePercentage).toFixed(1)}%
+              </span>
             </>
           )}
         </div>

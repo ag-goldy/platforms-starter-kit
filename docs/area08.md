@@ -35,7 +35,6 @@ Empty states:
 No tickets ever: "Welcome to support at {org.name}. Need something? Open your first request."
 No tickets currently: "All caught up. We'll be here if you need anything."
 
-
 8.3 New Request flow
 Two-step but pre-loaded so customer can submit on step 1 if they want speed.
 Step 1 (always visible):
@@ -66,7 +65,6 @@ New Request opens a category grid first (Reset password, Order new laptop, Wifi 
 Selecting a category loads the matching request_type schema and goes directly to a tailored form.
 "Other" tile always present, falls through to the generic free-form flow above.
 
-
 8.4 My Tickets list
 Two tabs: Open (default), Closed. URL state persists tab and filters.
 List item:
@@ -94,7 +92,6 @@ Real-time:
 New ticket appears with slide-in if user creates one in another tab.
 Status change updates pill in-place with brief flash animation.
 New reply marks ticket as unread (orange dot) and bumps to top.
-
 
 8.5 Ticket detail (modal or full-page)
 Header:
@@ -141,7 +138,6 @@ When status becomes resolved by agent:
 Banner appears at top of thread: "Sarah marked this resolved. Was this helpful?" with inline 1-5 rating.
 If not rated within 1 hour, email CSAT survey enqueued (per Area 4.9 in master plan).
 
-
 8.6 Knowledge Base browse (/{slug}/portal/kb)
 Search-first homepage:
 
@@ -167,7 +163,6 @@ Restricted articles:
 Hidden from search and category lists if user not in allowed teams.
 Direct link returns 404 (do not reveal existence).
 
-
 8.7 My Assets (if enabled)
 Only assets where the requester is assigned_to_user_id or where their org has elected to show all org assets to all members.
 Grid view by default, list view toggle. Each card:
@@ -178,7 +173,6 @@ Status pill.
 Location.
 "Report issue" button (one-click, opens new ticket form pre-filled with asset).
 Click opens asset detail modal: full specs, lifecycle events visible to customer (assigned, repaired, returned), related tickets the requester has visibility on.
-
 
 8.8 Team management (ADMIN only) /{slug}/portal/team
 Two tabs: Members, Invites.
@@ -204,7 +198,6 @@ Columns: actor, action, resource, timestamp, IP if org.settings.show_ip_in_activ
 Filters: actor, action type, date range.
 Export CSV (signed URL, async job, emailed when ready).
 
-
 8.9 Data and exports (ADMIN only) /{slug}/portal/data
 Three sections:
 Export tenant data (GDPR/PDPA):
@@ -229,7 +222,6 @@ Confirmation requires re-auth (password + 2FA).
 30-day grace period; tenant marked status=deleted but recoverable. Banner appears on all tenant pages with countdown.
 Recoverable from /admin panel by platform admin during grace.
 
-
 8.10 Profile and security (/{slug}/portal/me)
 Tabs: Profile, Notifications, Security, Sessions.
 Profile: name, avatar (upload, crop), display preferences (theme: light/dark/system, density), language, timezone.
@@ -246,7 +238,6 @@ Sessions:
 List of active sessions: device summary, location (IP geolocation), last active, current.
 "Revoke" per session.
 "Sign out all other devices" button.
-
 
 8.11 Customer onboarding (first invite acceptance)
 Flow when an end-user accepts their first magic-link invite:
@@ -267,7 +258,6 @@ Ticket status change: status pill animates the change.
 Service status updates (if status page enabled): inline banner if any service degrades while user has the portal open.
 No presence indicators (customer doesn't need to know who's viewing).
 No typing indicators in the customer-facing thread (would create awkward dynamics with agent drafting time).
-
 
 8.13 Light mode design notes (carries forward Area 4 locked decisions)
 Surfaces (light mode default for portal):
@@ -290,7 +280,6 @@ RESOLVED: green #DCFCE7 / #166534.
 CLOSED: neutral #F5F5F5 / #525252.
 BREACHED_SLA: red #FEE2E2 / #991B1B.
 
-
 8.14 Accessibility specifics for the portal
 In addition to the WCAG 2.2 AA requirements from Area 6 of the master plan:
 
@@ -303,7 +292,6 @@ Ticket list rows are real <button> elements (not div-with-click) so screen reade
 Modal open: focus moves to the modal's title, return-to-trigger on close.
 Drag-drop attachment area has a "Choose files" button as the primary path; drop is enhancement.
 
-
 8.15 Acceptance criteria for Area 8
 
 A new end-user can be invited, accept, set up account, and submit a ticket in under 90 seconds on a fast connection.
@@ -314,6 +302,5 @@ Light mode passes WCAG AA contrast on every interactive element.
 Real-time reply appears within 500ms of agent send (p95).
 New Request submission, when network is slow (3G simulation), still feels responsive thanks to optimistic UI.
 All copy uses no em dashes.
-
 
 End of Area 8. Next: Area 9 (Platform Admin Console).

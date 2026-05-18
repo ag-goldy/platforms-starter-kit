@@ -1,13 +1,20 @@
-import Link from 'next/link';
-import { ReactNode } from 'react';
-import { Shield, Search } from 'lucide-react';
-import { getImpersonationState, requirePlatformAdmin } from '@/lib/admin/platform';
-import { stopImpersonationAction } from './actions';
-import { Button } from '@/components/ui/button';
-import { EnterpriseAdminSidebar } from '@/components/layouts/enterprise-sidebar';
-import { platformNavSections } from '@/lib/navigation/enterprise';
+import Link from "next/link";
+import { ReactNode } from "react";
+import { Shield, Search } from "lucide-react";
+import {
+  getImpersonationState,
+  requirePlatformAdmin,
+} from "@/lib/admin/platform";
+import { stopImpersonationAction } from "./actions";
+import { Button } from "@/components/ui/button";
+import { EnterpriseAdminSidebar } from "@/components/layouts/enterprise-sidebar";
+import { platformNavSections } from "@/lib/navigation/enterprise";
 
-export default async function PlatformAdminLayout({ children }: { children: ReactNode }) {
+export default async function PlatformAdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [admin, impersonation] = await Promise.all([
     requirePlatformAdmin(),
     getImpersonationState(),
@@ -19,10 +26,18 @@ export default async function PlatformAdminLayout({ children }: { children: Reac
         <div className="border-b border-amber-500/40 bg-amber-400 px-4 py-2 text-sm font-medium text-zinc-950">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <span>
-              Impersonating tenant user {impersonation.userId} for {impersonation.reason}. Expires {new Date(impersonation.expiresAt).toLocaleTimeString()}. Platform actions are still audited as {admin.email}.
+              Impersonating tenant user {impersonation.userId} for{" "}
+              {impersonation.reason}. Expires{" "}
+              {new Date(impersonation.expiresAt).toLocaleTimeString()}. Platform
+              actions are still audited as {admin.email}.
             </span>
             <form action={stopImpersonationAction}>
-              <Button type="submit" size="sm" variant="outline" className="border-zinc-900 text-zinc-950 hover:bg-amber-300">
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                className="border-zinc-900 text-zinc-950 hover:bg-amber-300"
+              >
                 Exit impersonation
               </Button>
             </form>
@@ -57,8 +72,12 @@ export default async function PlatformAdminLayout({ children }: { children: Reac
                   <Shield className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="truncate text-sm font-semibold">Platform control plane</h1>
-                  <p className="truncate text-xs text-slate-500">{admin.email}</p>
+                  <h1 className="truncate text-sm font-semibold">
+                    Platform control plane
+                  </h1>
+                  <p className="truncate text-xs text-slate-500">
+                    {admin.email}
+                  </p>
                 </div>
               </div>
               <div className="hidden h-10 w-full max-w-xl items-center gap-3 rounded-md border border-slate-800 bg-slate-900 px-3 text-sm text-slate-500 md:flex">
@@ -70,10 +89,13 @@ export default async function PlatformAdminLayout({ children }: { children: Reac
 
           <div className="px-4 py-6 md:px-8">
             <div className="mb-6 flex items-center justify-between lg:hidden">
-            <Link href="/admin" className="flex items-center gap-2 text-sm font-semibold">
-              <Shield className="h-5 w-5 text-orange-500" />
-              Atlas Platform
-            </Link>
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 text-sm font-semibold"
+              >
+                <Shield className="h-5 w-5 text-orange-500" />
+                Atlas Platform
+              </Link>
             </div>
             {children}
           </div>

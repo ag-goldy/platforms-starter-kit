@@ -1,20 +1,25 @@
-import { db } from '@/db';
-import { organizations, tickets, ticketComments } from '@/db/schema';
-import { eq, and, asc } from 'drizzle-orm';
+import { db } from "@/db";
+import { organizations, tickets, ticketComments } from "@/db/schema";
+import { eq, and, asc } from "drizzle-orm";
 
 export interface SLAMetrics {
   firstResponseTime?: number; // in hours
   resolutionTime?: number; // in hours
   firstResponseAt?: Date;
   resolvedAt?: Date;
-  responseSLAStatus?: 'met' | 'warning' | 'breached' | 'not_applicable';
-  resolutionSLAStatus?: 'met' | 'warning' | 'breached' | 'not_applicable';
+  responseSLAStatus?: "met" | "warning" | "breached" | "not_applicable";
+  resolutionSLAStatus?: "met" | "warning" | "breached" | "not_applicable";
   responseSLATarget?: number; // in hours
   resolutionSLATarget?: number; // in hours
 }
 
-export type SLAPriority = 'P1' | 'P2' | 'P3' | 'P4';
-export type SLAClockStatus = 'met' | 'warning' | 'breached' | 'paused' | 'not_applicable';
+export type SLAPriority = "P1" | "P2" | "P3" | "P4";
+export type SLAClockStatus =
+  | "met"
+  | "warning"
+  | "breached"
+  | "paused"
+  | "not_applicable";
 
 export interface SLAClockInput {
   createdAt: Date;
@@ -58,13 +63,13 @@ export function getDefaultSLATargets(priority: string): {
   resolutionHours: number;
 } {
   switch (priority) {
-    case 'P1':
+    case "P1":
       return { responseHours: 1, resolutionHours: 4 };
-    case 'P2':
+    case "P2":
       return { responseHours: 4, resolutionHours: 24 };
-    case 'P3':
+    case "P3":
       return { responseHours: 24, resolutionHours: 72 };
-    case 'P4':
+    case "P4":
       return { responseHours: 48, resolutionHours: 168 }; // 7 days
     default:
       return { responseHours: 24, resolutionHours: 72 };
@@ -76,10 +81,10 @@ export function getDefaultSLATargets(priority: string): {
  */
 export function resolveSLATargets(
   priority: string,
-  policy?: OrgSLAPolicy | null
+  policy?: OrgSLAPolicy | null,
 ): { responseHours: number; resolutionHours: number } {
   const defaults = getDefaultSLATargets(priority);
-  const allowedPriorities: SLAPriority[] = ['P1', 'P2', 'P3', 'P4'];
+  const allowedPriorities: SLAPriority[] = ["P1", "P2", "P3", "P4"];
   if (!policy || !allowedPriorities.includes(priority as SLAPriority)) {
     return defaults;
   }
@@ -99,13 +104,13 @@ export function resolveSLATargets(
  */
 export async function getOrgSLATargets(
   orgId: string | null,
-  priority: string
+  priority: string,
 ): Promise<{ responseHours: number; resolutionHours: number }> {
   // Public tickets (no org) use default SLA targets
   if (!orgId) {
     return resolveSLATargets(priority, null);
   }
-  
+
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, orgId),
     columns: {
@@ -128,20 +133,20 @@ export async function getOrgSLATargets(
  */
 export function calculateSLAStatus(
   timeHours: number | undefined,
-  targetHours: number | undefined
-): 'met' | 'warning' | 'breached' | 'not_applicable' {
+  targetHours: number | undefined,
+): "met" | "warning" | "breached" | "not_applicable" {
   if (!timeHours || !targetHours) {
-    return 'not_applicable';
+    return "not_applicable";
   }
 
   const percentage = (timeHours / targetHours) * 100;
 
   if (percentage >= 100) {
-    return 'breached';
+    return "breached";
   } else if (percentage >= 80) {
-    return 'warning';
+    return "warning";
   } else {
-    return 'met';
+    return "met";
   }
 }
 
@@ -150,14 +155,23 @@ function addHours(date: Date, hours: number): Date {
 }
 
 function elapsedHours(start: Date, end: Date, totalPausedMs = 0): number {
-  return Math.max(0, end.getTime() - start.getTime() - totalPausedMs) / (1000 * 60 * 60);
+  return (
+    Math.max(0, end.getTime() - start.getTime() - totalPausedMs) /
+    (1000 * 60 * 60)
+  );
 }
 
 export function calculateSLAClock(input: SLAClockInput): SLAClockResult {
   const now = input.now ?? new Date();
   const warningThreshold = input.warningThreshold ?? 0.8;
-  const pausedStatuses = new Set(['WAITING_ON_CUSTOMER', 'PENDING_CUSTOMER', 'PENDING_INTERNAL']);
-  const isPaused = Boolean(input.pausedAt) || (input.status ? pausedStatuses.has(input.status) : false);
+  const pausedStatuses = new Set([
+    "WAITING_ON_CUSTOMER",
+    "PENDING_CUSTOMER",
+    "PENDING_INTERNAL",
+  ]);
+  const isPaused =
+    Boolean(input.pausedAt) ||
+    (input.status ? pausedStatuses.has(input.status) : false);
 
   const responseTarget = input.responseTargetHours ?? undefined;
   const resolutionTarget = input.resolutionTargetHours ?? undefined;
@@ -172,28 +186,41 @@ export function calculateSLAClock(input: SLAClockInput): SLAClockResult {
     ? elapsedHours(input.createdAt, resolutionEnd, input.totalPausedMs)
     : undefined;
 
-  const toClockStatus = (elapsed: number | undefined, target: number | undefined): SLAClockStatus => {
-    if (!target || elapsed === undefined) return 'not_applicable';
-    if (isPaused) return 'paused';
-    if (elapsed >= target) return 'breached';
-    if (elapsed >= target * warningThreshold) return 'warning';
-    return 'met';
+  const toClockStatus = (
+    elapsed: number | undefined,
+    target: number | undefined,
+  ): SLAClockStatus => {
+    if (!target || elapsed === undefined) return "not_applicable";
+    if (isPaused) return "paused";
+    if (elapsed >= target) return "breached";
+    if (elapsed >= target * warningThreshold) return "warning";
+    return "met";
   };
 
   return {
     responseElapsedHours: responseElapsed,
     resolutionElapsedHours: resolutionElapsed,
-    responseDueAt: responseTarget ? addHours(input.createdAt, responseTarget) : undefined,
-    resolutionDueAt: resolutionTarget ? addHours(input.createdAt, resolutionTarget) : undefined,
-    responseStatus: input.firstResponseAt ? 'met' : toClockStatus(responseElapsed, responseTarget),
-    resolutionStatus: input.resolvedAt ? 'met' : toClockStatus(resolutionElapsed, resolutionTarget),
+    responseDueAt: responseTarget
+      ? addHours(input.createdAt, responseTarget)
+      : undefined,
+    resolutionDueAt: resolutionTarget
+      ? addHours(input.createdAt, resolutionTarget)
+      : undefined,
+    responseStatus: input.firstResponseAt
+      ? "met"
+      : toClockStatus(responseElapsed, responseTarget),
+    resolutionStatus: input.resolvedAt
+      ? "met"
+      : toClockStatus(resolutionElapsed, resolutionTarget),
   };
 }
 
 /**
  * Get SLA metrics for a ticket
  */
-export async function getTicketSLAMetrics(ticketId: string): Promise<SLAMetrics> {
+export async function getTicketSLAMetrics(
+  ticketId: string,
+): Promise<SLAMetrics> {
   const ticket = await db.query.tickets.findFirst({
     where: eq(tickets.id, ticketId),
     columns: {
@@ -210,7 +237,7 @@ export async function getTicketSLAMetrics(ticketId: string): Promise<SLAMetrics>
   });
 
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
 
   // Get default targets if not set
@@ -240,7 +267,7 @@ export async function getTicketSLAMetrics(ticketId: string): Promise<SLAMetrics>
     const comments = await db.query.ticketComments.findMany({
       where: and(
         eq(ticketComments.ticketId, ticketId),
-        eq(ticketComments.isInternal, false)
+        eq(ticketComments.isInternal, false),
       ),
       orderBy: [asc(ticketComments.createdAt)],
       with: {
@@ -271,8 +298,9 @@ export async function getTicketSLAMetrics(ticketId: string): Promise<SLAMetrics>
   const resolvedAt = toDate(ticket.resolvedAt);
 
   if (resolvedAt && createdAt) {
-    resolutionTime = (resolvedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-  } else if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
+    resolutionTime =
+      (resolvedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+  } else if (ticket.status === "RESOLVED" || ticket.status === "CLOSED") {
     // If resolved but no resolvedAt timestamp, use updatedAt as fallback
     const ticketWithUpdated = await db.query.tickets.findFirst({
       where: eq(tickets.id, ticketId),
@@ -284,7 +312,8 @@ export async function getTicketSLAMetrics(ticketId: string): Promise<SLAMetrics>
     if (ticketWithUpdated && createdAt) {
       const updatedAt = toDate(ticketWithUpdated.updatedAt);
       if (updatedAt) {
-        resolutionTime = (updatedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        resolutionTime =
+          (updatedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
       }
     }
   }
@@ -326,7 +355,7 @@ export async function updateFirstResponseTime(ticketId: string) {
  * Update resolution timestamp when ticket is resolved/closed
  */
 export async function updateResolutionTime(ticketId: string, status: string) {
-  if (status === 'RESOLVED' || status === 'CLOSED') {
+  if (status === "RESOLVED" || status === "CLOSED") {
     const ticket = await db.query.tickets.findFirst({
       where: eq(tickets.id, ticketId),
       columns: {

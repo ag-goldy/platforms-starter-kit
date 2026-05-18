@@ -1,16 +1,18 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { ticketAssignmentRules, users, internalGroups } from '@/db/schema';
-import { requireInternalAdmin } from '@/lib/auth/permissions';
-import { and, eq, desc } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { db } from "@/db";
+import { ticketAssignmentRules, users, internalGroups } from "@/db/schema";
+import { requireInternalAdmin } from "@/lib/auth/permissions";
+import { and, eq, desc } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 const conditionsSchema = z.object({
   requestTypeIds: z.array(z.string().uuid()).optional(),
-  category: z.array(z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST'])).optional(),
-  priority: z.array(z.enum(['P1', 'P2', 'P3', 'P4'])).optional(),
+  category: z
+    .array(z.enum(["INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST"]))
+    .optional(),
+  priority: z.array(z.enum(["P1", "P2", "P3", "P4"])).optional(),
   siteId: z.string().uuid().optional(),
   keywords: z.array(z.string()).optional(),
 });
@@ -21,7 +23,7 @@ const assignmentRuleSchema = z.object({
   isActive: z.boolean().default(true),
   priority: z.number().int().min(0).max(100).default(0),
   conditions: conditionsSchema,
-  strategy: z.enum(['specific_user', 'round_robin', 'load_balance', 'group']),
+  strategy: z.enum(["specific_user", "round_robin", "load_balance", "group"]),
   assigneeId: z.string().uuid().optional(),
   internalGroupId: z.string().uuid().optional(),
 });
@@ -33,7 +35,10 @@ export async function getAssignmentRules(orgId: string) {
 
   const rules = await db.query.ticketAssignmentRules.findMany({
     where: eq(ticketAssignmentRules.orgId, orgId),
-    orderBy: [desc(ticketAssignmentRules.priority), desc(ticketAssignmentRules.createdAt)],
+    orderBy: [
+      desc(ticketAssignmentRules.priority),
+      desc(ticketAssignmentRules.createdAt),
+    ],
     with: {
       assignee: {
         columns: { id: true, name: true, email: true },
@@ -49,7 +54,7 @@ export async function getAssignmentRules(orgId: string) {
 
 export async function createAssignmentRule(
   orgId: string,
-  data: AssignmentRuleInput
+  data: AssignmentRuleInput,
 ) {
   await requireInternalAdmin();
   const validated = assignmentRuleSchema.parse(data);
@@ -76,7 +81,7 @@ export async function createAssignmentRule(
 export async function updateAssignmentRule(
   orgId: string,
   ruleId: string,
-  data: AssignmentRuleInput
+  data: AssignmentRuleInput,
 ) {
   await requireInternalAdmin();
   const validated = assignmentRuleSchema.parse(data);
@@ -94,14 +99,16 @@ export async function updateAssignmentRule(
       internalGroupId: validated.internalGroupId || null,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(ticketAssignmentRules.id, ruleId),
-      eq(ticketAssignmentRules.orgId, orgId)
-    ))
+    .where(
+      and(
+        eq(ticketAssignmentRules.id, ruleId),
+        eq(ticketAssignmentRules.orgId, orgId),
+      ),
+    )
     .returning();
 
   if (!rule) {
-    throw new Error('Rule not found');
+    throw new Error("Rule not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/settings/assignment-rules`);
@@ -113,14 +120,16 @@ export async function deleteAssignmentRule(orgId: string, ruleId: string) {
 
   const [rule] = await db
     .delete(ticketAssignmentRules)
-    .where(and(
-      eq(ticketAssignmentRules.id, ruleId),
-      eq(ticketAssignmentRules.orgId, orgId)
-    ))
+    .where(
+      and(
+        eq(ticketAssignmentRules.id, ruleId),
+        eq(ticketAssignmentRules.orgId, orgId),
+      ),
+    )
     .returning();
 
   if (!rule) {
-    throw new Error('Rule not found');
+    throw new Error("Rule not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/settings/assignment-rules`);
@@ -130,7 +139,7 @@ export async function deleteAssignmentRule(orgId: string, ruleId: string) {
 export async function toggleAssignmentRule(
   orgId: string,
   ruleId: string,
-  isActive: boolean
+  isActive: boolean,
 ) {
   await requireInternalAdmin();
 
@@ -140,14 +149,16 @@ export async function toggleAssignmentRule(
       isActive,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(ticketAssignmentRules.id, ruleId),
-      eq(ticketAssignmentRules.orgId, orgId)
-    ))
+    .where(
+      and(
+        eq(ticketAssignmentRules.id, ruleId),
+        eq(ticketAssignmentRules.orgId, orgId),
+      ),
+    )
     .returning();
 
   if (!rule) {
-    throw new Error('Rule not found');
+    throw new Error("Rule not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/settings/assignment-rules`);
@@ -164,7 +175,7 @@ export async function getAssignableUsers(_orgId: string) {
   });
 
   const groups = await db.query.internalGroups.findMany({
-    where: eq(internalGroups.scope, 'PLATFORM'),
+    where: eq(internalGroups.scope, "PLATFORM"),
     columns: { id: true, name: true },
     orderBy: [internalGroups.name],
   });

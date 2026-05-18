@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   HardDrive,
   Server,
@@ -13,18 +13,18 @@ import {
   MoreHorizontal,
   RefreshCw,
   ExternalLink,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/toast';
-import type { Asset, ZabbixHost } from '@/db/schema';
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/toast";
+import type { Asset, ZabbixHost } from "@/db/schema";
 
 interface AssetsSlideOverProps {
   subdomain: string;
@@ -33,23 +33,25 @@ interface AssetsSlideOverProps {
 }
 
 export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
-  const [assets, setAssets] = useState<(Asset & { zabbixHost?: ZabbixHost })[]>([]);
+  const [assets, setAssets] = useState<(Asset & { zabbixHost?: ZabbixHost })[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { error: showError, info } = useToast();
 
   const fetchAssets = async () => {
     if (!org?.id) return;
-    
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/assets/org/${org.id}`);
-      if (!response.ok) throw new Error('Failed to fetch assets');
+      if (!response.ok) throw new Error("Failed to fetch assets");
       const data = await response.json();
       setAssets(data.assets || []);
     } catch {
-      showError('Failed to load assets. Please try again.');
+      showError("Failed to load assets. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -58,15 +60,15 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
   useEffect(() => {
     const fetchAssetsData = async () => {
       if (!org?.id) return;
-      
+
       setIsLoading(true);
       try {
         const response = await fetch(`/api/assets/org/${org.id}`);
-        if (!response.ok) throw new Error('Failed to fetch assets');
+        if (!response.ok) throw new Error("Failed to fetch assets");
         const data = await response.json();
         setAssets(data.assets || []);
       } catch {
-        showError('Failed to load assets. Please try again.');
+        showError("Failed to load assets. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -77,46 +79,47 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
   const handleSyncWithZabbix = async () => {
     try {
       const response = await fetch(`/api/zabbix/sync?orgId=${org?.id}`, {
-        method: 'POST',
+        method: "POST",
       });
-      if (!response.ok) throw new Error('Sync failed');
-      
-      info('Zabbix synchronization has been initiated.');
-      
+      if (!response.ok) throw new Error("Sync failed");
+
+      info("Zabbix synchronization has been initiated.");
+
       // Refresh after a delay
       setTimeout(fetchAssets, 3000);
     } catch {
-      showError('Could not sync with Zabbix. Please check your configuration.');
+      showError("Could not sync with Zabbix. Please check your configuration.");
     }
   };
 
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch =
-      searchQuery === '' ||
+      searchQuery === "" ||
       asset.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.hostname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.ipAddress?.includes(searchQuery);
 
     const matchesStatus =
-      statusFilter === 'all' || asset.status?.toLowerCase() === statusFilter.toLowerCase();
+      statusFilter === "all" ||
+      asset.status?.toLowerCase() === statusFilter.toLowerCase();
 
     return matchesSearch && matchesStatus;
   });
 
   const getAssetHealth = (asset: Asset & { zabbixHost?: ZabbixHost }) => {
-    if (!asset.zabbixHostId) return 'unmonitored';
-    if (asset.zabbixHost?.available === '1') return 'online';
-    if (asset.zabbixHost?.available === '2') return 'offline';
-    return 'issues';
+    if (!asset.zabbixHostId) return "unmonitored";
+    if (asset.zabbixHost?.available === "1") return "online";
+    if (asset.zabbixHost?.available === "2") return "offline";
+    return "issues";
   };
 
   const getHealthIcon = (health: string) => {
     switch (health) {
-      case 'online':
+      case "online":
         return <Wifi className="w-4 h-4 text-green-500" />;
-      case 'offline':
+      case "offline":
         return <WifiOff className="w-4 h-4 text-red-500" />;
-      case 'issues':
+      case "issues":
         return <AlertTriangle className="w-4 h-4 text-amber-500" />;
       default:
         return <HardDrive className="w-4 h-4 text-stone-400" />;
@@ -125,12 +128,24 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
 
   const getHealthBadge = (health: string) => {
     switch (health) {
-      case 'online':
-        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Online</Badge>;
-      case 'offline':
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Offline</Badge>;
-      case 'issues':
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Issues</Badge>;
+      case "online":
+        return (
+          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+            Online
+          </Badge>
+        );
+      case "offline":
+        return (
+          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+            Offline
+          </Badge>
+        );
+      case "issues":
+        return (
+          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+            Issues
+          </Badge>
+        );
       default:
         return <Badge variant="outline">Unmonitored</Badge>;
     }
@@ -138,11 +153,13 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'active':
+      case "active":
         return <Badge className="bg-green-100 text-green-700">Active</Badge>;
-      case 'maintenance':
-        return <Badge className="bg-amber-100 text-amber-700">Maintenance</Badge>;
-      case 'retired':
+      case "maintenance":
+        return (
+          <Badge className="bg-amber-100 text-amber-700">Maintenance</Badge>
+        );
+      case "retired":
         return <Badge className="bg-stone-100 text-stone-700">Retired</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -156,7 +173,9 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-stone-900">Assets</h2>
-            <p className="text-sm text-stone-500">Manage your infrastructure assets</p>
+            <p className="text-sm text-stone-500">
+              Manage your infrastructure assets
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -207,21 +226,27 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
           <div className="flex items-center justify-center h-32">
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full"
             />
           </div>
         ) : filteredAssets.length === 0 ? (
           <div className="text-center py-12">
             <Server className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-stone-900 mb-2">No assets found</h3>
+            <h3 className="text-lg font-medium text-stone-900 mb-2">
+              No assets found
+            </h3>
             <p className="text-stone-500 mb-6">
               {assets.length === 0
                 ? "You haven't added any assets yet."
                 : "No assets match your search criteria."}
             </p>
             {assets.length === 0 && (
-              <Button onClick={handleSyncWithZabbix} variant="outline" className="gap-2">
+              <Button
+                onClick={handleSyncWithZabbix}
+                variant="outline"
+                className="gap-2"
+              >
                 <RefreshCw className="w-4 h-4" />
                 Sync with Zabbix
               </Button>
@@ -245,7 +270,9 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-stone-900">{asset.name}</h3>
+                          <h3 className="font-medium text-stone-900">
+                            {asset.name}
+                          </h3>
                           {getHealthBadge(health)}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-sm text-stone-500">
@@ -253,7 +280,9 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
                             <span className="font-mono">{asset.hostname}</span>
                           )}
                           {asset.ipAddress && (
-                            <span className="font-mono text-stone-400">{asset.ipAddress}</span>
+                            <span className="font-mono text-stone-400">
+                              {asset.ipAddress}
+                            </span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-2">
@@ -266,7 +295,11 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -293,20 +326,26 @@ export function AssetsSlideOver({ org }: AssetsSlideOverProps) {
       <div className="px-6 py-3 bg-white border-t border-stone-200">
         <div className="flex items-center justify-between text-sm">
           <span className="text-stone-500">
-            {filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}
+            {filteredAssets.length} asset
+            {filteredAssets.length !== 1 ? "s" : ""}
           </span>
           <div className="flex items-center gap-4 text-stone-500">
             <span className="flex items-center gap-1">
               <Wifi className="w-3 h-3 text-green-500" />
-              {assets.filter((a) => getAssetHealth(a) === 'online').length} online
+              {assets.filter((a) => getAssetHealth(a) === "online").length}{" "}
+              online
             </span>
             <span className="flex items-center gap-1">
               <WifiOff className="w-3 h-3 text-red-500" />
-              {assets.filter((a) => getAssetHealth(a) === 'offline').length} offline
+              {
+                assets.filter((a) => getAssetHealth(a) === "offline").length
+              }{" "}
+              offline
             </span>
             <span className="flex items-center gap-1">
               <AlertTriangle className="w-3 h-3 text-amber-500" />
-              {assets.filter((a) => getAssetHealth(a) === 'issues').length} issues
+              {assets.filter((a) => getAssetHealth(a) === "issues").length}{" "}
+              issues
             </span>
           </div>
         </div>

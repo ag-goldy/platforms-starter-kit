@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/toast';
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
 import {
   Loader2,
   RefreshCw,
@@ -32,9 +32,9 @@ import {
   Plus,
   Settings,
   Trash2,
-} from 'lucide-react';
-import { formatDateTime } from '@/lib/utils/date';
-import { PageHeaderWithBack } from '@/components/navigation/back-button';
+} from "lucide-react";
+import { formatDateTime } from "@/lib/utils/date";
+import { PageHeaderWithBack } from "@/components/navigation/back-button";
 
 interface Organization {
   id: string;
@@ -72,23 +72,26 @@ export default function ZabbixAdminPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ZabbixConfig | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ZabbixConfig | null>(null);
-  
+
   // Form state
-  const [selectedOrgId, setSelectedOrgId] = useState('');
-  const [apiUrl, setApiUrl] = useState('');
-  const [apiToken, setApiToken] = useState('');
-  const [syncInterval, setSyncInterval] = useState('5');
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [apiUrl, setApiUrl] = useState("");
+  const [apiToken, setApiToken] = useState("");
+  const [syncInterval, setSyncInterval] = useState("5");
   const [isActive, setIsActive] = useState(true);
-  
+
   // Test connection result
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   // Fetch configs and organizations on mount
   const fetchData = useCallback(async () => {
     try {
       const [configsRes, orgsRes] = await Promise.all([
-        fetch('/api/admin/zabbix'),
-        fetch('/api/organizations'),
+        fetch("/api/admin/zabbix"),
+        fetch("/api/organizations"),
       ]);
 
       if (configsRes.ok) {
@@ -101,8 +104,8 @@ export default function ZabbixAdminPage() {
         setOrganizations(orgsData.organizations || []);
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
-      showError('Failed to load data');
+      console.error("Failed to fetch data:", error);
+      showError("Failed to load data");
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +117,7 @@ export default function ZabbixAdminPage() {
 
   const handleTestConnection = async () => {
     if (!apiUrl || !apiToken) {
-      showError('Please enter API URL and Token');
+      showError("Please enter API URL and Token");
       return;
     }
 
@@ -122,22 +125,29 @@ export default function ZabbixAdminPage() {
     setTestResult(null);
 
     try {
-      const response = await fetch('/api/admin/zabbix/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/zabbix/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiUrl, apiToken }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Connection test failed');
+        throw new Error(data.error || "Connection test failed");
       }
 
-      setTestResult({ success: true, message: data.message || 'Connection successful!' });
+      setTestResult({
+        success: true,
+        message: data.message || "Connection successful!",
+      });
     } catch (error) {
-      setTestResult({ success: false, message: error instanceof Error ? error.message : 'Connection test failed' });
-      showError('Failed to test connection');
+      setTestResult({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Connection test failed",
+      });
+      showError("Failed to test connection");
     } finally {
       setIsTesting(false);
     }
@@ -145,16 +155,16 @@ export default function ZabbixAdminPage() {
 
   const handleSave = async () => {
     if (!selectedOrgId || !apiUrl || !apiToken) {
-      showError('Please fill in all required fields');
+      showError("Please fill in all required fields");
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response = await fetch('/api/admin/zabbix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/zabbix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgId: selectedOrgId,
           apiUrl,
@@ -167,15 +177,15 @@ export default function ZabbixAdminPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to save configuration');
+        throw new Error(data.error || "Failed to save configuration");
       }
 
-      success('Configuration saved successfully');
+      success("Configuration saved successfully");
       resetForm();
       setShowForm(false);
       fetchData();
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Failed to save');
+      showError(error instanceof Error ? error.message : "Failed to save");
     } finally {
       setIsSaving(false);
     }
@@ -185,22 +195,22 @@ export default function ZabbixAdminPage() {
     setIsSyncing(orgId);
 
     try {
-      const response = await fetch('/api/admin/zabbix/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/zabbix/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orgId }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Sync failed');
+        throw new Error(data.error || "Sync failed");
       }
 
-      success(data.message || 'Sync completed');
+      success(data.message || "Sync completed");
       fetchData();
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Sync failed');
+      showError(error instanceof Error ? error.message : "Sync failed");
     } finally {
       setIsSyncing(null);
     }
@@ -210,21 +220,21 @@ export default function ZabbixAdminPage() {
     setIsBulkSyncing(true);
 
     try {
-      const response = await fetch('/api/admin/zabbix/bulk-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/zabbix/bulk-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Bulk sync failed');
+        throw new Error(data.error || "Bulk sync failed");
       }
 
-      success(data.message || 'Bulk sync completed');
+      success(data.message || "Bulk sync completed");
       fetchData();
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Bulk sync failed');
+      showError(error instanceof Error ? error.message : "Bulk sync failed");
     } finally {
       setIsBulkSyncing(false);
     }
@@ -234,23 +244,23 @@ export default function ZabbixAdminPage() {
     setIsDeleting(config.orgId);
 
     try {
-      const response = await fetch('/api/admin/zabbix/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/zabbix/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orgId: config.orgId }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Delete failed');
+        throw new Error(data.error || "Delete failed");
       }
 
-      success('Configuration deleted');
+      success("Configuration deleted");
       setDeleteConfirm(null);
       fetchData();
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Delete failed');
+      showError(error instanceof Error ? error.message : "Delete failed");
     } finally {
       setDeleteConfirm(null);
       setIsDeleting(null);
@@ -258,10 +268,10 @@ export default function ZabbixAdminPage() {
   };
 
   const resetForm = () => {
-    setSelectedOrgId('');
-    setApiUrl('');
-    setApiToken('');
-    setSyncInterval('5');
+    setSelectedOrgId("");
+    setApiUrl("");
+    setApiToken("");
+    setSyncInterval("5");
     setIsActive(true);
     setTestResult(null);
     setEditingConfig(null);
@@ -286,7 +296,9 @@ export default function ZabbixAdminPage() {
 
   // Get orgs without Zabbix config
   const availableOrgs = organizations.filter(
-    org => !configs.some(c => c.config.orgId === org.id) || editingConfig?.orgId === org.id
+    (org) =>
+      !configs.some((c) => c.config.orgId === org.id) ||
+      editingConfig?.orgId === org.id,
   );
 
   if (isLoading) {
@@ -310,7 +322,10 @@ export default function ZabbixAdminPage() {
             <Button
               variant="outline"
               onClick={handleBulkSync}
-              disabled={isBulkSyncing || configs.filter(c => c.config.isActive).length === 0}
+              disabled={
+                isBulkSyncing ||
+                configs.filter((c) => c.config.isActive).length === 0
+              }
             >
               {isBulkSyncing ? (
                 <>
@@ -346,22 +361,34 @@ export default function ZabbixAdminPage() {
           </Card>
         ) : (
           configs.map(({ config, org }) => (
-            <Card key={config.id} className={!config.isActive ? 'opacity-75' : ''}>
+            <Card
+              key={config.id}
+              className={!config.isActive ? "opacity-75" : ""}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{org?.name || 'Unknown Organization'}</h3>
-                      <Badge variant={config.isActive ? 'default' : 'secondary'}>
-                        {config.isActive ? 'Active' : 'Inactive'}
+                      <h3 className="font-semibold">
+                        {org?.name || "Unknown Organization"}
+                      </h3>
+                      <Badge
+                        variant={config.isActive ? "default" : "secondary"}
+                      >
+                        {config.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                     <p className="text-sm text-gray-500">{config.apiUrl}</p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>Sync interval: {config.syncIntervalMinutes} min</span>
+                      <span>
+                        Sync interval: {config.syncIntervalMinutes} min
+                      </span>
                       <span>•</span>
                       <span>
-                        Last synced: {config.lastSyncedAt ? formatDateTime(config.lastSyncedAt) : 'Never'}
+                        Last synced:{" "}
+                        {config.lastSyncedAt
+                          ? formatDateTime(config.lastSyncedAt)
+                          : "Never"}
                       </span>
                     </div>
                   </div>
@@ -412,7 +439,9 @@ export default function ZabbixAdminPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingConfig ? 'Edit Zabbix Configuration' : 'Add Zabbix Configuration'}
+              {editingConfig
+                ? "Edit Zabbix Configuration"
+                : "Add Zabbix Configuration"}
             </DialogTitle>
             <DialogDescription>
               Configure Zabbix API connection for monitoring integration
@@ -451,7 +480,8 @@ export default function ZabbixAdminPage() {
                 onChange={(e) => setApiUrl(e.target.value)}
               />
               <p className="text-xs text-gray-500">
-                The URL to your Zabbix server (e.g., https://zabbix.example.com or https://zabbix.example.com/api_jsonrpc.php)
+                The URL to your Zabbix server (e.g., https://zabbix.example.com
+                or https://zabbix.example.com/api_jsonrpc.php)
               </p>
             </div>
 
@@ -500,10 +530,7 @@ export default function ZabbixAdminPage() {
                   When disabled, monitoring data will not be synced
                 </p>
               </div>
-              <Switch
-                checked={isActive}
-                onCheckedChange={setIsActive}
-              />
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
 
             {/* Test Connection Result */}
@@ -511,8 +538,8 @@ export default function ZabbixAdminPage() {
               <div
                 className={`flex items-center gap-2 rounded-lg p-3 text-sm ${
                   testResult.success
-                    ? 'bg-green-50 text-green-700 border border-green-200'
-                    : 'bg-red-50 text-red-700 border border-red-200'
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
                 }`}
               >
                 {testResult.success ? (
@@ -540,7 +567,7 @@ export default function ZabbixAdminPage() {
                   Testing...
                 </>
               ) : (
-                'Test Connection'
+                "Test Connection"
               )}
             </Button>
             <Button
@@ -553,7 +580,7 @@ export default function ZabbixAdminPage() {
                   Saving...
                 </>
               ) : (
-                'Save Configuration'
+                "Save Configuration"
               )}
             </Button>
           </DialogFooter>
@@ -561,14 +588,18 @@ export default function ZabbixAdminPage() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+      <Dialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Configuration</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the Zabbix configuration for{' '}
-              {organizations.find(o => o.id === deleteConfirm?.orgId)?.name}?
-              <br /><br />
+              Are you sure you want to delete the Zabbix configuration for{" "}
+              {organizations.find((o) => o.id === deleteConfirm?.orgId)?.name}?
+              <br />
+              <br />
               This will stop all monitoring sync for this organization.
             </DialogDescription>
           </DialogHeader>

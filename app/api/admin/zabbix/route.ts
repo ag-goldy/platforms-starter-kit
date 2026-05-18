@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { zabbixConfigs, organizations } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/permissions';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { zabbixConfigs, organizations } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/permissions";
+import { z } from "zod";
 
 // Schema for creating/updating Zabbix config
 const zabbixConfigSchema = z.object({
@@ -30,16 +30,13 @@ export async function GET() {
 
     return NextResponse.json({ configs });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error('Failed to fetch Zabbix configs:', error);
+    console.error("Failed to fetch Zabbix configs:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch configurations' },
-      { status: 500 }
+      { error: "Failed to fetch configurations" },
+      { status: 500 },
     );
   }
 }
@@ -85,24 +82,24 @@ export async function POST(request: NextRequest) {
         .returning();
     }
 
-    return NextResponse.json({ config, message: 'Configuration saved successfully' });
+    return NextResponse.json({
+      config,
+      message: "Configuration saved successfully",
+    });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
-        { status: 400 }
+        { error: "Invalid data", details: error.errors },
+        { status: 400 },
       );
     }
-    console.error('Failed to save Zabbix config:', error);
+    console.error("Failed to save Zabbix config:", error);
     return NextResponse.json(
-      { error: 'Failed to save configuration' },
-      { status: 500 }
+      { error: "Failed to save configuration" },
+      { status: 500 },
     );
   }
 }

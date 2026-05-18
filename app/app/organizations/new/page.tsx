@@ -1,25 +1,28 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { createOrganizationWithOnboardingAction } from '@/app/app/actions/organizations';
-import { redirect } from 'next/navigation';
-import { OnboardingWizard, type OnboardingData } from '@/components/organizations/onboarding-wizard';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { createOrganizationWithOnboardingAction } from "@/app/app/actions/organizations";
+import { redirect } from "next/navigation";
+import {
+  OnboardingWizard,
+  type OnboardingData,
+} from "@/components/organizations/onboarding-wizard";
 
 export const metadata = {
-  title: 'New Organization | Atlas Helpdesk',
-  description: 'Create a new organization with guided setup',
+  title: "New Organization | Atlas Helpdesk",
+  description: "Create a new organization with guided setup",
 };
 
 export default async function NewOrganizationPage() {
   await requireInternalRole();
 
   async function handleOnboarding(data: OnboardingData) {
-    'use server';
+    "use server";
     const result = await createOrganizationWithOnboardingAction(data);
     redirect(`/app/organizations/${result.orgId}`);
   }
 
   async function handleCancel() {
-    'use server';
-    redirect('/app/organizations');
+    "use server";
+    redirect("/app/organizations");
   }
 
   return (
@@ -30,11 +33,8 @@ export default async function NewOrganizationPage() {
           Set up a new organization with our guided onboarding wizard
         </p>
       </div>
-      
-      <OnboardingWizard 
-        onComplete={handleOnboarding} 
-        onCancel={handleCancel}
-      />
+
+      <OnboardingWizard onComplete={handleOnboarding} onCancel={handleCancel} />
     </div>
   );
 }

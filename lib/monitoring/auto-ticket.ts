@@ -1,9 +1,9 @@
 /**
  * Zabbix Auto-Ticket Creation
- * 
+ *
  * Automatically creates tickets when Zabbix triggers fire
  * and adds comments when triggers resolve.
- * 
+ *
  * Features:
  * - Duplicate prevention (checks for existing open tickets)
  * - Rate limiting (max 10 auto-tickets per host per hour)
@@ -12,12 +12,19 @@
  * - Resolution comments when triggers clear
  */
 
-import { db } from '@/db';
-import { tickets, ticketAssets, ticketComments, zabbixConfigs, services, assets } from '@/db/schema';
-import { eq, and, desc, gte, notInArray } from 'drizzle-orm';
-import { redis } from '@/lib/redis';
-import { ZabbixTrigger } from '@/lib/zabbix/client';
-import { generateTicketKey } from '@/lib/tickets/keys';
+import { db } from "@/db";
+import {
+  tickets,
+  ticketAssets,
+  ticketComments,
+  zabbixConfigs,
+  services,
+  assets,
+} from "@/db/schema";
+import { eq, and, desc, gte, notInArray } from "drizzle-orm";
+import { redis } from "@/lib/redis";
+import { ZabbixTrigger } from "@/lib/zabbix/client";
+import { generateTicketKey } from "@/lib/tickets/keys";
 
 // Rate limit: max 10 auto-tickets per host per hour
 const RATE_LIMIT_MAX = 10;
@@ -25,12 +32,12 @@ const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 
 // Priority mapping: Zabbix → Atlas
 const PRIORITY_MAP: Record<string, string> = {
-  '5': 'P1', // Disaster
-  '4': 'P2', // High
-  '3': 'P3', // Average
-  '2': 'P3', // Warning
-  '1': 'P4', // Information
-  '0': 'P4', // Not classified
+  "5": "P1", // Disaster
+  "4": "P2", // High
+  "3": "P3", // Average
+  "2": "P3", // Warning
+  "1": "P4", // Information
+  "0": "P4", // Not classified
 };
 
 interface TriggerEvent {
@@ -39,7 +46,7 @@ interface TriggerEvent {
   hostName: string;
   description: string;
   priority: string;
-  value: '0' | '1'; // 0 = OK, 1 = Problem
+  value: "0" | "1"; // 0 = OK, 1 = Problem
   lastchange: string;
 }
 
@@ -74,7 +81,7 @@ async function checkRateLimit(hostId: string): Promise<boolean> {
 
   const key = getRateLimitKey(hostId);
   const current = await redis.incr(key);
-  
+
   // Set expiry on first increment
   if (current === 1) {
     await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS);
@@ -88,7 +95,7 @@ async function checkRateLimit(hostId: string): Promise<boolean> {
  */
 async function findExistingTicket(
   orgId: string,
-  triggerId: string
+  triggerId: string,
 ): Promise<{ id: string; key: string } | null> {
   // Look for tickets created in last 24 hours with matching trigger reference
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -97,7 +104,7 @@ async function findExistingTicket(
     where: and(
       eq(tickets.orgId, orgId),
       gte(tickets.createdAt, oneDayAgo),
-      notInArray(tickets.status, ['RESOLVED', 'CLOSED'])
+      notInArray(tickets.status, ["RESOLVED", "CLOSED"]),
     ),
     orderBy: [desc(tickets.createdAt)],
     limit: 10,
@@ -112,9 +119,10 @@ async function findExistingTicket(
     });
 
     // Check if any comment mentions this trigger ID
-    const hasTriggerRef = comments.some(c => 
-      c.content.includes(`[ZBX-${triggerId}]`) || 
-      c.content.includes(`Trigger ID: ${triggerId}`)
+    const hasTriggerRef = comments.some(
+      (c) =>
+        c.content.includes(`[ZBX-${triggerId}]`) ||
+        c.content.includes(`Trigger ID: ${triggerId}`),
     );
 
     if (hasTriggerRef) {
@@ -130,22 +138,19 @@ async function findExistingTicket(
  */
 async function findLinkedZabbixResources(
   orgId: string,
-  zabbixHostId: string
+  zabbixHostId: string,
 ): Promise<{ serviceId: string | null; assetId: string | null }> {
   // First check services
   const service = await db.query.services.findFirst({
     where: and(
       eq(services.orgId, orgId),
-      eq(services.zabbixHostId, zabbixHostId)
+      eq(services.zabbixHostId, zabbixHostId),
     ),
   });
 
   // Then check assets
   const asset = await db.query.assets.findFirst({
-    where: and(
-      eq(assets.orgId, orgId),
-      eq(assets.zabbixHostId, zabbixHostId)
-    ),
+    where: and(eq(assets.orgId, orgId), eq(assets.zabbixHostId, zabbixHostId)),
   });
 
   return {
@@ -159,34 +164,49 @@ async function findLinkedZabbixResources(
  */
 export async function createTicketFromTrigger(
   orgId: string,
-  event: TriggerEvent
-): Promise<{ success: boolean; ticketId?: string; ticketKey?: string; error?: string }> {
+  event: TriggerEvent,
+): Promise<{
+  success: boolean;
+  ticketId?: string;
+  ticketKey?: string;
+  error?: string;
+}> {
   try {
     // Check if auto-tickets are enabled
     const enabled = await isAutoTicketEnabled(orgId);
     if (!enabled) {
-      return { success: false, error: 'Auto-ticket creation disabled' };
+      return { success: false, error: "Auto-ticket creation disabled" };
     }
 
     // Rate limit check
     const withinLimit = await checkRateLimit(event.hostId);
     if (!withinLimit) {
-      console.warn(`[Auto-Ticket] Rate limit exceeded for host ${event.hostId}`);
-      return { success: false, error: 'Rate limit exceeded' };
+      console.warn(
+        `[Auto-Ticket] Rate limit exceeded for host ${event.hostId}`,
+      );
+      return { success: false, error: "Rate limit exceeded" };
     }
 
     // Check for existing ticket
     const existing = await findExistingTicket(orgId, event.triggerId);
     if (existing) {
-      console.log(`[Auto-Ticket] Ticket already exists for trigger ${event.triggerId}: ${existing.key}`);
-      return { success: false, error: `Ticket already exists: ${existing.key}` };
+      console.log(
+        `[Auto-Ticket] Ticket already exists for trigger ${event.triggerId}: ${existing.key}`,
+      );
+      return {
+        success: false,
+        error: `Ticket already exists: ${existing.key}`,
+      };
     }
 
     // Find linked asset/service
-    const linkedResources = await findLinkedZabbixResources(orgId, event.hostId);
+    const linkedResources = await findLinkedZabbixResources(
+      orgId,
+      event.hostId,
+    );
 
     // Map priority
-    const priority = PRIORITY_MAP[event.priority] || 'P3';
+    const priority = PRIORITY_MAP[event.priority] || "P3";
 
     // Generate ticket key
     const ticketKey = await generateTicketKey(orgId);
@@ -209,9 +229,9 @@ Trigger Details:
 - Detected at: ${new Date(parseInt(event.lastchange) * 1000).toISOString()}
 
 This is an automated alert. Please investigate and update the ticket with findings.`,
-        status: 'OPEN',
-        priority: priority as 'P1' | 'P2' | 'P3' | 'P4',
-        category: 'INCIDENT',
+        status: "OPEN",
+        priority: priority as "P1" | "P2" | "P3" | "P4",
+        category: "INCIDENT",
         serviceId: linkedResources.serviceId,
         // No requester for auto-tickets - they're system-generated
         requesterId: null,
@@ -245,17 +265,19 @@ This ticket was automatically created when the Zabbix trigger entered a problem 
       userId: null,
     });
 
-    console.log(`[Auto-Ticket] Created ticket ${ticket.key} for trigger ${event.triggerId}`);
+    console.log(
+      `[Auto-Ticket] Created ticket ${ticket.key} for trigger ${event.triggerId}`,
+    );
 
     return {
       success: true,
       ticketId: ticket.id,
       ticketKey: ticket.key,
     };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Auto-Ticket] Failed to create ticket:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("[Auto-Ticket] Failed to create ticket:", error);
     return { success: false, error: errorMessage };
   }
 }
@@ -265,7 +287,7 @@ This ticket was automatically created when the Zabbix trigger entered a problem 
  */
 export async function addResolutionComment(
   orgId: string,
-  event: TriggerEvent
+  event: TriggerEvent,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Find the ticket for this trigger
@@ -275,7 +297,7 @@ export async function addResolutionComment(
       where: and(
         eq(tickets.orgId, orgId),
         gte(tickets.createdAt, oneDayAgo),
-        eq(tickets.status, 'OPEN')
+        eq(tickets.status, "OPEN"),
       ),
       orderBy: [desc(tickets.createdAt)],
       limit: 20,
@@ -290,8 +312,8 @@ export async function addResolutionComment(
         limit: 10,
       });
 
-      const hasTriggerRef = comments.some(c => 
-        c.content.includes(`[ZBX-${event.triggerId}]`)
+      const hasTriggerRef = comments.some((c) =>
+        c.content.includes(`[ZBX-${event.triggerId}]`),
       );
 
       if (hasTriggerRef) {
@@ -301,8 +323,10 @@ export async function addResolutionComment(
     }
 
     if (!ticketId) {
-      console.log(`[Auto-Ticket] No open ticket found for resolved trigger ${event.triggerId}`);
-      return { success: false, error: 'No matching ticket found' };
+      console.log(
+        `[Auto-Ticket] No open ticket found for resolved trigger ${event.triggerId}`,
+      );
+      return { success: false, error: "No matching ticket found" };
     }
 
     // Add resolution comment
@@ -321,13 +345,15 @@ The Zabbix trigger has returned to a normal state. This may indicate the issue h
       userId: null,
     });
 
-    console.log(`[Auto-Ticket] Added resolution comment to ticket for trigger ${event.triggerId}`);
+    console.log(
+      `[Auto-Ticket] Added resolution comment to ticket for trigger ${event.triggerId}`,
+    );
 
     return { success: true };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Auto-Ticket] Failed to add resolution comment:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("[Auto-Ticket] Failed to add resolution comment:", error);
     return { success: false, error: errorMessage };
   }
 }
@@ -340,11 +366,18 @@ export async function processTriggerEvents(
   orgId: string,
   hostId: string,
   hostName: string,
-  triggers: ZabbixTrigger[]
-): Promise<Array<{ triggerId: string; action: 'created' | 'resolved' | 'skipped'; ticketKey?: string; error?: string }>> {
+  triggers: ZabbixTrigger[],
+): Promise<
+  Array<{
+    triggerId: string;
+    action: "created" | "resolved" | "skipped";
+    ticketKey?: string;
+    error?: string;
+  }>
+> {
   const results: Array<{
     triggerId: string;
-    action: 'created' | 'resolved' | 'skipped';
+    action: "created" | "resolved" | "skipped";
     ticketKey?: string;
     error?: string;
   }> = [];
@@ -356,16 +389,16 @@ export async function processTriggerEvents(
       hostName,
       description: trigger.description,
       priority: trigger.priority,
-      value: trigger.value as '0' | '1',
+      value: trigger.value as "0" | "1",
       lastchange: trigger.lastchange,
     };
 
-    if (trigger.value === '1') {
+    if (trigger.value === "1") {
       // Problem - create ticket
       const result = await createTicketFromTrigger(orgId, event);
       results.push({
         triggerId: trigger.triggerid,
-        action: result.success ? 'created' : 'skipped',
+        action: result.success ? "created" : "skipped",
         ticketKey: result.ticketKey,
         error: result.error,
       });
@@ -374,7 +407,7 @@ export async function processTriggerEvents(
       const result = await addResolutionComment(orgId, event);
       results.push({
         triggerId: trigger.triggerid,
-        action: result.success ? 'resolved' : 'skipped',
+        action: result.success ? "resolved" : "skipped",
         error: result.error,
       });
     }
@@ -388,20 +421,23 @@ export async function processTriggerEvents(
  */
 function getSeverityLabel(priority: string): string {
   const labels: Record<string, string> = {
-    '5': 'Disaster',
-    '4': 'High',
-    '3': 'Average',
-    '2': 'Warning',
-    '1': 'Information',
-    '0': 'Not classified',
+    "5": "Disaster",
+    "4": "High",
+    "3": "Average",
+    "2": "Warning",
+    "1": "Information",
+    "0": "Not classified",
   };
-  return labels[priority] || 'Unknown';
+  return labels[priority] || "Unknown";
 }
 
 /**
  * Get auto-ticket statistics for an org
  */
-export async function getAutoTicketStats(orgId: string, hours: number = 24): Promise<{
+export async function getAutoTicketStats(
+  orgId: string,
+  hours: number = 24,
+): Promise<{
   totalCreated: number;
   totalResolved: number;
   rateLimited: number;
@@ -410,22 +446,21 @@ export async function getAutoTicketStats(orgId: string, hours: number = 24): Pro
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const autoTickets = await db.query.tickets.findMany({
-    where: and(
-      eq(tickets.orgId, orgId),
-      gte(tickets.createdAt, since)
-    ),
+    where: and(eq(tickets.orgId, orgId), gte(tickets.createdAt, since)),
     columns: {
       id: true,
       subject: true,
     },
   });
 
-  const zabbixTickets = autoTickets.filter((ticket) => ticket.subject.startsWith('[AUTO]'));
+  const zabbixTickets = autoTickets.filter((ticket) =>
+    ticket.subject.startsWith("[AUTO]"),
+  );
 
   return {
     totalCreated: zabbixTickets.length,
     totalResolved: 0, // Would need to track this separately
-    rateLimited: 0,   // Would need to track this separately
+    rateLimited: 0, // Would need to track this separately
     duplicatesPrevented: 0, // Would need to track this separately
   };
 }

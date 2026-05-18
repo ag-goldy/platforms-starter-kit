@@ -1,7 +1,12 @@
 "use server";
 
 import { db } from "@/db";
-import { tickets, ticketMessages, ticketEvents, organizations } from "@/db/schema";
+import {
+  tickets,
+  ticketMessages,
+  ticketEvents,
+  organizations,
+} from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";

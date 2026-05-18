@@ -1,8 +1,8 @@
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { requireAuth as requireAuthFromPermissions } from './permissions';
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { requireAuth as requireAuthFromPermissions } from "./permissions";
 
 // Re-export requireAuth for backwards compatibility
 export const requireAuth = requireAuthFromPermissions;

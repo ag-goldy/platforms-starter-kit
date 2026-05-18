@@ -1,19 +1,19 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { kbArticles } from '@/db/schema';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { and, eq, desc, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
-import { generateKbKey } from '@/lib/kb/keys';
+import { db } from "@/db";
+import { kbArticles } from "@/db/schema";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { and, eq, desc, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { generateKbKey } from "@/lib/kb/keys";
 
 // Schema for customer KB article submission
 const submitKBArticleSchema = z.object({
   title: z.string().min(3).max(200),
   content: z.string().min(10),
   categoryId: z.string().uuid().optional().nullable(),
-  visibility: z.enum(['public', 'org_only']).default('org_only'),
+  visibility: z.enum(["public", "org_only"]).default("org_only"),
   isAnonymous: z.boolean().default(false),
   tags: z.array(z.string()).optional(),
 });
@@ -24,7 +24,7 @@ const submitKBArticleSchema = z.object({
  */
 export async function submitCustomerKBArticleAction(
   orgId: string,
-  data: z.input<typeof submitKBArticleSchema>
+  data: z.input<typeof submitKBArticleSchema>,
 ) {
   const { user } = await requireOrgMemberRole(orgId);
   const validated = submitKBArticleSchema.parse(data);
@@ -39,8 +39,10 @@ export async function submitCustomerKBArticleAction(
       title: validated.title,
       slug,
       content: validated.content,
-      excerpt: validated.content.slice(0, 200) + (validated.content.length > 200 ? '...' : ''),
-      status: 'pending_review', // Needs admin approval
+      excerpt:
+        validated.content.slice(0, 200) +
+        (validated.content.length > 200 ? "..." : ""),
+      status: "pending_review", // Needs admin approval
       visibility: validated.visibility,
       authorId: user.id,
       isAnonymous: validated.isAnonymous,
@@ -62,10 +64,7 @@ export async function getCustomerKBArticlesAction(orgId: string) {
   const { user } = await requireOrgMemberRole(orgId);
 
   const articles = await db.query.kbArticles.findMany({
-    where: and(
-      eq(kbArticles.orgId, orgId),
-      eq(kbArticles.authorId, user.id)
-    ),
+    where: and(eq(kbArticles.orgId, orgId), eq(kbArticles.authorId, user.id)),
     orderBy: [desc(kbArticles.createdAt)],
     with: {
       category: true,
@@ -81,7 +80,7 @@ export async function getCustomerKBArticlesAction(orgId: string) {
 export async function updateCustomerKBArticleAction(
   orgId: string,
   articleId: string,
-  data: z.input<typeof submitKBArticleSchema>
+  data: z.input<typeof submitKBArticleSchema>,
 ) {
   const { user } = await requireOrgMemberRole(orgId);
   const validated = submitKBArticleSchema.parse(data);
@@ -92,12 +91,12 @@ export async function updateCustomerKBArticleAction(
       eq(kbArticles.id, articleId),
       eq(kbArticles.orgId, orgId),
       eq(kbArticles.authorId, user.id),
-      eq(kbArticles.status, 'pending_review')
+      eq(kbArticles.status, "pending_review"),
     ),
   });
 
   if (!existing) {
-    throw new Error('Article not found or cannot be edited');
+    throw new Error("Article not found or cannot be edited");
   }
 
   const [updated] = await db
@@ -105,7 +104,9 @@ export async function updateCustomerKBArticleAction(
     .set({
       title: validated.title,
       content: validated.content,
-      excerpt: validated.content.slice(0, 200) + (validated.content.length > 200 ? '...' : ''),
+      excerpt:
+        validated.content.slice(0, 200) +
+        (validated.content.length > 200 ? "..." : ""),
       categoryId: validated.categoryId || null,
       visibility: validated.visibility,
       isAnonymous: validated.isAnonymous,
@@ -122,7 +123,10 @@ export async function updateCustomerKBArticleAction(
 /**
  * Delete customer's pending KB article
  */
-export async function deleteCustomerKBArticleAction(orgId: string, articleId: string) {
+export async function deleteCustomerKBArticleAction(
+  orgId: string,
+  articleId: string,
+) {
   const { user } = await requireOrgMemberRole(orgId);
 
   const existing = await db.query.kbArticles.findFirst({
@@ -130,12 +134,12 @@ export async function deleteCustomerKBArticleAction(orgId: string, articleId: st
       eq(kbArticles.id, articleId),
       eq(kbArticles.orgId, orgId),
       eq(kbArticles.authorId, user.id),
-      eq(kbArticles.status, 'pending_review')
+      eq(kbArticles.status, "pending_review"),
     ),
   });
 
   if (!existing) {
-    throw new Error('Article not found or cannot be deleted');
+    throw new Error("Article not found or cannot be deleted");
   }
 
   await db.delete(kbArticles).where(eq(kbArticles.id, articleId));
@@ -152,31 +156,33 @@ export async function approveKBArticleAction(
   articleId: string,
   publishOptions?: {
     categoryId?: string | null;
-    visibility?: 'public' | 'internal' | 'org_only';
-  }
+    visibility?: "public" | "internal" | "org_only";
+  },
 ) {
-  const { user } = await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  const { user } = await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const [updated] = await db
     .update(kbArticles)
     .set({
-      status: 'published',
+      status: "published",
       categoryId: publishOptions?.categoryId ?? undefined,
-      visibility: publishOptions?.visibility ?? 'org_only',
+      visibility: publishOptions?.visibility ?? "org_only",
       approvedById: user.id,
       approvedAt: new Date(),
       publishedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(kbArticles.id, articleId),
-      eq(kbArticles.orgId, orgId),
-      eq(kbArticles.status, 'pending_review')
-    ))
+    .where(
+      and(
+        eq(kbArticles.id, articleId),
+        eq(kbArticles.orgId, orgId),
+        eq(kbArticles.status, "pending_review"),
+      ),
+    )
     .returning();
 
   if (!updated) {
-    throw new Error('Article not found or not in pending review status');
+    throw new Error("Article not found or not in pending review status");
   }
 
   revalidatePath(`/s/[subdomain]/kb`);
@@ -189,26 +195,28 @@ export async function approveKBArticleAction(
 export async function rejectKBArticleAction(
   orgId: string,
   articleId: string,
-  reason: string
+  reason: string,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const [updated] = await db
     .update(kbArticles)
     .set({
-      status: 'archived',
+      status: "archived",
       rejectionReason: reason,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(kbArticles.id, articleId),
-      eq(kbArticles.orgId, orgId),
-      eq(kbArticles.status, 'pending_review')
-    ))
+    .where(
+      and(
+        eq(kbArticles.id, articleId),
+        eq(kbArticles.orgId, orgId),
+        eq(kbArticles.status, "pending_review"),
+      ),
+    )
     .returning();
 
   if (!updated) {
-    throw new Error('Article not found or not in pending review status');
+    throw new Error("Article not found or not in pending review status");
   }
 
   revalidatePath(`/s/[subdomain]/kb`);
@@ -219,12 +227,12 @@ export async function rejectKBArticleAction(
  * Admin: Get pending KB articles for review
  */
 export async function getPendingKBArticlesAction(orgId: string) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const articles = await db.query.kbArticles.findMany({
     where: and(
       eq(kbArticles.orgId, orgId),
-      eq(kbArticles.status, 'pending_review')
+      eq(kbArticles.status, "pending_review"),
     ),
     orderBy: [desc(kbArticles.createdAt)],
     with: {
@@ -251,7 +259,7 @@ export async function getCustomerVisibleKBArticlesAction(
   options?: {
     categoryId?: string;
     search?: string;
-  }
+  },
 ) {
   const { user } = await requireOrgMemberRole(orgId);
 
@@ -278,7 +286,7 @@ export async function getCustomerVisibleKBArticlesAction(
         ${kbArticles.title} ILIKE ${`%${options.search}%`}
         OR ${kbArticles.content} ILIKE ${`%${options.search}%`}
         OR ${kbArticles.tags} @> ${JSON.stringify([options.search])}::jsonb
-      )`
+      )`,
     );
   }
 
@@ -298,10 +306,13 @@ export async function getCustomerVisibleKBArticlesAction(
   });
 
   // Anonymize articles if needed
-  return articles.map(article => ({
+  return articles.map((article) => ({
     ...article,
-    author: article.isAnonymous && article.status === 'published' && article.visibility === 'public'
-      ? { id: '', name: 'Anonymous', email: '' }
-      : article.author,
+    author:
+      article.isAnonymous &&
+      article.status === "published" &&
+      article.visibility === "public"
+        ? { id: "", name: "Anonymous", email: "" }
+        : article.author,
   }));
 }

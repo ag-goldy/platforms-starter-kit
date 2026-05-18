@@ -17,7 +17,10 @@ export interface IntegrationProvider {
   testConnection(config: IntegrationConfig): Promise<IntegrationResult>;
 
   /** Send a notification (e.g., ticket created, status change) to the external service */
-  sendNotification(config: IntegrationConfig, payload: unknown): Promise<IntegrationResult>;
+  sendNotification(
+    config: IntegrationConfig,
+    payload: unknown,
+  ): Promise<IntegrationResult>;
 
   /** Sync data bidirectionally between Atlas and the external service */
   syncData(config: IntegrationConfig): Promise<IntegrationResult>;

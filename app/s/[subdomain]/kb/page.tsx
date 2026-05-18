@@ -1,34 +1,39 @@
-import { notFound, redirect } from 'next/navigation';
-import { db } from '@/db';
-import { organizations, kbCategories } from '@/db/schema';
-import { eq, and, asc } from 'drizzle-orm';
-import { ArticleList } from '@/components/kb/article-list';
-import type { Metadata } from 'next';
-import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { getCustomerVisibleKBArticlesAction } from '@/app/s/[subdomain]/actions/kb';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { Search, BookOpen, Plus } from 'lucide-react';
-import { PortalKBAdminLink } from '@/components/kb/portal-kb-admin-link';
+import { notFound, redirect } from "next/navigation";
+import { db } from "@/db";
+import { organizations, kbCategories } from "@/db/schema";
+import { eq, and, asc } from "drizzle-orm";
+import { ArticleList } from "@/components/kb/article-list";
+import type { Metadata } from "next";
+import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { getCustomerVisibleKBArticlesAction } from "@/app/s/[subdomain]/actions/kb";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Search, BookOpen, Plus } from "lucide-react";
+import { PortalKBAdminLink } from "@/components/kb/portal-kb-admin-link";
 
 interface KBHomePageProps {
   params: Promise<{ subdomain: string }>;
   searchParams: Promise<{ category?: string; search?: string }>;
 }
 
-export async function generateMetadata({ params }: KBHomePageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: KBHomePageProps): Promise<Metadata> {
   const { subdomain } = await params;
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.subdomain, subdomain),
   });
 
   return {
-    title: `Knowledge Base - ${org?.branding?.nameOverride || org?.name || 'Support'}`,
+    title: `Knowledge Base - ${org?.branding?.nameOverride || org?.name || "Support"}`,
   };
 }
 
-export default async function KBHomePage({ params, searchParams }: KBHomePageProps) {
+export default async function KBHomePage({
+  params,
+  searchParams,
+}: KBHomePageProps) {
   const { subdomain } = await params;
   const { category: categorySlug, search: searchQuery } = await searchParams;
 
@@ -52,10 +57,7 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
 
   // Get categories
   const categories = await db.query.kbCategories.findMany({
-    where: and(
-      eq(kbCategories.orgId, org.id),
-      eq(kbCategories.isPublic, true)
-    ),
+    where: and(eq(kbCategories.orgId, org.id), eq(kbCategories.isPublic, true)),
     orderBy: [asc(kbCategories.sortOrder), asc(kbCategories.name)],
   });
 
@@ -66,7 +68,7 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
       where: and(
         eq(kbCategories.orgId, org.id),
         eq(kbCategories.slug, categorySlug),
-        eq(kbCategories.isPublic, true)
+        eq(kbCategories.isPublic, true),
       ),
     });
   }
@@ -77,13 +79,13 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
     search: searchQuery,
   });
 
-  const displayTitle = selectedCategory 
-    ? `${selectedCategory.name}` 
-    : 'Knowledge Base';
-  
-  const displayDescription = selectedCategory?.description 
-    ? selectedCategory.description 
-    : 'Find answers to common questions and learn how to use our services';
+  const displayTitle = selectedCategory
+    ? `${selectedCategory.name}`
+    : "Knowledge Base";
+
+  const displayDescription = selectedCategory?.description
+    ? selectedCategory.description
+    : "Find answers to common questions and learn how to use our services";
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -119,7 +121,7 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
           <input
             type="text"
             name="search"
-            defaultValue={searchQuery || ''}
+            defaultValue={searchQuery || ""}
             placeholder="Search knowledge base..."
             className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-xl focus:border-black focus:ring-black text-base"
           />
@@ -132,9 +134,9 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
           <a
             href={`/s/${subdomain}/kb`}
             className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
-              !categorySlug 
-                ? 'bg-black text-white shadow-sm' 
-                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+              !categorySlug
+                ? "bg-black text-white shadow-sm"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
             }`}
           >
             All Articles
@@ -144,9 +146,9 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
               key={category.id}
               href={`/s/${subdomain}/kb?category=${category.slug}`}
               className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
-                categorySlug === category.slug 
-                  ? 'bg-black text-white shadow-sm' 
-                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                categorySlug === category.slug
+                  ? "bg-black text-white shadow-sm"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
               }`}
             >
               {category.name}
@@ -163,9 +165,10 @@ export default async function KBHomePage({ params, searchParams }: KBHomePagePro
         categorySlug={categorySlug}
         showSearch={false}
         showFilters={false}
-        emptyMessage={selectedCategory 
-          ? `No articles found in ${selectedCategory.name}.` 
-          : 'No articles available yet. Check back soon!'
+        emptyMessage={
+          selectedCategory
+            ? `No articles found in ${selectedCategory.name}.`
+            : "No articles available yet. Check back soon!"
         }
       />
     </div>

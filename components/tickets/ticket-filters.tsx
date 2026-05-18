@@ -1,23 +1,35 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { getAllTagsAction } from '@/app/app/actions/tags';
-import { getSavedSearchesAction, saveSearchAction, deleteSavedSearchAction } from '@/app/app/actions/searches';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, X, Bookmark } from 'lucide-react';
-import type { TicketTag } from '@/db/schema';
-import type { TicketFilters, TicketStatus, TicketPriority } from '@/lib/tickets/queries';
+} from "@/components/ui/select";
+import { getAllTagsAction } from "@/app/app/actions/tags";
+import {
+  getSavedSearchesAction,
+  saveSearchAction,
+  deleteSavedSearchAction,
+} from "@/app/app/actions/searches";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Search, X, Bookmark } from "lucide-react";
+import type { TicketTag } from "@/db/schema";
+import type {
+  TicketFilters,
+  TicketStatus,
+  TicketPriority,
+} from "@/lib/tickets/queries";
 
 interface TicketFiltersProps {
   organizations: { id: string; name: string }[];
@@ -41,25 +53,27 @@ export function TicketFilters({
   initialFilters,
 }: TicketFiltersProps) {
   const router = useRouter();
-  const [search, setSearch] = useState(initialFilters.search || '');
-  const [status, setStatus] = useState(initialFilters.status || 'all');
-  const [priority, setPriority] = useState(initialFilters.priority || 'all');
-  const [orgId, setOrgId] = useState(initialFilters.orgId || 'all');
-  const [assigneeId, setAssigneeId] = useState(initialFilters.assigneeId || 'all');
+  const [search, setSearch] = useState(initialFilters.search || "");
+  const [status, setStatus] = useState(initialFilters.status || "all");
+  const [priority, setPriority] = useState(initialFilters.priority || "all");
+  const [orgId, setOrgId] = useState(initialFilters.orgId || "all");
+  const [assigneeId, setAssigneeId] = useState(
+    initialFilters.assigneeId || "all",
+  );
   const [tags, setTags] = useState<TicketTag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
-    initialFilters.tagIds ? initialFilters.tagIds.split(',') : []
+    initialFilters.tagIds ? initialFilters.tagIds.split(",") : [],
   );
-  const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom || '');
-  const [dateTo, setDateTo] = useState(initialFilters.dateTo || '');
+  const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom || "");
+  const [dateTo, setDateTo] = useState(initialFilters.dateTo || "");
   const [searchInComments, setSearchInComments] = useState(
-    initialFilters.searchInComments === 'true'
+    initialFilters.searchInComments === "true",
   );
   const [savedSearches, setSavedSearches] = useState<
     Array<{ id: string; name: string; filters: TicketFilters }>
   >([]);
   const [showSaveSearch, setShowSaveSearch] = useState(false);
-  const [saveSearchName, setSaveSearchName] = useState('');
+  const [saveSearchName, setSaveSearchName] = useState("");
 
   useEffect(() => {
     async function loadTags() {
@@ -67,7 +81,7 @@ export function TicketFilters({
         const allTags = await getAllTagsAction();
         setTags(allTags);
       } catch (error) {
-        console.error('Failed to load tags:', error);
+        console.error("Failed to load tags:", error);
       }
     }
     loadTags();
@@ -79,7 +93,7 @@ export function TicketFilters({
         const searches = await getSavedSearchesAction();
         setSavedSearches(searches);
       } catch (error) {
-        console.error('Failed to load saved searches:', error);
+        console.error("Failed to load saved searches:", error);
       }
     }
     loadSavedSearches();
@@ -89,31 +103,32 @@ export function TicketFilters({
     e.preventDefault();
     const params = new URLSearchParams();
 
-    if (search.trim()) params.set('search', search.trim());
-    if (status !== 'all') params.set('status', status);
-    if (priority !== 'all') params.set('priority', priority);
-    if (orgId !== 'all') params.set('orgId', orgId);
-    if (assigneeId !== 'all') params.set('assigneeId', assigneeId);
-    if (selectedTagIds.length > 0) params.set('tagIds', selectedTagIds.join(','));
-    if (dateFrom) params.set('dateFrom', dateFrom);
-    if (dateTo) params.set('dateTo', dateTo);
-    if (searchInComments) params.set('searchInComments', 'true');
+    if (search.trim()) params.set("search", search.trim());
+    if (status !== "all") params.set("status", status);
+    if (priority !== "all") params.set("priority", priority);
+    if (orgId !== "all") params.set("orgId", orgId);
+    if (assigneeId !== "all") params.set("assigneeId", assigneeId);
+    if (selectedTagIds.length > 0)
+      params.set("tagIds", selectedTagIds.join(","));
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (searchInComments) params.set("searchInComments", "true");
 
     const query = params.toString();
-    router.push(query ? `/app/tickets?${query}` : '/app/tickets');
+    router.push(query ? `/app/tickets?${query}` : "/app/tickets");
   }
 
   function clearFilters() {
-    setSearch('');
-    setStatus('all');
-    setPriority('all');
-    setOrgId('all');
-    setAssigneeId('all');
+    setSearch("");
+    setStatus("all");
+    setPriority("all");
+    setOrgId("all");
+    setAssigneeId("all");
     setSelectedTagIds([]);
-    setDateFrom('');
-    setDateTo('');
+    setDateFrom("");
+    setDateTo("");
     setSearchInComments(false);
-    router.push('/app/tickets');
+    router.push("/app/tickets");
   }
 
   async function handleSaveSearch() {
@@ -121,10 +136,10 @@ export function TicketFilters({
 
     const filters = {
       search: search.trim() || undefined,
-      status: status !== 'all' ? [status as TicketStatus] : undefined,
-      priority: priority !== 'all' ? [priority as TicketPriority] : undefined,
-      orgId: orgId !== 'all' ? orgId : undefined,
-      assigneeId: assigneeId !== 'all' ? assigneeId : undefined,
+      status: status !== "all" ? [status as TicketStatus] : undefined,
+      priority: priority !== "all" ? [priority as TicketPriority] : undefined,
+      orgId: orgId !== "all" ? orgId : undefined,
+      assigneeId: assigneeId !== "all" ? assigneeId : undefined,
       tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       dateFrom: dateFrom ? new Date(dateFrom) : undefined,
       dateTo: dateTo ? new Date(dateTo) : undefined,
@@ -134,37 +149,53 @@ export function TicketFilters({
     try {
       await saveSearchAction(saveSearchName.trim(), filters);
       setShowSaveSearch(false);
-      setSaveSearchName('');
+      setSaveSearchName("");
       const searches = await getSavedSearchesAction();
       setSavedSearches(searches);
     } catch (error) {
-      console.error('Failed to save search:', error);
+      console.error("Failed to save search:", error);
     }
   }
 
-  async function handleLoadSavedSearch(savedSearch: typeof savedSearches[0]) {
+  async function handleLoadSavedSearch(savedSearch: (typeof savedSearches)[0]) {
     const filters = savedSearch.filters;
-    setSearch(filters.search || '');
-    setStatus(filters.status?.[0] || 'all');
-    setPriority(filters.priority?.[0] || 'all');
-    setOrgId(filters.orgId || 'all');
-    setAssigneeId(filters.assigneeId || 'all');
+    setSearch(filters.search || "");
+    setStatus(filters.status?.[0] || "all");
+    setPriority(filters.priority?.[0] || "all");
+    setOrgId(filters.orgId || "all");
+    setAssigneeId(filters.assigneeId || "all");
     setSelectedTagIds(filters.tagIds || []);
-    setDateFrom(filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : '');
-    setDateTo(filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : '');
+    setDateFrom(
+      filters.dateFrom
+        ? new Date(filters.dateFrom).toISOString().split("T")[0]
+        : "",
+    );
+    setDateTo(
+      filters.dateTo
+        ? new Date(filters.dateTo).toISOString().split("T")[0]
+        : "",
+    );
     setSearchInComments(filters.searchInComments || false);
 
     // Apply the filters
     const params = new URLSearchParams();
-    if (filters.search) params.set('search', filters.search);
-    if (filters.status?.length) params.set('status', filters.status[0]);
-    if (filters.priority?.length) params.set('priority', filters.priority[0]);
-    if (filters.orgId) params.set('orgId', filters.orgId);
-    if (filters.assigneeId) params.set('assigneeId', filters.assigneeId);
-    if (filters.tagIds?.length) params.set('tagIds', filters.tagIds.join(','));
-    if (filters.dateFrom) params.set('dateFrom', new Date(filters.dateFrom).toISOString().split('T')[0]);
-    if (filters.dateTo) params.set('dateTo', new Date(filters.dateTo).toISOString().split('T')[0]);
-    if (filters.searchInComments) params.set('searchInComments', 'true');
+    if (filters.search) params.set("search", filters.search);
+    if (filters.status?.length) params.set("status", filters.status[0]);
+    if (filters.priority?.length) params.set("priority", filters.priority[0]);
+    if (filters.orgId) params.set("orgId", filters.orgId);
+    if (filters.assigneeId) params.set("assigneeId", filters.assigneeId);
+    if (filters.tagIds?.length) params.set("tagIds", filters.tagIds.join(","));
+    if (filters.dateFrom)
+      params.set(
+        "dateFrom",
+        new Date(filters.dateFrom).toISOString().split("T")[0],
+      );
+    if (filters.dateTo)
+      params.set(
+        "dateTo",
+        new Date(filters.dateTo).toISOString().split("T")[0],
+      );
+    if (filters.searchInComments) params.set("searchInComments", "true");
 
     router.push(`/app/tickets?${params.toString()}`);
   }
@@ -175,18 +206,23 @@ export function TicketFilters({
       const searches = await getSavedSearchesAction();
       setSavedSearches(searches);
     } catch (error) {
-      console.error('Failed to delete saved search:', error);
+      console.error("Failed to delete saved search:", error);
     }
   }
 
   const toggleTag = (tagId: string) => {
     setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId],
     );
   };
 
   return (
-    <form onSubmit={applyFilters} className="space-y-4 rounded-lg border bg-white p-4">
+    <form
+      onSubmit={applyFilters}
+      className="space-y-4 rounded-lg border bg-white p-4"
+    >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Filters</h2>
         <div className="flex gap-2">
@@ -200,7 +236,9 @@ export function TicketFilters({
               </PopoverTrigger>
               <PopoverContent className="w-64">
                 <div className="space-y-2">
-                  <div className="font-semibold text-sm mb-2">Saved Searches</div>
+                  <div className="font-semibold text-sm mb-2">
+                    Saved Searches
+                  </div>
                   {savedSearches.map((saved) => (
                     <div
                       key={saved.id}
@@ -284,7 +322,9 @@ export function TicketFilters({
               <SelectItem value="NEW">New</SelectItem>
               <SelectItem value="OPEN">Open</SelectItem>
               <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-              <SelectItem value="WAITING_ON_CUSTOMER">Waiting on Customer</SelectItem>
+              <SelectItem value="WAITING_ON_CUSTOMER">
+                Waiting on Customer
+              </SelectItem>
               <SelectItem value="RESOLVED">Resolved</SelectItem>
               <SelectItem value="CLOSED">Closed</SelectItem>
             </SelectContent>
@@ -355,8 +395,8 @@ export function TicketFilters({
                 onClick={() => toggleTag(tag.id)}
                 className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
                   selectedTagIds.includes(tag.id)
-                    ? 'border-gray-900 bg-gray-900 text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
                 style={
                   selectedTagIds.includes(tag.id)

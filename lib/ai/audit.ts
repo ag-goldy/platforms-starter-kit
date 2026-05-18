@@ -3,13 +3,13 @@
  * Records every AI interaction for compliance and security monitoring
  */
 
-import { db } from '@/db';
-import { aiAuditLog } from '@/db/schema';
+import { db } from "@/db";
+import { aiAuditLog } from "@/db/schema";
 
 interface AIInteractionLog {
   orgId: string | null;
   userId: string | null;
-  interface: 'public' | 'customer' | 'admin';
+  interface: "public" | "customer" | "admin";
   userQuery: string;
   systemPromptHash: string;
   aiResponse: string;
@@ -38,7 +38,7 @@ export async function logAIInteraction(log: AIInteractionLog): Promise<void> {
       userQuery: log.userQuery.slice(0, 4000), // Truncate to prevent DB issues
       systemPromptHash: log.systemPromptHash,
       aiResponse: log.aiResponse.slice(0, 8000), // Truncate long responses
-      modelUsed: log.modelUsed || 'deepseek-ai/DeepSeek-V3.1',
+      modelUsed: log.modelUsed || "deepseek-ai/DeepSeek-V3.1",
       tokensUsed: log.tokensUsed,
       responseTimeMs: log.responseTimeMs,
       piiDetected: log.piiDetected,
@@ -49,10 +49,9 @@ export async function logAIInteraction(log: AIInteractionLog): Promise<void> {
       userAgent: log.userAgent,
       metadata: log.metadata || {},
     });
-
   } catch (error) {
     // Log to console but don't fail the AI response
-    console.error('[AI Audit] Failed to log interaction:', error);
+    console.error("[AI Audit] Failed to log interaction:", error);
   }
 }
 
@@ -63,7 +62,7 @@ export async function logAIInteraction(log: AIInteractionLog): Promise<void> {
 export async function queryAuditLogs(filters: {
   orgId?: string;
   userId?: string;
-  interface?: 'public' | 'customer' | 'admin';
+  interface?: "public" | "customer" | "admin";
   startDate?: Date;
   endDate?: Date;
   piiDetected?: boolean;
@@ -71,7 +70,17 @@ export async function queryAuditLogs(filters: {
   limit?: number;
   offset?: number;
 }) {
-  const { orgId, userId, interface: iface, startDate, endDate, piiDetected, wasFiltered, limit = 50, offset = 0 } = filters;
+  const {
+    orgId,
+    userId,
+    interface: iface,
+    startDate,
+    endDate,
+    piiDetected,
+    wasFiltered,
+    limit = 50,
+    offset = 0,
+  } = filters;
 
   // Build dynamic query
   const query = db.query.aiAuditLog.findMany({
@@ -83,29 +92,29 @@ export async function queryAuditLogs(filters: {
   // Apply filters (this is simplified - in production use proper Drizzle filtering)
   // For now, return all and filter in memory (for small datasets)
   const allLogs = await query;
-  
+
   let filtered = allLogs;
-  
+
   if (orgId) {
-    filtered = filtered.filter(l => l.orgId === orgId);
+    filtered = filtered.filter((l) => l.orgId === orgId);
   }
   if (userId) {
-    filtered = filtered.filter(l => l.userId === userId);
+    filtered = filtered.filter((l) => l.userId === userId);
   }
   if (iface) {
-    filtered = filtered.filter(l => l.interface === iface);
+    filtered = filtered.filter((l) => l.interface === iface);
   }
   if (piiDetected !== undefined) {
-    filtered = filtered.filter(l => l.piiDetected === piiDetected);
+    filtered = filtered.filter((l) => l.piiDetected === piiDetected);
   }
   if (wasFiltered !== undefined) {
-    filtered = filtered.filter(l => l.wasFiltered === wasFiltered);
+    filtered = filtered.filter((l) => l.wasFiltered === wasFiltered);
   }
   if (startDate) {
-    filtered = filtered.filter(l => new Date(l.createdAt) >= startDate);
+    filtered = filtered.filter((l) => new Date(l.createdAt) >= startDate);
   }
   if (endDate) {
-    filtered = filtered.filter(l => new Date(l.createdAt) <= endDate);
+    filtered = filtered.filter((l) => new Date(l.createdAt) <= endDate);
   }
 
   return filtered;
@@ -114,18 +123,20 @@ export async function queryAuditLogs(filters: {
 /**
  * Get audit stats for the admin dashboard
  */
-export async function getAuditStats(timeRange: 'today' | 'week' | 'month' = 'today') {
+export async function getAuditStats(
+  timeRange: "today" | "week" | "month" = "today",
+) {
   const now = new Date();
   const startDate = new Date();
-  
+
   switch (timeRange) {
-    case 'today':
+    case "today":
       startDate.setHours(0, 0, 0, 0);
       break;
-    case 'week':
+    case "week":
       startDate.setDate(now.getDate() - 7);
       break;
-    case 'month':
+    case "month":
       startDate.setMonth(now.getMonth() - 1);
       break;
   }
@@ -136,16 +147,18 @@ export async function getAuditStats(timeRange: 'today' | 'week' | 'month' = 'tod
 
   const stats = {
     totalQueries: allLogs.length,
-    piiDetected: allLogs.filter(l => l.piiDetected).length,
-    wasFiltered: allLogs.filter(l => l.wasFiltered).length,
+    piiDetected: allLogs.filter((l) => l.piiDetected).length,
+    wasFiltered: allLogs.filter((l) => l.wasFiltered).length,
     byInterface: {
-      public: allLogs.filter(l => l.interface === 'public').length,
-      customer: allLogs.filter(l => l.interface === 'customer').length,
-      admin: allLogs.filter(l => l.interface === 'admin').length,
+      public: allLogs.filter((l) => l.interface === "public").length,
+      customer: allLogs.filter((l) => l.interface === "customer").length,
+      admin: allLogs.filter((l) => l.interface === "admin").length,
     },
-    avgResponseTime: allLogs.length > 0
-      ? allLogs.reduce((sum, l) => sum + (l.responseTimeMs || 0), 0) / allLogs.length
-      : 0,
+    avgResponseTime:
+      allLogs.length > 0
+        ? allLogs.reduce((sum, l) => sum + (l.responseTimeMs || 0), 0) /
+          allLogs.length
+        : 0,
   };
 
   return stats;
@@ -157,15 +170,15 @@ export async function getAuditStats(timeRange: 'today' | 'week' | 'month' = 'tod
  */
 export async function cleanupOldAuditLogs(): Promise<void> {
   const now = new Date();
-  
+
   // Public: 90 days retention
   const publicCutoff = new Date(now);
   publicCutoff.setDate(now.getDate() - 90);
-  
+
   // Customer: 1 year retention
   const customerCutoff = new Date(now);
   customerCutoff.setFullYear(now.getFullYear() - 1);
-  
+
   // Admin: 2 years retention
   const adminCutoff = new Date(now);
   adminCutoff.setFullYear(now.getFullYear() - 2);

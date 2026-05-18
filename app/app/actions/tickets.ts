@@ -1,21 +1,27 @@
-'use server';
+"use server";
 
-import { randomUUID } from 'crypto';
-import { put } from '@vercel/blob';
-import { and, eq, isNull } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { db } from '@/db';
-import { attachments, ticketComments, tickets, users } from '@/db/schema';
-import { canEditTicket, requireAuth, requireInternalRole } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { assertTicketMutable } from '@/lib/tickets/lifecycle';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { getOrgSLATargets } from '@/lib/tickets/sla';
+import { randomUUID } from "crypto";
+import { put } from "@vercel/blob";
+import { and, eq, isNull } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { db } from "@/db";
+import { attachments, ticketComments, tickets, users } from "@/db/schema";
+import {
+  canEditTicket,
+  requireAuth,
+  requireInternalRole,
+} from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { assertTicketMutable } from "@/lib/tickets/lifecycle";
+import { generateTicketKey } from "@/lib/tickets/keys";
+import { getOrgSLATargets } from "@/lib/tickets/sla";
 
 type TicketStatus = typeof tickets.$inferSelect.status;
 type TicketPriority = typeof tickets.$inferSelect.priority;
 type TicketCategory = typeof tickets.$inferSelect.category;
-type EditableTicket = NonNullable<Awaited<ReturnType<typeof canEditTicket>>['ticket']> & {
+type EditableTicket = NonNullable<
+  Awaited<ReturnType<typeof canEditTicket>>["ticket"]
+> & {
   orgId: string | null;
 };
 
@@ -34,8 +40,8 @@ type CreateTicketInput = {
 function normalizeStatus(status: string): TicketStatus {
   const normalized = status.toUpperCase() as TicketStatus;
   const aliases: Record<string, TicketStatus> = {
-    PENDING: 'WAITING_ON_CUSTOMER',
-    ON_HOLD: 'WAITING_ON_CUSTOMER',
+    PENDING: "WAITING_ON_CUSTOMER",
+    ON_HOLD: "WAITING_ON_CUSTOMER",
   };
 
   return aliases[normalized] ?? normalized;
@@ -50,19 +56,22 @@ function normalizeCategory(category: string): TicketCategory {
 }
 
 function revalidateTicket(ticketId: string) {
-  revalidatePath('/app');
-  revalidatePath('/app/tickets');
+  revalidatePath("/app");
+  revalidatePath("/app/tickets");
   revalidatePath(`/app/tickets/${ticketId}`);
 }
 
-async function getEditableTicket(ticketId: string, orgId?: string): Promise<EditableTicket> {
+async function getEditableTicket(
+  ticketId: string,
+  orgId?: string,
+): Promise<EditableTicket> {
   const { ticket } = await canEditTicket(ticketId);
 
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
   if (orgId && ticket.orgId !== orgId) {
-    throw new Error('Ticket organization mismatch');
+    throw new Error("Ticket organization mismatch");
   }
 
   assertTicketMutable(ticket);
@@ -79,7 +88,7 @@ async function writeTicketAudit(input: {
   orgId?: string | null;
   ticketId: string;
   actorId: string;
-  actorKind: 'user' | 'platform_admin';
+  actorKind: "user" | "platform_admin";
   action: string;
   details?: Record<string, unknown>;
 }) {
@@ -88,21 +97,33 @@ async function writeTicketAudit(input: {
     actorId: input.actorId,
     actorKind: input.actorKind,
     action: input.action,
-    resource: 'ticket',
+    resource: "ticket",
     resourceId: input.ticketId,
     details: input.details,
   });
 }
 
-export async function updateTicketStatus(ticketId: string, orgId: string, status: string) {
+export async function updateTicketStatus(
+  ticketId: string,
+  orgId: string,
+  status: string,
+) {
   await updateTicketStatusAction(ticketId, status, orgId);
 }
 
-export async function updateTicketPriority(ticketId: string, orgId: string, priority: string) {
+export async function updateTicketPriority(
+  ticketId: string,
+  orgId: string,
+  priority: string,
+) {
   await updateTicketPriorityAction(ticketId, priority, orgId);
 }
 
-export async function assignTicket(ticketId: string, orgId: string, assigneeId: string | null) {
+export async function assignTicket(
+  ticketId: string,
+  orgId: string,
+  assigneeId: string | null,
+) {
   await assignTicketAction(ticketId, assigneeId, orgId);
 }
 
@@ -110,7 +131,7 @@ export async function addAgentMessage(
   ticketId: string,
   orgId: string,
   content: string,
-  isInternal: boolean
+  isInternal: boolean,
 ) {
   await addTicketCommentAction(ticketId, content, isInternal, orgId);
 }
@@ -125,13 +146,16 @@ export async function createTicketAction(input: CreateTicketInput): Promise<{
   const description = input.description.trim();
 
   if (!input.orgId || !subject || !description) {
-    return { success: false, error: 'Organization, subject, and description are required.' };
+    return {
+      success: false,
+      error: "Organization, subject, and description are required.",
+    };
   }
 
   try {
     const key = await generateTicketKey(input.orgId);
-    const priority = normalizePriority(input.priority || 'P3');
-    const category = normalizeCategory(input.category || 'INCIDENT');
+    const priority = normalizePriority(input.priority || "P3");
+    const category = normalizeCategory(input.category || "INCIDENT");
     const slaTargets = await getOrgSLATargets(input.orgId, priority);
 
     const [ticket] = await db
@@ -141,7 +165,7 @@ export async function createTicketAction(input: CreateTicketInput): Promise<{
         orgId: input.orgId,
         subject,
         description,
-        status: 'NEW',
+        status: "NEW",
         priority,
         category,
         assigneeId: input.assigneeId || null,
@@ -157,24 +181,27 @@ export async function createTicketAction(input: CreateTicketInput): Promise<{
       orgId: input.orgId,
       ticketId: ticket.id,
       actorId: session.user.id,
-      actorKind: session.platformAdmin ? 'platform_admin' : 'user',
-      action: 'ticket.created',
-      details: { key, source: 'staff' },
+      actorKind: session.platformAdmin ? "platform_admin" : "user",
+      action: "ticket.created",
+      details: { key, source: "staff" },
     });
 
-    revalidatePath('/app');
-    revalidatePath('/app/tickets');
+    revalidatePath("/app");
+    revalidatePath("/app/tickets");
     return { success: true, ticketId: ticket.id };
   } catch (error) {
-    console.error('[Tickets] Failed to create ticket:', error instanceof Error ? error.message : 'unknown error');
-    return { success: false, error: 'Failed to create ticket.' };
+    console.error(
+      "[Tickets] Failed to create ticket:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return { success: false, error: "Failed to create ticket." };
   }
 }
 
 export async function updateTicketStatusAction(
   ticketId: string,
   status: string,
-  orgId?: string
+  orgId?: string,
 ) {
   const session = await requireInternalRole();
   const ticket = await getEditableTicket(ticketId, orgId);
@@ -185,7 +212,7 @@ export async function updateTicketStatusAction(
     .update(tickets)
     .set({
       status: targetStatus,
-      resolvedAt: targetStatus === 'RESOLVED' ? new Date() : ticket.resolvedAt,
+      resolvedAt: targetStatus === "RESOLVED" ? new Date() : ticket.resolvedAt,
       updatedAt: new Date(),
     })
     .where(ticketIdentityWhere(ticketId, ticket.orgId));
@@ -194,8 +221,8 @@ export async function updateTicketStatusAction(
     orgId: ticket.orgId,
     ticketId,
     actorId: session.user.id,
-    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
-    action: 'ticket.status_changed',
+    actorKind: actorIsPlatformAdmin ? "platform_admin" : "user",
+    action: "ticket.status_changed",
     details: { status: targetStatus },
   });
 
@@ -206,7 +233,7 @@ export async function updateTicketStatusAction(
 export async function updateTicketPriorityAction(
   ticketId: string,
   priority: string,
-  orgId?: string
+  orgId?: string,
 ) {
   const session = await requireInternalRole();
   const ticket = await getEditableTicket(ticketId, orgId);
@@ -222,8 +249,8 @@ export async function updateTicketPriorityAction(
     orgId: ticket.orgId,
     ticketId,
     actorId: session.user.id,
-    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
-    action: 'ticket.priority_changed',
+    actorKind: actorIsPlatformAdmin ? "platform_admin" : "user",
+    action: "ticket.priority_changed",
     details: { priority: targetPriority },
   });
 
@@ -234,7 +261,7 @@ export async function updateTicketPriorityAction(
 export async function assignTicketAction(
   ticketId: string,
   assigneeId: string | null,
-  orgId?: string
+  orgId?: string,
 ) {
   const session = await requireInternalRole();
   const ticket = await getEditableTicket(ticketId, orgId);
@@ -247,7 +274,7 @@ export async function assignTicketAction(
     });
 
     if (!assignee) {
-      throw new Error('Assignee must be an internal user account');
+      throw new Error("Assignee must be an internal user account");
     }
   }
 
@@ -260,8 +287,8 @@ export async function assignTicketAction(
     orgId: ticket.orgId,
     ticketId,
     actorId: session.user.id,
-    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
-    action: 'ticket.assignee_changed',
+    actorKind: actorIsPlatformAdmin ? "platform_admin" : "user",
+    action: "ticket.assignee_changed",
     details: { assigneeId },
   });
 
@@ -273,14 +300,14 @@ export async function addTicketCommentAction(
   ticketId: string,
   content: string,
   isInternal = false,
-  orgId?: string
+  orgId?: string,
 ) {
   const session = await requireAuth();
   const ticket = await getEditableTicket(ticketId, orgId);
   const trimmed = content.trim();
 
   if (!trimmed) {
-    throw new Error('Comment cannot be empty');
+    throw new Error("Comment cannot be empty");
   }
 
   const actorIsPlatformAdmin = Boolean(session.isPlatformAdmin);
@@ -305,8 +332,8 @@ export async function addTicketCommentAction(
     orgId: ticket.orgId,
     ticketId,
     actorId: session.user.id,
-    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
-    action: 'ticket.comment_added',
+    actorKind: actorIsPlatformAdmin ? "platform_admin" : "user",
+    action: "ticket.comment_added",
     details: { isInternal },
   });
 
@@ -316,16 +343,16 @@ export async function addTicketCommentAction(
 
 export async function addTicketAttachmentAction(formData: FormData) {
   const session = await requireAuth();
-  const ticketId = String(formData.get('ticketId') || '');
+  const ticketId = String(formData.get("ticketId") || "");
   const files = formData
-    .getAll('attachments')
+    .getAll("attachments")
     .filter((value): value is File => value instanceof File && value.size > 0);
 
   if (!ticketId) {
-    throw new Error('Missing ticket id');
+    throw new Error("Missing ticket id");
   }
   if (files.length === 0) {
-    throw new Error('Please choose a file to upload');
+    throw new Error("Please choose a file to upload");
   }
 
   const ticket = await getEditableTicket(ticketId);
@@ -334,7 +361,7 @@ export async function addTicketAttachmentAction(formData: FormData) {
   for (const file of files) {
     const storageKey = `tickets/${ticketId}/${randomUUID()}-${file.name}`;
     const blob = await put(storageKey, file, {
-      access: 'private',
+      access: "private",
       addRandomSuffix: false,
     });
 
@@ -342,13 +369,13 @@ export async function addTicketAttachmentAction(formData: FormData) {
       ticketId,
       orgId: ticket.orgId,
       filename: file.name,
-      contentType: file.type || 'application/octet-stream',
+      contentType: file.type || "application/octet-stream",
       size: file.size,
       blobPathname: blob.pathname,
       storageKey: blob.pathname,
       uploadedBy: actorIsPlatformAdmin ? null : session.user.id,
       uploadedByPlatformAdmin: actorIsPlatformAdmin ? session.user.id : null,
-      scanStatus: 'PENDING',
+      scanStatus: "PENDING",
     });
   }
 
@@ -356,8 +383,8 @@ export async function addTicketAttachmentAction(formData: FormData) {
     orgId: ticket.orgId,
     ticketId,
     actorId: session.user.id,
-    actorKind: actorIsPlatformAdmin ? 'platform_admin' : 'user',
-    action: 'ticket.attachment_added',
+    actorKind: actorIsPlatformAdmin ? "platform_admin" : "user",
+    action: "ticket.attachment_added",
     details: { count: files.length },
   });
 

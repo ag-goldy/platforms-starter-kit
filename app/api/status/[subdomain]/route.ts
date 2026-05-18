@@ -6,11 +6,16 @@
  * Results are cached in Redis for 5 minutes.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { organizations, services, notices, serviceMonitoringHistory } from '@/db/schema';
-import { eq, and, desc, gt, gte, sql } from 'drizzle-orm';
-import { cached, CACHE_KEYS, CACHE_TTL } from '@/lib/redis/cache';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import {
+  organizations,
+  services,
+  notices,
+  serviceMonitoringHistory,
+} from "@/db/schema";
+import { eq, and, desc, gt, gte, sql } from "drizzle-orm";
+import { cached, CACHE_KEYS, CACHE_TTL } from "@/lib/redis/cache";
 
 // Types
 interface ServiceStatus {
@@ -32,7 +37,7 @@ interface Incident {
 }
 
 interface StatusResponse {
-  overallStatus: 'operational' | 'warning' | 'critical';
+  overallStatus: "operational" | "warning" | "critical";
   services: ServiceStatus[];
   incidents: Incident[];
   lastUpdated: string;
@@ -41,7 +46,10 @@ interface StatusResponse {
 /**
  * Calculate uptime percentage from monitoring history
  */
-async function calculateUptime(serviceId: string, hours: number): Promise<number> {
+async function calculateUptime(
+  serviceId: string,
+  hours: number,
+): Promise<number> {
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const history = await db
@@ -53,8 +61,8 @@ async function calculateUptime(serviceId: string, hours: number): Promise<number
     .where(
       and(
         eq(serviceMonitoringHistory.serviceId, serviceId),
-        gte(serviceMonitoringHistory.timestamp, since)
-      )
+        gte(serviceMonitoringHistory.timestamp, since),
+      ),
     )
     .groupBy(serviceMonitoringHistory.status);
 
@@ -64,7 +72,7 @@ async function calculateUptime(serviceId: string, hours: number): Promise<number
 
   const total = history.reduce((sum, h) => sum + h.count, 0);
   const operational = history
-    .filter(h => h.status === 'OPERATIONAL')
+    .filter((h) => h.status === "OPERATIONAL")
     .reduce((sum, h) => sum + h.count, 0);
 
   return Math.round((operational / total) * 100 * 100) / 100; // 2 decimal places
@@ -85,7 +93,10 @@ async function getLatestMonitoring(serviceId: string) {
 /**
  * Fetch status data with caching (keyed by subdomain, not orgId)
  */
-async function fetchStatusData(subdomain: string, orgId: string): Promise<StatusResponse> {
+async function fetchStatusData(
+  subdomain: string,
+  orgId: string,
+): Promise<StatusResponse> {
   return cached(
     CACHE_KEYS.statusSummary(subdomain),
     CACHE_TTL.statusSummary,
@@ -99,7 +110,7 @@ async function fetchStatusData(subdomain: string, orgId: string): Promise<Status
       const recentNotices = await db.query.notices.findMany({
         where: and(
           eq(notices.orgId, orgId),
-          gt(notices.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+          gt(notices.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
         ),
         orderBy: desc(notices.createdAt),
         limit: 5,
@@ -123,13 +134,17 @@ async function fetchStatusData(subdomain: string, orgId: string): Promise<Status
             responseTimeMs: latest?.responseTimeMs ?? undefined,
             lastCheckedAt: latest?.timestamp,
           };
-        })
+        }),
       );
 
       // Calculate overall status
-      const hasDown = mappedServices.some((s) => s.status === 'OFFLINE');
-      const hasDegraded = mappedServices.some((s) => s.status === 'DEGRADED');
-      const overallStatus = hasDown ? 'critical' : hasDegraded ? 'warning' : 'operational';
+      const hasDown = mappedServices.some((s) => s.status === "OFFLINE");
+      const hasDegraded = mappedServices.some((s) => s.status === "DEGRADED");
+      const overallStatus = hasDown
+        ? "critical"
+        : hasDegraded
+          ? "warning"
+          : "operational";
 
       // Map incidents — strip internal-only fields before returning
       const mappedIncidents: Incident[] = recentNotices.map((n) => ({
@@ -146,13 +161,13 @@ async function fetchStatusData(subdomain: string, orgId: string): Promise<Status
         incidents: mappedIncidents,
         lastUpdated: new Date().toISOString(),
       };
-    }
+    },
   );
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ subdomain: string }> }
+  { params }: { params: Promise<{ subdomain: string }> },
 ) {
   try {
     const { subdomain } = await params;
@@ -162,15 +177,15 @@ export async function GET(
     const org = await db.query.organizations.findFirst({
       where: and(
         eq(organizations.subdomain, subdomain),
-        eq(organizations.isActive, true)
+        eq(organizations.isActive, true),
       ),
       columns: { id: true, name: true },
     });
 
     if (!org) {
       return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
+        { error: "Organization not found" },
+        { status: 404 },
       );
     }
 
@@ -179,10 +194,10 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[Status API] Error fetching status:', error);
+    console.error("[Status API] Error fetching status:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch status' },
-      { status: 500 }
+      { error: "Failed to fetch status" },
+      { status: 500 },
     );
   }
 }

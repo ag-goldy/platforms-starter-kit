@@ -1,35 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   createScheduledTicket,
   getOrgScheduledTickets,
   getUpcomingScheduledTicketsCount,
-} from '@/lib/scheduled-tickets/queries';
-import { requireInternalRole } from '@/lib/auth/permissions';
+} from "@/lib/scheduled-tickets/queries";
+import { requireInternalRole } from "@/lib/auth/permissions";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const orgId = searchParams.get('orgId');
+    const orgId = searchParams.get("orgId");
 
     if (!orgId) {
       return NextResponse.json(
-        { error: 'Organization ID required' },
-        { status: 400 }
+        { error: "Organization ID required" },
+        { status: 400 },
       );
     }
 
     await requireInternalRole();
 
-    const status = searchParams.get('status');
-    const view = searchParams.get('view');
+    const status = searchParams.get("status");
+    const view = searchParams.get("view");
 
-    if (view === 'upcoming_count') {
+    if (view === "upcoming_count") {
       const count = await getUpcomingScheduledTicketsCount(orgId);
       return NextResponse.json({ count });
     }
@@ -40,10 +40,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ tickets });
   } catch (error) {
-    console.error('Error fetching scheduled tickets:', error);
+    console.error("Error fetching scheduled tickets:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch scheduled tickets' },
-      { status: 500 }
+      { error: "Failed to fetch scheduled tickets" },
+      { status: 500 },
     );
   }
 }
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -79,8 +79,8 @@ export async function POST(req: NextRequest) {
 
     if (!orgId || !scheduledFor || !subject || !description) {
       return NextResponse.json(
-        { error: 'Required fields missing' },
-        { status: 400 }
+        { error: "Required fields missing" },
+        { status: 400 },
       );
     }
 
@@ -105,15 +105,17 @@ export async function POST(req: NextRequest) {
       tags,
       customFields,
       recurrencePattern,
-      recurrenceEndDate: recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+      recurrenceEndDate: recurrenceEndDate
+        ? new Date(recurrenceEndDate)
+        : undefined,
     });
 
     return NextResponse.json({ scheduledTicket: scheduled });
   } catch (error) {
-    console.error('Error creating scheduled ticket:', error);
+    console.error("Error creating scheduled ticket:", error);
     return NextResponse.json(
-      { error: 'Failed to create scheduled ticket' },
-      { status: 500 }
+      { error: "Failed to create scheduled ticket" },
+      { status: 500 },
     );
   }
 }

@@ -1,25 +1,37 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { NavLink } from '@/components/ui/nav-link';
-import { usePathname } from 'next/navigation';
-import { 
-  ChevronDown, Menu, X, 
-  LayoutDashboard, Ticket, BookOpen, 
-  Building2, Users, 
- BarChart3, Shield, Database, Zap,
-  Cog, FileText, Clock, Wrench, FolderOpen,
-  Bot
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { NavLink } from "@/components/ui/nav-link";
+import { usePathname } from "next/navigation";
+import {
+  ChevronDown,
+  Menu,
+  X,
+  LayoutDashboard,
+  Ticket,
+  BookOpen,
+  Building2,
+  Users,
+  BarChart3,
+  Shield,
+  Database,
+  Zap,
+  Cog,
+  FileText,
+  Clock,
+  Wrench,
+  FolderOpen,
+  Bot,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface NavLink {
   href: string;
@@ -41,69 +53,129 @@ export function OrganizedNav() {
   // Enterprise navigation - only valid routes
   const mainNav: NavGroup[] = [
     {
-      label: 'Dashboard',
+      label: "Dashboard",
       icon: <LayoutDashboard className="w-4 h-4" />,
-      href: '/app',
+      href: "/app",
     },
     {
-      label: 'Service Desk',
+      label: "Service Desk",
       icon: <Ticket className="w-4 h-4" />,
-      href: '/app/tickets',
+      href: "/app/tickets",
       links: [
-        { href: '/app/tickets', label: 'All Tickets', icon: <Ticket className="w-4 h-4" /> },
-        { href: '/app/kb', label: 'Knowledge Base', icon: <BookOpen className="w-4 h-4" /> },
-        { href: '/app/templates', label: 'Templates', icon: <FileText className="w-4 h-4" /> },
-        { href: '/app/tags', label: 'Tags', icon: <Database className="w-4 h-4" /> },
-      ]
+        {
+          href: "/app/tickets",
+          label: "All Tickets",
+          icon: <Ticket className="w-4 h-4" />,
+        },
+        {
+          href: "/app/kb",
+          label: "Knowledge Base",
+          icon: <BookOpen className="w-4 h-4" />,
+        },
+        {
+          href: "/app/templates",
+          label: "Templates",
+          icon: <FileText className="w-4 h-4" />,
+        },
+        {
+          href: "/app/tags",
+          label: "Tags",
+          icon: <Database className="w-4 h-4" />,
+        },
+      ],
     },
     {
-      label: 'Directory',
+      label: "Directory",
       icon: <Building2 className="w-4 h-4" />,
-      href: '/app/organizations',
+      href: "/app/organizations",
       links: [
-        { href: '/app/organizations', label: 'Organizations', icon: <Building2 className="w-4 h-4" /> },
-        { href: '/app/users', label: 'Users', icon: <Users className="w-4 h-4" /> },
-      ]
+        {
+          href: "/app/organizations",
+          label: "Organizations",
+          icon: <Building2 className="w-4 h-4" />,
+        },
+        {
+          href: "/app/users",
+          label: "Users",
+          icon: <Users className="w-4 h-4" />,
+        },
+      ],
     },
     {
-      label: 'Configuration',
+      label: "Configuration",
       icon: <Cog className="w-4 h-4" />,
-      href: '/app/sla',
+      href: "/app/sla",
       links: [
-        { href: '/app/sla', label: 'SLA Policies', icon: <Clock className="w-4 h-4" /> },
-        { href: '/app/admin/integrations', label: 'Integrations', icon: <Zap className="w-4 h-4" /> },
-      ]
+        {
+          href: "/app/sla",
+          label: "SLA Policies",
+          icon: <Clock className="w-4 h-4" />,
+        },
+        {
+          href: "/app/admin/integrations",
+          label: "Integrations",
+          icon: <Zap className="w-4 h-4" />,
+        },
+      ],
     },
     {
-      label: 'Analytics',
+      label: "Analytics",
       icon: <BarChart3 className="w-4 h-4" />,
-      href: '/app/reports',
+      href: "/app/reports",
       links: [
-        { href: '/app/reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
-      ]
+        {
+          href: "/app/reports",
+          label: "Reports",
+          icon: <BarChart3 className="w-4 h-4" />,
+        },
+      ],
     },
     {
-      label: 'System',
+      label: "System",
       icon: <Wrench className="w-4 h-4" />,
-      href: '/app/admin',
+      href: "/app/admin",
       links: [
-        { href: '/app/admin/audit', label: 'Audit Logs', icon: <Shield className="w-4 h-4" /> },
-        { href: '/app/admin/ai-audit', label: 'AI Audit', icon: <Bot className="w-4 h-4" /> },
-        { href: '/app/admin/health', label: 'System Health', icon: <Database className="w-4 h-4" /> },
-        { href: '/app/admin/ops', label: 'Operations', icon: <FolderOpen className="w-4 h-4" /> },
-        { href: '/app/admin/jobs', label: 'Job Queue', icon: <Database className="w-4 h-4" /> },
-        { href: '/app/admin/compliance', label: 'Compliance', icon: <Shield className="w-4 h-4" /> },
-      ]
+        {
+          href: "/app/admin/audit",
+          label: "Audit Logs",
+          icon: <Shield className="w-4 h-4" />,
+        },
+        {
+          href: "/app/admin/ai-audit",
+          label: "AI Audit",
+          icon: <Bot className="w-4 h-4" />,
+        },
+        {
+          href: "/app/admin/health",
+          label: "System Health",
+          icon: <Database className="w-4 h-4" />,
+        },
+        {
+          href: "/app/admin/ops",
+          label: "Operations",
+          icon: <FolderOpen className="w-4 h-4" />,
+        },
+        {
+          href: "/app/admin/jobs",
+          label: "Job Queue",
+          icon: <Database className="w-4 h-4" />,
+        },
+        {
+          href: "/app/admin/compliance",
+          label: "Compliance",
+          icon: <Shield className="w-4 h-4" />,
+        },
+      ],
     },
   ];
 
   const isActive = (href: string) => {
-    return pathname === href || pathname?.startsWith(href + '/');
+    return pathname === href || pathname?.startsWith(href + "/");
   };
 
   const isGroupActive = (group: NavGroup) => {
     if (isActive(group.href)) return true;
-    return group.links?.some(link => isActive(link.href)) ?? false;
+    return group.links?.some((link) => isActive(link.href)) ?? false;
   };
 
   return (
@@ -116,10 +188,10 @@ export function OrganizedNav() {
               <NavLink
                 href={group.href}
                 className={cn(
-                  'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2',
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2",
                   isActive(group.href)
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                 )}
               >
                 {group.icon}
@@ -131,10 +203,10 @@ export function OrganizedNav() {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'px-3 py-2 text-sm font-medium h-auto flex items-center gap-2',
+                      "px-3 py-2 text-sm font-medium h-auto flex items-center gap-2",
                       isGroupActive(group)
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {group.icon}
@@ -147,8 +219,9 @@ export function OrganizedNav() {
                     <NavLink
                       href={group.href}
                       className={cn(
-                        'flex items-center gap-2 font-medium',
-                        isActive(group.href) && 'bg-accent text-accent-foreground'
+                        "flex items-center gap-2 font-medium",
+                        isActive(group.href) &&
+                          "bg-accent text-accent-foreground",
                       )}
                     >
                       {group.icon}
@@ -161,8 +234,9 @@ export function OrganizedNav() {
                       <NavLink
                         href={link.href}
                         className={cn(
-                          'flex items-center gap-2',
-                          isActive(link.href) && 'bg-accent text-accent-foreground'
+                          "flex items-center gap-2",
+                          isActive(link.href) &&
+                            "bg-accent text-accent-foreground",
                         )}
                       >
                         {link.icon}
@@ -173,7 +247,7 @@ export function OrganizedNav() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            
+
             {index < mainNav.length - 1 && (
               <div className="mx-1 h-4 w-px bg-border" />
             )}
@@ -212,10 +286,10 @@ export function OrganizedNav() {
                     href={group.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium',
+                      "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium",
                       isActive(group.href)
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                     )}
                   >
                     {group.icon}
@@ -227,10 +301,10 @@ export function OrganizedNav() {
                       href={link.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-md text-sm ml-4',
+                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm ml-4",
                         isActive(link.href)
-                          ? 'bg-accent text-accent-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                          ? "bg-accent text-accent-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                       )}
                     >
                       {link.icon}

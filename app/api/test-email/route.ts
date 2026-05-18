@@ -1,25 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail } from '@/lib/email';
+import { NextRequest, NextResponse } from "next/server";
+import { sendEmail } from "@/lib/email";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
-    
+
     if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    console.log('[Test Email] Sending to:', email);
-    console.log('[Test Email] Graph Configured:', !!process.env.MICROSOFT_GRAPH_TENANT_ID);
-    console.log('[Test Email] SMTP Configured:', !!process.env.SMTP_HOST);
+    console.log("[Test Email] Sending to:", email);
+    console.log(
+      "[Test Email] Graph Configured:",
+      !!process.env.MICROSOFT_GRAPH_TENANT_ID,
+    );
+    console.log("[Test Email] SMTP Configured:", !!process.env.SMTP_HOST);
 
     const startTime = Date.now();
-    
+
     await sendEmail({
       to: email,
-      subject: 'atlas - Test Email',
+      subject: "atlas - Test Email",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #F97316;">Test Email from atlas</h2>
@@ -33,47 +36,60 @@ export async function POST(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-    
-    console.log('[Test Email] ✅ Sent successfully in', duration, 'ms');
-    
-    return NextResponse.json({ 
-      success: true, 
+
+    console.log("[Test Email] ✅ Sent successfully in", duration, "ms");
+
+    return NextResponse.json({
+      success: true,
       message: `Test email sent to ${email} in ${duration}ms`,
       config: {
         graph: !!process.env.MICROSOFT_GRAPH_TENANT_ID,
         smtp: !!process.env.SMTP_HOST,
-        from: process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM || 'not set',
-      }
+        from:
+          process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM || "not set",
+      },
     });
   } catch (error) {
-    console.error('[Test Email] ❌ Failed:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const emailError = error as { body?: unknown; code?: string; statusCode?: number };
-    
-    return NextResponse.json({ 
-      success: false, 
-      error: errorMessage,
-      details: emailError.body ?? null,
-      code: emailError.code ?? null,
-      statusCode: emailError.statusCode ?? null,
-      config: {
-        graph: !!process.env.MICROSOFT_GRAPH_TENANT_ID,
-        smtp: !!process.env.SMTP_HOST,
-        from: process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM || 'not set',
-      }
-    }, { status: 500 });
+    console.error("[Test Email] ❌ Failed:", error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const emailError = error as {
+      body?: unknown;
+      code?: string;
+      statusCode?: number;
+    };
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: errorMessage,
+        details: emailError.body ?? null,
+        code: emailError.code ?? null,
+        statusCode: emailError.statusCode ?? null,
+        config: {
+          graph: !!process.env.MICROSOFT_GRAPH_TENANT_ID,
+          smtp: !!process.env.SMTP_HOST,
+          from:
+            process.env.EMAIL_FROM_ADDRESS ||
+            process.env.EMAIL_FROM ||
+            "not set",
+        },
+      },
+      { status: 500 },
+    );
   }
 }
 
 export async function GET() {
   return NextResponse.json({
-    message: 'Email test endpoint',
+    message: "Email test endpoint",
     usage: 'POST to this endpoint with { "email": "your@email.com" }',
     config: {
       graphConfigured: !!process.env.MICROSOFT_GRAPH_TENANT_ID,
       smtpConfigured: !!process.env.SMTP_HOST,
-      fromAddress: process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM || 'not set',
-    }
+      fromAddress:
+        process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM || "not set",
+    },
   });
 }

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   Server,
   Wifi,
@@ -12,10 +12,9 @@ import {
   X,
   Link,
   Check,
-
   Database,
   Cloud,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface Asset {
   id: string;
@@ -37,11 +36,19 @@ interface AssetSelectorProps {
   onClose: () => void;
 }
 
-export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }: AssetSelectorProps) {
+export function AssetSelector({
+  orgId,
+  linkedAssets,
+  onLink,
+  onUnlink,
+  onClose,
+}: AssetSelectorProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'zabbix' | 'manual'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "zabbix" | "manual">(
+    "all",
+  );
 
   useEffect(() => {
     const fetchAssetsData = async () => {
@@ -52,7 +59,7 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
           setAssets(data.assets || []);
         }
       } catch (error) {
-        console.error('Failed to fetch assets:', error);
+        console.error("Failed to fetch assets:", error);
       } finally {
         setLoading(false);
       }
@@ -62,21 +69,21 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
 
   const getAssetIcon = (type: string) => {
     switch (type?.toUpperCase()) {
-      case 'AP':
+      case "AP":
         return <Wifi className="w-5 h-5" />;
-      case 'SWITCH':
-      case 'ROUTER':
+      case "SWITCH":
+      case "ROUTER":
         return <Router className="w-5 h-5" />;
-      case 'CAMERA':
-      case 'NVR':
+      case "CAMERA":
+      case "NVR":
         return <Video className="w-5 h-5" />;
-      case 'FIREWALL':
+      case "FIREWALL":
         return <Shield className="w-5 h-5" />;
-      case 'SERVER':
+      case "SERVER":
         return <Server className="w-5 h-5" />;
-      case 'DATABASE':
+      case "DATABASE":
         return <Database className="w-5 h-5" />;
-      case 'CLOUD':
+      case "CLOUD":
         return <Cloud className="w-5 h-5" />;
       default:
         return <Server className="w-5 h-5" />;
@@ -85,14 +92,14 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return 'bg-emerald-500';
-      case 'MAINTENANCE':
-        return 'bg-amber-500';
-      case 'RETIRED':
-        return 'bg-stone-400';
+      case "ACTIVE":
+        return "bg-emerald-500";
+      case "MAINTENANCE":
+        return "bg-amber-500";
+      case "RETIRED":
+        return "bg-stone-400";
       default:
-        return 'bg-stone-400';
+        return "bg-stone-400";
     }
   };
 
@@ -107,11 +114,11 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
       asset.ipAddress?.includes(searchQuery);
 
     const matchesTab =
-      activeTab === 'all'
+      activeTab === "all"
         ? true
-        : activeTab === 'zabbix'
-        ? asset.isZabbixSynced
-        : !asset.isZabbixSynced;
+        : activeTab === "zabbix"
+          ? asset.isZabbixSynced
+          : !asset.isZabbixSynced;
 
     return matchesSearch && matchesTab;
   });
@@ -122,7 +129,9 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
       <div className="px-6 py-4 border-b border-stone-100">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">Link Assets</h2>
+            <h2 className="text-lg font-semibold text-stone-900">
+              Link Assets
+            </h2>
             <p className="text-sm text-stone-500">
               {linkedAssets.length} linked • {assets.length} available
             </p>
@@ -154,17 +163,19 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
       <div className="px-6 py-2 border-b border-stone-100">
         <div className="flex gap-2">
           {[
-            { id: 'all', label: 'All Assets' },
-            { id: 'zabbix', label: 'Zabbix Synced' },
-            { id: 'manual', label: 'Manual' },
+            { id: "all", label: "All Assets" },
+            { id: "zabbix", label: "Zabbix Synced" },
+            { id: "manual", label: "Manual" },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'all' | 'zabbix' | 'manual')}
+              onClick={() =>
+                setActiveTab(tab.id as "all" | "zabbix" | "manual")
+              }
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-stone-900 text-white'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  ? "bg-stone-900 text-white"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
               {tab.label}
@@ -195,8 +206,8 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                     linked
-                      ? 'bg-brand-50 border-brand-200'
-                      : 'bg-white border-stone-200 hover:border-brand-300'
+                      ? "bg-brand-50 border-brand-200"
+                      : "bg-white border-stone-200 hover:border-brand-300"
                   }`}
                 >
                   <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-600">
@@ -215,7 +226,9 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
                     </div>
                     <div className="flex items-center gap-3 text-xs text-stone-500">
                       <span className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(asset.status)}`} />
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${getStatusColor(asset.status)}`}
+                        />
                         {asset.status}
                       </span>
                       {asset.hostname && <span>{asset.hostname}</span>}
@@ -223,11 +236,13 @@ export function AssetSelector({ orgId, linkedAssets, onLink, onUnlink, onClose }
                     </div>
                   </div>
                   <button
-                    onClick={() => (linked ? onUnlink(asset.id) : onLink(asset))}
+                    onClick={() =>
+                      linked ? onUnlink(asset.id) : onLink(asset)
+                    }
                     className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       linked
-                        ? 'bg-stone-200 text-stone-700 hover:bg-red-100 hover:text-red-700'
-                        : 'bg-brand-500 text-white hover:bg-brand-600'
+                        ? "bg-stone-200 text-stone-700 hover:bg-red-100 hover:text-red-700"
+                        : "bg-brand-500 text-white hover:bg-brand-600"
                     }`}
                   >
                     {linked ? (

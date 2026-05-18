@@ -1,20 +1,34 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Search, FileText, Eye, ThumbsUp, Calendar, FolderOpen, Loader2 } from 'lucide-react';
-import type { KbArticle, KbCategory } from '@/db/schema';
+} from "@/components/ui/select";
+import {
+  Search,
+  FileText,
+  Eye,
+  ThumbsUp,
+  Calendar,
+  FolderOpen,
+  Loader2,
+} from "lucide-react";
+import type { KbArticle, KbCategory } from "@/db/schema";
 
 interface ArticleWithRelations extends KbArticle {
   category: KbCategory | null;
@@ -42,40 +56,43 @@ export function ArticleList({
   showSearch = true,
   showFilters = true,
   categorySlug,
-  emptyMessage = 'No articles found',
+  emptyMessage = "No articles found",
 }: ArticleListProps) {
-  const [articles, setArticles] = useState<ArticleWithRelations[]>(initialArticles);
+  const [articles, setArticles] =
+    useState<ArticleWithRelations[]>(initialArticles);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>(categorySlug || 'all');
-  const [sortBy, setSortBy] = useState<string>('createdAt');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    categorySlug || "all",
+  );
+  const [sortBy, setSortBy] = useState<string>("createdAt");
 
   const fetchArticles = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      params.set('org', subdomain);
-      params.set('status', 'published');
-      params.set('visibility', 'public');
-      
+      params.set("org", subdomain);
+      params.set("status", "published");
+      params.set("visibility", "public");
+
       if (searchQuery) {
-        params.set('search', searchQuery);
+        params.set("search", searchQuery);
       }
-      
-      if (selectedCategory && selectedCategory !== 'all') {
-        params.set('category', selectedCategory);
+
+      if (selectedCategory && selectedCategory !== "all") {
+        params.set("category", selectedCategory);
       }
-      
-      params.set('sortBy', sortBy);
+
+      params.set("sortBy", sortBy);
 
       const response = await fetch(`/api/kb/articles?${params.toString()}`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setArticles(data.articles || []);
       }
     } catch (error) {
-      console.error('Failed to fetch articles:', error);
+      console.error("Failed to fetch articles:", error);
     } finally {
       setIsLoading(false);
     }
@@ -84,21 +101,38 @@ export function ArticleList({
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (initialArticles.length === 0 || searchQuery || selectedCategory !== 'all') {
+      if (
+        initialArticles.length === 0 ||
+        searchQuery ||
+        selectedCategory !== "all"
+      ) {
         fetchArticles();
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedCategory, sortBy, fetchArticles, initialArticles.length]);
+  }, [
+    searchQuery,
+    selectedCategory,
+    sortBy,
+    fetchArticles,
+    initialArticles.length,
+  ]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'published':
-        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>;
-      case 'draft':
+      case "published":
+        return (
+          <Badge
+            variant="default"
+            className="bg-green-100 text-green-800 hover:bg-green-100"
+          >
+            Published
+          </Badge>
+        );
+      case "draft":
         return <Badge variant="secondary">Draft</Badge>;
-      case 'archived':
+      case "archived":
         return <Badge variant="outline">Archived</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -106,11 +140,11 @@ export function ArticleList({
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Not published';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    if (!date) return "Not published";
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -130,7 +164,7 @@ export function ArticleList({
               />
             </div>
           )}
-          
+
           {showFilters && categories.length > 0 && (
             <Select
               value={selectedCategory}
@@ -149,7 +183,7 @@ export function ArticleList({
               </SelectContent>
             </Select>
           )}
-          
+
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Sort by" />
@@ -207,7 +241,7 @@ export function ArticleList({
                       {article.excerpt}
                     </p>
                   )}
-                  
+
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
@@ -224,11 +258,15 @@ export function ArticleList({
                       {formatDate(article.publishedAt || article.createdAt)}
                     </span>
                   </div>
-                  
+
                   {article.tags && article.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                       {article.tags.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {tag}
                         </Badge>
                       ))}

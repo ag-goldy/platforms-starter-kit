@@ -1,25 +1,43 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { 
-  saveZabbixConfig, 
-  triggerZabbixSync, 
+import { useState, useEffect, useCallback } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  saveZabbixConfig,
+  triggerZabbixSync,
   getZabbixConfig,
   linkServiceToZabbixHost,
-  toggleServiceMonitoring 
-} from '@/app/app/actions/zabbix';
-import { getAllOrganizationsAction } from '@/app/app/actions/organizations';
-import { getOrgServicesAction } from '@/app/app/actions/services';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { AlertCircle, CheckCircle, RefreshCw, Server, Activity } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
-import { PageHeaderWithBack } from '@/components/navigation/back-button';
+  toggleServiceMonitoring,
+} from "@/app/app/actions/zabbix";
+import { getAllOrganizationsAction } from "@/app/app/actions/organizations";
+import { getOrgServicesAction } from "@/app/app/actions/services";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+  Server,
+  Activity,
+} from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { PageHeaderWithBack } from "@/components/navigation/back-button";
 
 interface Organization {
   id: string;
@@ -44,17 +62,23 @@ interface ZabbixHost {
 
 export default function ZabbixAdminPage() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [services, setServices] = useState<Service[]>([]);
-  const [config, setConfig] = useState<{ apiUrl: string; apiToken: string } | null>(null);
+  const [config, setConfig] = useState<{
+    apiUrl: string;
+    apiToken: string;
+  } | null>(null);
   const [zabbixHosts, setZabbixHosts] = useState<ZabbixHost[]>([]);
-  
-  const [apiUrl, setApiUrl] = useState('');
-  const [apiToken, setApiToken] = useState('');
+
+  const [apiUrl, setApiUrl] = useState("");
+  const [apiToken, setApiToken] = useState("");
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const { success, error: showError, info } = useToast();
 
   // Load organizations
@@ -86,7 +110,7 @@ export default function ZabbixAdminPage() {
 
   const testConnection = useCallback(async () => {
     if (!apiUrl || !apiToken) {
-      showError('Please enter API URL and Token');
+      showError("Please enter API URL and Token");
       return;
     }
 
@@ -94,9 +118,9 @@ export default function ZabbixAdminPage() {
     setTestResult(null);
 
     try {
-      const response = await fetch('/api/zabbix/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/zabbix/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiUrl, apiToken }),
       });
 
@@ -104,17 +128,17 @@ export default function ZabbixAdminPage() {
 
       if (data.success) {
         setTestResult({ success: true, message: data.message });
-        success('Connection successful!');
+        success("Connection successful!");
       } else {
         setTestResult({ success: false, message: data.error });
         showError(data.error);
       }
     } catch (error) {
-      setTestResult({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Test failed' 
+      setTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : "Test failed",
       });
-      showError('Connection test failed');
+      showError("Connection test failed");
     } finally {
       setIsTesting(false);
     }
@@ -122,88 +146,94 @@ export default function ZabbixAdminPage() {
 
   const saveConfig = useCallback(async () => {
     if (!selectedOrgId) {
-      showError('Please select an organization');
+      showError("Please select an organization");
       return;
     }
 
     setIsSaving(true);
     const result = await saveZabbixConfig(selectedOrgId, { apiUrl, apiToken });
-    
+
     if (result.success) {
-      success('Configuration saved');
+      success("Configuration saved");
       setConfig({ apiUrl, apiToken });
     } else {
-      showError(result.error || 'Failed to save');
+      showError(result.error || "Failed to save");
     }
     setIsSaving(false);
   }, [selectedOrgId, apiUrl, apiToken, success, showError]);
 
   const syncNow = useCallback(async () => {
     if (!selectedOrgId) return;
-    
+
     setIsSyncing(true);
     const result = await triggerZabbixSync(selectedOrgId);
-    
+
     if (result.success) {
       success(`Synced ${result.data?.length || 0} services`);
       // Refresh services
       const servicesData = await getOrgServicesAction(selectedOrgId);
       setServices(servicesData as Service[]);
     } else {
-      showError(result.error || 'Sync failed');
+      showError(result.error || "Sync failed");
     }
     setIsSyncing(false);
   }, [selectedOrgId, success, showError]);
 
   const loadZabbixHosts = useCallback(async () => {
     if (!selectedOrgId) return;
-    
+
     try {
       const response = await fetch(`/api/zabbix/hosts?orgId=${selectedOrgId}`);
       const data = await response.json();
-      
-      console.log('[Zabbix] Hosts response:', data);
-      
+
+      console.log("[Zabbix] Hosts response:", data);
+
       if (data.error) {
         showError(data.error);
         return;
       }
-      
+
       if (data.hosts) {
         setZabbixHosts(data.hosts);
         if (data.hosts.length === 0) {
-          info('No hosts found in Zabbix');
+          info("No hosts found in Zabbix");
         } else {
           success(`Loaded ${data.hosts.length} hosts`);
         }
       }
     } catch (error) {
-      console.error('[Zabbix] Load hosts error:', error);
-      showError('Failed to load Zabbix hosts');
+      console.error("[Zabbix] Load hosts error:", error);
+      showError("Failed to load Zabbix hosts");
     }
   }, [selectedOrgId, success, showError]);
 
-  const linkService = useCallback(async (serviceId: string, hostId: string) => {
-    const result = await linkServiceToZabbixHost(serviceId, hostId);
-    if (result.success) {
-      success('Service linked');
-      const servicesData = await getOrgServicesAction(selectedOrgId);
-      setServices(servicesData as Service[]);
-    } else {
-      showError(result.error || 'Failed to link');
-    }
-  }, [selectedOrgId, success, showError]);
+  const linkService = useCallback(
+    async (serviceId: string, hostId: string) => {
+      const result = await linkServiceToZabbixHost(serviceId, hostId);
+      if (result.success) {
+        success("Service linked");
+        const servicesData = await getOrgServicesAction(selectedOrgId);
+        setServices(servicesData as Service[]);
+      } else {
+        showError(result.error || "Failed to link");
+      }
+    },
+    [selectedOrgId, success, showError],
+  );
 
-  const toggleMonitoring = useCallback(async (serviceId: string, enabled: boolean) => {
-    const result = await toggleServiceMonitoring(serviceId, enabled);
-    if (result.success) {
-      success(enabled ? 'Monitoring enabled' : 'Monitoring disabled');
-      const servicesData = await getOrgServicesAction(selectedOrgId);
-      setServices(servicesData as Service[]);
-    } else {
-      showError(result.error || 'Failed to toggle');
-    }
-  }, [selectedOrgId, success, showError]);
+  const toggleMonitoring = useCallback(
+    async (serviceId: string, enabled: boolean) => {
+      const result = await toggleServiceMonitoring(serviceId, enabled);
+      if (result.success) {
+        success(enabled ? "Monitoring enabled" : "Monitoring disabled");
+        const servicesData = await getOrgServicesAction(selectedOrgId);
+        setServices(servicesData as Service[]);
+      } else {
+        showError(result.error || "Failed to toggle");
+      }
+    },
+    [selectedOrgId, success, showError],
+  );
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -255,7 +285,8 @@ export default function ZabbixAdminPage() {
                   onChange={(e) => setApiUrl(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  e.g., https://zabbix.yourdomain.com or https://yourdomain.com/zabbix
+                  e.g., https://zabbix.yourdomain.com or
+                  https://yourdomain.com/zabbix
                 </p>
               </div>
 
@@ -269,13 +300,20 @@ export default function ZabbixAdminPage() {
                   onChange={(e) => setApiToken(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  Create a token in Zabbix: Administration → General → API tokens
+                  Create a token in Zabbix: Administration → General → API
+                  tokens
                 </p>
               </div>
 
               {testResult && (
-                <div className={`flex items-center gap-2 p-3 rounded ${testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                  {testResult.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                <div
+                  className={`flex items-center gap-2 p-3 rounded ${testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}
+                >
+                  {testResult.success ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
                   <span className="text-sm">{testResult.message}</span>
                 </div>
               )}
@@ -286,13 +324,10 @@ export default function ZabbixAdminPage() {
                   onClick={testConnection}
                   disabled={isTesting}
                 >
-                  {isTesting ? 'Testing...' : 'Test Connection'}
+                  {isTesting ? "Testing..." : "Test Connection"}
                 </Button>
-                <Button
-                  onClick={saveConfig}
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Saving...' : 'Save Configuration'}
+                <Button onClick={saveConfig} disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save Configuration"}
                 </Button>
                 {config && (
                   <Button
@@ -300,8 +335,10 @@ export default function ZabbixAdminPage() {
                     onClick={syncNow}
                     disabled={isSyncing}
                   >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Syncing...' : 'Sync Now'}
+                    <RefreshCw
+                      className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`}
+                    />
+                    {isSyncing ? "Syncing..." : "Sync Now"}
                   </Button>
                 )}
               </div>
@@ -321,8 +358,8 @@ export default function ZabbixAdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={loadZabbixHosts}
                   className="mb-4"
                 >
@@ -333,17 +370,23 @@ export default function ZabbixAdminPage() {
                   <div className="mb-4 p-2 bg-gray-100 rounded text-sm">
                     <strong>Loaded {zabbixHosts.length} hosts:</strong>
                     <ul className="mt-1 max-h-32 overflow-y-auto">
-                      {zabbixHosts.map(h => (
-                        <li key={h.hostid}>{h.name} (ID: {h.hostid})</li>
+                      {zabbixHosts.map((h) => (
+                        <li key={h.hostid}>
+                          {h.name} (ID: {h.hostid})
+                        </li>
                       ))}
                     </ul>
-                    
+
                     {/* Test dropdown - using native select for debugging */}
                     <div className="mt-2">
-                      <label className="text-xs text-gray-500">Test Host Selector (Native):</label>
-                      <select 
+                      <label className="text-xs text-gray-500">
+                        Test Host Selector (Native):
+                      </label>
+                      <select
                         className="w-full mt-1 p-2 border rounded bg-white"
-                        onChange={(e) => console.log('Selected:', e.target.value)}
+                        onChange={(e) =>
+                          console.log("Selected:", e.target.value)
+                        }
                       >
                         <option value="">Select a host...</option>
                         {zabbixHosts.map((host) => (
@@ -358,17 +401,23 @@ export default function ZabbixAdminPage() {
 
                 <div className="space-y-3">
                   {services.map((service) => (
-                    <div 
-                      key={service.id} 
+                    <div
+                      key={service.id}
                       className="flex items-center justify-between p-3 border rounded-lg"
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{service.name}</span>
                           {service.monitoringEnabled && (
-                            <Badge variant={service.monitoringStatus === 'OPERATIONAL' ? 'default' : 'destructive'}>
+                            <Badge
+                              variant={
+                                service.monitoringStatus === "OPERATIONAL"
+                                  ? "default"
+                                  : "destructive"
+                              }
+                            >
                               <Activity className="h-3 w-3 mr-1" />
-                              {service.monitoringStatus || 'Unknown'}
+                              {service.monitoringStatus || "Unknown"}
                             </Badge>
                           )}
                         </div>
@@ -379,15 +428,18 @@ export default function ZabbixAdminPage() {
                         )}
                         {service.uptimePercentage && (
                           <p className="text-xs text-gray-400">
-                            Uptime: {parseFloat(service.uptimePercentage).toFixed(2)}%
+                            Uptime:{" "}
+                            {parseFloat(service.uptimePercentage).toFixed(2)}%
                           </p>
                         )}
                       </div>
 
                       <div className="flex items-center gap-4">
                         <Select
-                          value={service.zabbixHostId || ''}
-                          onValueChange={(hostId) => linkService(service.id, hostId)}
+                          value={service.zabbixHostId || ""}
+                          onValueChange={(hostId) =>
+                            linkService(service.id, hostId)
+                          }
                         >
                           <SelectTrigger className="w-48">
                             <SelectValue placeholder="Select Zabbix host..." />
@@ -404,11 +456,13 @@ export default function ZabbixAdminPage() {
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={service.monitoringEnabled || false}
-                            onCheckedChange={(checked) => toggleMonitoring(service.id, checked)}
+                            onCheckedChange={(checked) =>
+                              toggleMonitoring(service.id, checked)
+                            }
                             disabled={!service.zabbixHostId}
                           />
                           <span className="text-sm text-gray-600">
-                            {service.monitoringEnabled ? 'On' : 'Off'}
+                            {service.monitoringEnabled ? "On" : "Off"}
                           </span>
                         </div>
                       </div>

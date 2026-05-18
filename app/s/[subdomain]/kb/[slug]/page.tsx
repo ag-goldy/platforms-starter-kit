@@ -1,39 +1,43 @@
-import { notFound, redirect } from 'next/navigation';
-import { db } from '@/db';
-import { organizations, kbArticles } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { ArticleView } from '@/components/kb/article-view';
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { ChevronRight } from 'lucide-react';
+import { notFound, redirect } from "next/navigation";
+import { db } from "@/db";
+import { organizations, kbArticles } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { ArticleView } from "@/components/kb/article-view";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { ChevronRight } from "lucide-react";
 
 interface KBArticlePageProps {
   params: Promise<{ subdomain: string; slug: string }>;
 }
 
-export async function generateMetadata({ params }: KBArticlePageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: KBArticlePageProps): Promise<Metadata> {
   const { subdomain, slug } = await params;
-  
+
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.subdomain, subdomain),
   });
 
   if (!org) {
-    return { title: 'Not Found' };
+    return { title: "Not Found" };
   }
 
   const article = await db.query.kbArticles.findFirst({
     where: and(
       eq(kbArticles.orgId, org.id),
       eq(kbArticles.slug, slug),
-      eq(kbArticles.status, 'published')
+      eq(kbArticles.status, "published"),
     ),
   });
 
   return {
-    title: article ? `${article.title} - ${org.branding?.nameOverride || org.name}` : 'Not Found',
+    title: article
+      ? `${article.title} - ${org.branding?.nameOverride || org.name}`
+      : "Not Found",
     description: article?.excerpt || undefined,
   };
 }
@@ -61,10 +65,7 @@ export default async function KBArticlePage({ params }: KBArticlePageProps) {
 
   // Get article with related data
   const article = await db.query.kbArticles.findFirst({
-    where: and(
-      eq(kbArticles.orgId, org.id),
-      eq(kbArticles.slug, slug)
-    ),
+    where: and(eq(kbArticles.orgId, org.id), eq(kbArticles.slug, slug)),
     with: {
       category: true,
       author: {
@@ -78,13 +79,13 @@ export default async function KBArticlePage({ params }: KBArticlePageProps) {
   });
 
   // Article must exist and be published
-  if (!article || article.status !== 'published') {
+  if (!article || article.status !== "published") {
     notFound();
   }
 
   // Check visibility - public articles are accessible to everyone
   // For internal/agent-only visibility, additional auth checks would be needed
-  if (article.visibility !== 'public') {
+  if (article.visibility !== "public") {
     // In a real implementation, check if user is authenticated and has access
     // For now, we&apos;ll show not found for non-public articles in public portal
     notFound();
@@ -97,13 +98,13 @@ export default async function KBArticlePage({ params }: KBArticlePageProps) {
     .where(eq(kbArticles.id, article.id));
 
   // Get related articles (same category, excluding current)
-  const relatedArticles = article.categoryId 
+  const relatedArticles = article.categoryId
     ? await db.query.kbArticles.findMany({
         where: and(
           eq(kbArticles.orgId, org.id),
           eq(kbArticles.categoryId, article.categoryId),
-          eq(kbArticles.status, 'published'),
-          eq(kbArticles.visibility, 'public'),
+          eq(kbArticles.status, "published"),
+          eq(kbArticles.visibility, "public"),
         ),
         limit: 4,
         with: {
@@ -123,7 +124,9 @@ export default async function KBArticlePage({ params }: KBArticlePageProps) {
         <div className="flex items-center gap-2 text-sm text-gray-600">
           {article.category && (
             <>
-              <Link href={`/s/${subdomain}/kb?category=${article.category.slug}`}>
+              <Link
+                href={`/s/${subdomain}/kb?category=${article.category.slug}`}
+              >
                 {article.category.name}
               </Link>
               <ChevronRight className="h-4 w-4 text-gray-400" />

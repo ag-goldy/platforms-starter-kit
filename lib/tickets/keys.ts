@@ -1,18 +1,21 @@
-import { db } from '@/db';
-import { organizations, tickets } from '@/db/schema';
-import { eq, like } from 'drizzle-orm';
+import { db } from "@/db";
+import { organizations, tickets } from "@/db/schema";
+import { eq, like } from "drizzle-orm";
 
 /**
  * Normalize customer IDs for use in ticket keys.
  * Example ticket key: CUSTOMERID(INC)123456
  */
 export function normalizeCustomerId(value: string): string {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 }
 
 async function resolveTicketPrefix(orgId?: string | null): Promise<string> {
   if (!orgId) {
-    return 'PUBLIC';
+    return "PUBLIC";
   }
 
   const org = await db.query.organizations.findFirst({
@@ -23,13 +26,15 @@ async function resolveTicketPrefix(orgId?: string | null): Promise<string> {
     },
   });
 
-  const normalizedCustomerId = org?.customerId ? normalizeCustomerId(org.customerId) : '';
+  const normalizedCustomerId = org?.customerId
+    ? normalizeCustomerId(org.customerId)
+    : "";
   if (normalizedCustomerId) {
     return normalizedCustomerId;
   }
 
-  const normalizedSlug = org?.slug ? normalizeCustomerId(org.slug) : '';
-  return normalizedSlug || 'ORG';
+  const normalizedSlug = org?.slug ? normalizeCustomerId(org.slug) : "";
+  return normalizedSlug || "ORG";
 }
 
 /**
@@ -42,12 +47,16 @@ async function resolveTicketPrefix(orgId?: string | null): Promise<string> {
  * - six-digit random number
  * - collision detection on the full key and numeric suffix
  */
-export async function generateTicketKey(orgId?: string | null): Promise<string> {
+export async function generateTicketKey(
+  orgId?: string | null,
+): Promise<string> {
   const prefix = await resolveTicketPrefix(orgId);
   const maxAttempts = 100;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const random = Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0');
+    const random = Math.floor(Math.random() * 1_000_000)
+      .toString()
+      .padStart(6, "0");
     const key = `${prefix}(INC)${random}`;
 
     const existing = await db.query.tickets.findFirst({
@@ -60,5 +69,5 @@ export async function generateTicketKey(orgId?: string | null): Promise<string> 
     }
   }
 
-  throw new Error('Unable to generate a unique ticket key');
+  throw new Error("Unable to generate a unique ticket key");
 }

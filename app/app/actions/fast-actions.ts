@@ -1,26 +1,30 @@
-'use server';
+"use server";
 
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { assignTicketAction, updateTicketStatusAction, addTicketCommentAction } from './tickets';
-import { revalidatePath } from 'next/cache';
-import { db } from '@/db';
-import { tickets } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { canViewTicket } from '@/lib/auth/permissions';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import {
+  assignTicketAction,
+  updateTicketStatusAction,
+  addTicketCommentAction,
+} from "./tickets";
+import { revalidatePath } from "next/cache";
+import { db } from "@/db";
+import { tickets } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { canViewTicket } from "@/lib/auth/permissions";
 
 /**
  * Assign ticket to current user
  */
 export async function assignToMeAction(ticketId: string) {
   const session = await requireInternalRole();
-  
+
   // Verify user can view ticket
   await canViewTicket(ticketId);
-  
+
   await assignTicketAction(ticketId, session.user.id);
-  revalidatePath('/app');
+  revalidatePath("/app");
   revalidatePath(`/app/tickets/${ticketId}`);
-  
+
   return { success: true };
 }
 
@@ -29,19 +33,19 @@ export async function assignToMeAction(ticketId: string) {
  */
 export async function replyAndWaitingAction(ticketId: string, comment: string) {
   await requireInternalRole();
-  
+
   // Verify user can view ticket
   await canViewTicket(ticketId);
-  
+
   // Add comment
   await addTicketCommentAction(ticketId, comment, false);
-  
+
   // Set status to WAITING_ON_CUSTOMER
-  await updateTicketStatusAction(ticketId, 'WAITING_ON_CUSTOMER');
-  
-  revalidatePath('/app');
+  await updateTicketStatusAction(ticketId, "WAITING_ON_CUSTOMER");
+
+  revalidatePath("/app");
   revalidatePath(`/app/tickets/${ticketId}`);
-  
+
   return { success: true };
 }
 
@@ -50,10 +54,10 @@ export async function replyAndWaitingAction(ticketId: string, comment: string) {
  */
 export async function closeAndSendCSATAction(ticketId: string) {
   await requireInternalRole();
-  
+
   // Verify user can view ticket
   await canViewTicket(ticketId);
-  
+
   // Get ticket to check if CSAT is configured
   const ticket = await db.query.tickets.findFirst({
     where: eq(tickets.id, ticketId),
@@ -61,19 +65,19 @@ export async function closeAndSendCSATAction(ticketId: string) {
       orgId: true,
     },
   });
-  
+
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
-  
+
   // Close the ticket
-  await updateTicketStatusAction(ticketId, 'CLOSED');
-  
+  await updateTicketStatusAction(ticketId, "CLOSED");
+
   // TODO: Send CSAT email if configured for the organization
   // For now, just close the ticket
-  
-  revalidatePath('/app');
+
+  revalidatePath("/app");
   revalidatePath(`/app/tickets/${ticketId}`);
-  
+
   return { success: true };
 }

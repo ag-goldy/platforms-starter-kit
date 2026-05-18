@@ -1,10 +1,10 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { auditLogs } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { and, eq, desc, gte, lte, sql, like, or } from 'drizzle-orm';
-import { z } from 'zod';
+import { db } from "@/db";
+import { auditLogs } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { and, eq, desc, gte, lte, sql, like, or } from "drizzle-orm";
+import { z } from "zod";
 
 const filterSchema = z.object({
   orgId: z.string().uuid().optional(),
@@ -20,7 +20,7 @@ export type AuditLogFilters = z.infer<typeof filterSchema>;
 export async function getAuditLogs(
   filters: AuditLogFilters,
   page: number = 1,
-  pageSize: number = 50
+  pageSize: number = 50,
 ) {
   await requireInternalRole();
 
@@ -52,8 +52,8 @@ export async function getAuditLogs(
     conditions.push(
       or(
         like(auditLogs.action, `%${validated.search}%`),
-        like(auditLogs.details || '', `%${validated.search}%`)
-      )
+        like(auditLogs.details || "", `%${validated.search}%`),
+      ),
     );
   }
 
@@ -140,68 +140,68 @@ export async function getAuditLogStats(dateFrom?: Date, dateTo?: Date) {
 
 export async function exportAuditLogs(
   filters: AuditLogFilters,
-  format: 'csv' | 'json' = 'csv'
+  format: "csv" | "json" = "csv",
 ) {
   await requireInternalRole();
 
   const { logs } = await getAuditLogs(filters, 1, 10000);
 
-  if (format === 'json') {
+  if (format === "json") {
     return JSON.stringify(logs, null, 2);
   }
 
   // CSV format
   const headers = [
-    'Timestamp',
-    'Action',
-    'User',
-    'Organization ID',
-    'Ticket ID',
-    'Details',
-    'IP Address',
+    "Timestamp",
+    "Action",
+    "User",
+    "Organization ID",
+    "Ticket ID",
+    "Details",
+    "IP Address",
   ];
 
   const rows = logs.map((log) => [
     log.createdAt.toISOString(),
     log.action,
-    log.user?.name || log.user?.email || 'System',
-    log.orgId || '-',
-    log.ticketId || '-',
-    log.details || '',
-    log.ipAddress || '',
+    log.user?.name || log.user?.email || "System",
+    log.orgId || "-",
+    log.ticketId || "-",
+    log.details || "",
+    log.ipAddress || "",
   ]);
 
   return [
-    headers.join(','),
+    headers.join(","),
     ...rows.map((row) =>
       row
         .map((cell) => {
-          const str = String(cell || '').replace(/"/g, '""');
-          return str.includes(',') || str.includes('\n') ? `"${str}"` : str;
+          const str = String(cell || "").replace(/"/g, '""');
+          return str.includes(",") || str.includes("\n") ? `"${str}"` : str;
         })
-        .join(',')
+        .join(","),
     ),
-  ].join('\n');
+  ].join("\n");
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  TICKET_CREATED: 'Ticket Created',
-  TICKET_UPDATED: 'Ticket Updated',
-  TICKET_STATUS_CHANGED: 'Status Changed',
-  TICKET_ASSIGNED: 'Ticket Assigned',
-  TICKET_PRIORITY_CHANGED: 'Priority Changed',
-  TICKET_COMMENT_ADDED: 'Comment Added',
-  TICKET_MERGED: 'Ticket Merged',
-  TICKET_TAG_ADDED: 'Tag Added',
-  TICKET_TAG_REMOVED: 'Tag Removed',
-  USER_INVITED: 'User Invited',
-  USER_ROLE_CHANGED: 'Role Changed',
-  ORG_CREATED: 'Organization Created',
-  ORG_UPDATED: 'Organization Updated',
-  EXPORT_REQUESTED: 'Export Requested',
-  MEMBERSHIP_DEACTIVATED: 'Membership Deactivated',
+  TICKET_CREATED: "Ticket Created",
+  TICKET_UPDATED: "Ticket Updated",
+  TICKET_STATUS_CHANGED: "Status Changed",
+  TICKET_ASSIGNED: "Ticket Assigned",
+  TICKET_PRIORITY_CHANGED: "Priority Changed",
+  TICKET_COMMENT_ADDED: "Comment Added",
+  TICKET_MERGED: "Ticket Merged",
+  TICKET_TAG_ADDED: "Tag Added",
+  TICKET_TAG_REMOVED: "Tag Removed",
+  USER_INVITED: "User Invited",
+  USER_ROLE_CHANGED: "Role Changed",
+  ORG_CREATED: "Organization Created",
+  ORG_UPDATED: "Organization Updated",
+  EXPORT_REQUESTED: "Export Requested",
+  MEMBERSHIP_DEACTIVATED: "Membership Deactivated",
 };
 
 export function formatAuditAction(action: string): string {
-  return ACTION_LABELS[action] || action.replace(/_/g, ' ');
+  return ACTION_LABELS[action] || action.replace(/_/g, " ");
 }

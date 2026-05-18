@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { assets, ticketAssets } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/permissions';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { assets, ticketAssets } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/permissions";
+import { z } from "zod";
 
 // Archive/Unarchive schema
 const archiveSchema = z.object({
-  action: z.enum(['archive', 'unarchive']),
+  action: z.enum(["archive", "unarchive"]),
 });
 
 // GET /api/assets/[id] - Get asset details with ticket count
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -35,10 +35,7 @@ export async function GET(
     });
 
     if (!asset) {
-      return NextResponse.json(
-        { error: 'Asset not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
     // Get linked ticket count
@@ -56,21 +53,18 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       asset,
-      linkedTickets: linkedTickets.map(lt => lt.ticket),
+      linkedTickets: linkedTickets.map((lt) => lt.ticket),
     });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error('Failed to fetch asset:', error);
+    console.error("Failed to fetch asset:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch asset' },
-      { status: 500 }
+      { error: "Failed to fetch asset" },
+      { status: 500 },
     );
   }
 }
@@ -78,7 +72,7 @@ export async function GET(
 // PATCH /api/assets/[id] - Update asset (including archive/unarchive)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -89,20 +83,21 @@ export async function PATCH(
     const archiveResult = archiveSchema.safeParse(body);
     if (archiveResult.success) {
       const { action } = archiveResult.data;
-      
-      const updateData = action === 'archive' 
-        ? { 
-            archived: true, 
-            archivedAt: new Date(), 
-            archivedBy: user.id,
-            updatedAt: new Date(),
-          }
-        : { 
-            archived: false, 
-            archivedAt: null, 
-            archivedBy: null,
-            updatedAt: new Date(),
-          };
+
+      const updateData =
+        action === "archive"
+          ? {
+              archived: true,
+              archivedAt: new Date(),
+              archivedBy: user.id,
+              updatedAt: new Date(),
+            }
+          : {
+              archived: false,
+              archivedAt: null,
+              archivedBy: null,
+              updatedAt: new Date(),
+            };
 
       const [updated] = await db
         .update(assets)
@@ -111,15 +106,12 @@ export async function PATCH(
         .returning();
 
       if (!updated) {
-        return NextResponse.json(
-          { error: 'Asset not found' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Asset not found" }, { status: 404 });
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         asset: updated,
-        message: action === 'archive' ? 'Asset archived' : 'Asset unarchived',
+        message: action === "archive" ? "Asset archived" : "Asset unarchived",
       });
     }
 
@@ -132,8 +124,19 @@ export async function PATCH(
       vendor: z.string().optional(),
       ipAddress: z.string().optional(),
       macAddress: z.string().optional(),
-      status: z.enum(['ACTIVE', 'MAINTENANCE', 'RETIRED']).optional(),
-      type: z.enum(['AP', 'SWITCH', 'FIREWALL', 'CAMERA', 'NVR', 'SERVER', 'ISP_CIRCUIT', 'OTHER']).optional(),
+      status: z.enum(["ACTIVE", "MAINTENANCE", "RETIRED"]).optional(),
+      type: z
+        .enum([
+          "AP",
+          "SWITCH",
+          "FIREWALL",
+          "CAMERA",
+          "NVR",
+          "SERVER",
+          "ISP_CIRCUIT",
+          "OTHER",
+        ])
+        .optional(),
       siteId: z.string().uuid().nullable().optional(),
       areaId: z.string().uuid().nullable().optional(),
       tags: z.array(z.string()).optional(),
@@ -152,30 +155,24 @@ export async function PATCH(
       .returning();
 
     if (!updated) {
-      return NextResponse.json(
-        { error: 'Asset not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
     return NextResponse.json({ asset: updated });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
-        { status: 400 }
+        { error: "Invalid data", details: error.errors },
+        { status: 400 },
       );
     }
-    console.error('Failed to update asset:', error);
+    console.error("Failed to update asset:", error);
     return NextResponse.json(
-      { error: 'Failed to update asset' },
-      { status: 500 }
+      { error: "Failed to update asset" },
+      { status: 500 },
     );
   }
 }
@@ -183,7 +180,7 @@ export async function PATCH(
 // DELETE /api/assets/[id] - Delete asset
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -195,10 +192,7 @@ export async function DELETE(
     });
 
     if (!asset) {
-      return NextResponse.json(
-        { error: 'Asset not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
     // Check for linked tickets
@@ -208,32 +202,29 @@ export async function DELETE(
 
     if (linkedTickets.length > 0) {
       return NextResponse.json(
-        { 
-          error: 'Cannot delete asset with linked tickets',
+        {
+          error: "Cannot delete asset with linked tickets",
           linkedTicketCount: linkedTickets.length,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     // Delete the asset
     await db.delete(assets).where(eq(assets.id, id));
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: 'Asset deleted successfully',
+      message: "Asset deleted successfully",
     });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error('Failed to delete asset:', error);
+    console.error("Failed to delete asset:", error);
     return NextResponse.json(
-      { error: 'Failed to delete asset' },
-      { status: 500 }
+      { error: "Failed to delete asset" },
+      { status: 500 },
     );
   }
 }

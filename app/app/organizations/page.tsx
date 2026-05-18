@@ -1,21 +1,23 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { organizations } from '@/db/schema';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { eq } from 'drizzle-orm';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { eq } from "drizzle-orm";
 
 interface OrganizationsPageProps {
   searchParams: Promise<{ showDisabled?: string }>;
 }
 
-export default async function OrganizationsPage({ searchParams }: OrganizationsPageProps) {
+export default async function OrganizationsPage({
+  searchParams,
+}: OrganizationsPageProps) {
   await requireInternalRole();
-  
+
   const params = await searchParams;
-  const showDisabled = params.showDisabled === 'true';
+  const showDisabled = params.showDisabled === "true";
 
   // Query organizations - filter out disabled unless showDisabled is true
   let orgList;
@@ -34,7 +36,7 @@ export default async function OrganizationsPage({ searchParams }: OrganizationsP
 
   const disabledCount = await db.$count(
     organizations,
-    eq(organizations.isActive, false)
+    eq(organizations.isActive, false),
   );
 
   return (
@@ -55,13 +57,18 @@ export default async function OrganizationsPage({ searchParams }: OrganizationsP
       {disabledCount > 0 && (
         <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
           <span className="text-sm text-gray-600">
-            {disabledCount} disabled organization{disabledCount !== 1 ? 's' : ''}
+            {disabledCount} disabled organization
+            {disabledCount !== 1 ? "s" : ""}
           </span>
           <Link
-            href={showDisabled ? '/app/organizations' : '/app/organizations?showDisabled=true'}
+            href={
+              showDisabled
+                ? "/app/organizations"
+                : "/app/organizations?showDisabled=true"
+            }
             className="text-sm text-blue-600 hover:underline"
           >
-            {showDisabled ? 'Hide disabled' : 'Show disabled'}
+            {showDisabled ? "Hide disabled" : "Show disabled"}
           </Link>
         </div>
       )}
@@ -73,9 +80,9 @@ export default async function OrganizationsPage({ searchParams }: OrganizationsP
         <CardContent>
           {orgList.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
-              {showDisabled 
-                ? 'No organizations found.'
-                : 'No active organizations. Create one or check disabled organizations.'}
+              {showDisabled
+                ? "No organizations found."
+                : "No active organizations. Create one or check disabled organizations."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -84,7 +91,7 @@ export default async function OrganizationsPage({ searchParams }: OrganizationsP
                   key={org.id}
                   href={`/app/organizations/${org.id}`}
                   className={`block rounded-lg border p-4 hover:bg-gray-50 transition-colors ${
-                    !org.isActive ? 'opacity-60 bg-gray-50' : 'bg-white'
+                    !org.isActive ? "opacity-60 bg-gray-50" : "bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -102,7 +109,8 @@ export default async function OrganizationsPage({ searchParams }: OrganizationsP
                       </p>
                       {!org.isActive && org.disabledAt && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Disabled on {new Date(org.disabledAt).toLocaleDateString()}
+                          Disabled on{" "}
+                          {new Date(org.disabledAt).toLocaleDateString()}
                         </p>
                       )}
                     </div>

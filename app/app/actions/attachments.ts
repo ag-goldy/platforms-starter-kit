@@ -1,10 +1,19 @@
-'use server';
+"use server";
 
-import { requireInternalRole, requireInternalAdmin } from '@/lib/auth/permissions';
-import { getQuotaStatus, setStorageQuota, recalculateStorageUsage, formatBytes, decrementStorageUsage } from '@/lib/attachments/quota';
-import { db } from '@/db';
-import { attachments } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import {
+  requireInternalRole,
+  requireInternalAdmin,
+} from "@/lib/auth/permissions";
+import {
+  getQuotaStatus,
+  setStorageQuota,
+  recalculateStorageUsage,
+  formatBytes,
+  decrementStorageUsage,
+} from "@/lib/attachments/quota";
+import { db } from "@/db";
+import { attachments } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Get storage quota status for an organization
@@ -37,7 +46,7 @@ export async function recalculateStorageUsageAction(orgId: string) {
  */
 export async function deleteAttachmentAction(attachmentId: string) {
   await requireInternalRole();
-  
+
   const attachment = await db.query.attachments.findFirst({
     where: eq(attachments.id, attachmentId),
     with: {
@@ -46,7 +55,7 @@ export async function deleteAttachmentAction(attachmentId: string) {
   });
 
   if (!attachment) {
-    throw new Error('Attachment not found');
+    throw new Error("Attachment not found");
   }
 
   // Delete the attachment

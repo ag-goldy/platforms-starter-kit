@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { ArrowLeft, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Link from "next/link";
+import { ArrowLeft, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PublicSiteHeaderProps {
   onAskAI?: () => void;
@@ -13,7 +13,7 @@ interface PublicSiteHeaderProps {
 export function PublicSiteHeader({
   onAskAI,
   backHref,
-  backLabel = 'Back',
+  backLabel = "Back",
 }: PublicSiteHeaderProps) {
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -51,14 +51,23 @@ export function PublicSiteHeader({
                 Ask Zeus AI
               </Button>
             ) : null}
-            <Link href="/support" className="text-sm text-gray-600 hover:text-gray-900">
+            <Link
+              href="/support"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
               Support
             </Link>
-            <Link href="/kb" className="text-sm text-gray-600 hover:text-gray-900">
+            <Link
+              href="/kb"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
               Knowledge Base
             </Link>
             <Link href="/login">
-              <Button size="sm" className="bg-orange-600 text-white hover:bg-orange-700">
+              <Button
+                size="sm"
+                className="bg-orange-600 text-white hover:bg-orange-700"
+              >
                 Login
               </Button>
             </Link>

@@ -10,14 +10,19 @@
  *   const result = await provider.testConnection(config.config);
  */
 
-import type { IntegrationProvider } from './types';
-import { slackIntegration } from './slack';
-import { teamsIntegration } from './teams';
-import { jiraIntegration } from './jira';
-import { githubIntegration } from './github';
-import { salesforceIntegration } from './salesforce';
+import type { IntegrationProvider } from "./types";
+import { slackIntegration } from "./slack";
+import { teamsIntegration } from "./teams";
+import { jiraIntegration } from "./jira";
+import { githubIntegration } from "./github";
+import { salesforceIntegration } from "./salesforce";
 
-export type IntegrationProviderName = 'slack' | 'teams' | 'jira' | 'github' | 'salesforce';
+export type IntegrationProviderName =
+  | "slack"
+  | "teams"
+  | "jira"
+  | "github"
+  | "salesforce";
 
 const REGISTRY: Record<IntegrationProviderName, IntegrationProvider> = {
   slack: slackIntegration,
@@ -42,9 +47,14 @@ export function getIntegration(provider: string): IntegrationProvider {
 /**
  * Returns true if the provider is known (even if not yet implemented).
  */
-export function isKnownProvider(provider: string): provider is IntegrationProviderName {
+export function isKnownProvider(
+  provider: string,
+): provider is IntegrationProviderName {
   return provider in REGISTRY;
 }
 
-export { type IntegrationProvider, type IntegrationProviderName as ProviderName };
-export * from './types';
+export {
+  type IntegrationProvider,
+  type IntegrationProviderName as ProviderName,
+};
+export * from "./types";

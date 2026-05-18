@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
 import {
   assets as assetsTable,
   organizations,
@@ -11,10 +11,10 @@ import {
   notices,
   exportRequests,
   ticketAssets,
-} from '@/db/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { AssetsManager } from '@/components/assets/assets-manager';
-import type { Asset, Site, Area } from '@/db/schema';
+} from "@/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { AssetsManager } from "@/components/assets/assets-manager";
+import type { Asset, Site, Area } from "@/db/schema";
 
 export default async function OrganizationAssetsPage({
   params,
@@ -38,33 +38,39 @@ export default async function OrganizationAssetsPage({
   });
   const siteIds = sites.map((site) => site.id);
 
-  const [assets, areas, requestTypeCountRows, activeNoticeCountRows, exportCountRows] =
-    await Promise.all([
-      db.query.assets.findMany({
-        where: eq(assetsTable.orgId, orgId),
-        orderBy: (table, { asc }) => [asc(table.name)],
-        with: {
-          site: true,
-          area: true,
-        },
-      }),
-      db.query.areas.findMany({
-        where: siteIds.length > 0 ? inArray(areasTable.siteId, siteIds) : undefined,
-        orderBy: (table, { asc }) => [asc(table.name)],
-      }),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(requestTypes)
-        .where(eq(requestTypes.orgId, orgId)),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(notices)
-        .where(and(eq(notices.orgId, orgId), eq(notices.isActive, true))),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(exportRequests)
-        .where(eq(exportRequests.orgId, orgId)),
-    ]);
+  const [
+    assets,
+    areas,
+    requestTypeCountRows,
+    activeNoticeCountRows,
+    exportCountRows,
+  ] = await Promise.all([
+    db.query.assets.findMany({
+      where: eq(assetsTable.orgId, orgId),
+      orderBy: (table, { asc }) => [asc(table.name)],
+      with: {
+        site: true,
+        area: true,
+      },
+    }),
+    db.query.areas.findMany({
+      where:
+        siteIds.length > 0 ? inArray(areasTable.siteId, siteIds) : undefined,
+      orderBy: (table, { asc }) => [asc(table.name)],
+    }),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(requestTypes)
+      .where(eq(requestTypes.orgId, orgId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(notices)
+      .where(and(eq(notices.orgId, orgId), eq(notices.isActive, true))),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(exportRequests)
+      .where(eq(exportRequests.orgId, orgId)),
+  ]);
 
   const assetIds = assets.map((asset) => asset.id);
   const assetStatsRows =
@@ -80,16 +86,15 @@ export default async function OrganizationAssetsPage({
           .groupBy(ticketAssets.assetId)
       : [];
 
-  const assetStats = assetStatsRows.reduce<Record<string, { ticketCount: number; lastLinkedAt: Date | null }>>(
-    (acc, row) => {
-      acc[row.assetId] = {
-        ticketCount: Number(row.ticketCount ?? 0),
-        lastLinkedAt: row.lastLinkedAt ?? null,
-      };
-      return acc;
-    },
-    {}
-  );
+  const assetStats = assetStatsRows.reduce<
+    Record<string, { ticketCount: number; lastLinkedAt: Date | null }>
+  >((acc, row) => {
+    acc[row.assetId] = {
+      ticketCount: Number(row.ticketCount ?? 0),
+      lastLinkedAt: row.lastLinkedAt ?? null,
+    };
+    return acc;
+  }, {});
 
   const requestTypeCount = Number(requestTypeCountRows[0]?.count ?? 0);
   const activeNoticeCount = Number(activeNoticeCountRows[0]?.count ?? 0);
@@ -97,36 +102,36 @@ export default async function OrganizationAssetsPage({
 
   const modules = [
     {
-      title: 'Service Catalog',
-      description: 'Request types and dynamic forms.',
+      title: "Service Catalog",
+      description: "Request types and dynamic forms.",
       href: `/app/organizations/${orgId}/request-types`,
-      badge: 'New',
+      badge: "New",
       count: requestTypeCount,
     },
     {
-      title: 'Sites & Areas',
-      description: 'Locations, areas, and coverage.',
+      title: "Sites & Areas",
+      description: "Locations, areas, and coverage.",
       href: `/app/organizations/${orgId}/sites`,
       count: sites.length,
     },
     {
-      title: 'Notices',
-      description: 'Maintenance and known issues banners.',
+      title: "Notices",
+      description: "Maintenance and known issues banners.",
       href: `/app/organizations/${orgId}/notices`,
       count: activeNoticeCount,
-      footer: 'Active',
+      footer: "Active",
     },
     {
-      title: 'Exports',
-      description: 'Customer data exports on demand.',
+      title: "Exports",
+      description: "Customer data exports on demand.",
       href: org.subdomain ? `/s/${org.subdomain}/exports` : undefined,
       count: exportCount,
-      footer: 'Customer portal',
+      footer: "Customer portal",
     },
     {
-      title: 'Assets',
-      description: 'Linked infrastructure inventory.',
-      badge: 'Current',
+      title: "Assets",
+      description: "Linked infrastructure inventory.",
+      badge: "Current",
       count: assets.length,
     },
   ];
@@ -146,7 +151,17 @@ export default async function OrganizationAssetsPage({
 
       <AssetsManager
         orgId={orgId}
-        assets={assets as (Asset & { site?: Site | null; area?: Area | null; archivedByUser?: { id: string; name: string | null; email: string } | null; })[]}
+        assets={
+          assets as (Asset & {
+            site?: Site | null;
+            area?: Area | null;
+            archivedByUser?: {
+              id: string;
+              name: string | null;
+              email: string;
+            } | null;
+          })[]
+        }
         sites={sites}
         areas={areas}
         scope="internal"

@@ -1,6 +1,6 @@
-import { db } from '@/db';
-import { organizations } from '@/db/schema';
-import { eq, or } from 'drizzle-orm';
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
+import { eq, or } from "drizzle-orm";
 
 export default async function TenantDisabledPage({
   params,
@@ -21,9 +21,12 @@ export default async function TenantDisabledPage({
         <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-orange-500 text-xl font-bold text-zinc-950">
           !
         </div>
-        <h1 className="text-2xl font-semibold">Portal temporarily unavailable</h1>
+        <h1 className="text-2xl font-semibold">
+          Portal temporarily unavailable
+        </h1>
         <p className="mt-3 text-sm leading-6 text-zinc-400">
-          {org?.name || 'This tenant'} is currently disabled. Contact your support administrator if you believe this is unexpected.
+          {org?.name || "This tenant"} is currently disabled. Contact your
+          support administrator if you believe this is unexpected.
         </p>
       </div>
     </main>

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 import {
   Activity,
   Bell,
@@ -10,76 +10,85 @@ import {
   RadioTower,
   ShieldCheck,
   Webhook,
-} from 'lucide-react';
-import { db } from '@/db';
-import { organizations, zabbixConfigs } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { desc, eq } from 'drizzle-orm';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeaderWithBack } from '@/components/navigation/back-button';
+} from "lucide-react";
+import { db } from "@/db";
+import { organizations, zabbixConfigs } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { desc, eq } from "drizzle-orm";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeaderWithBack } from "@/components/navigation/back-button";
 
 const AVAILABLE_INTEGRATIONS = [
   {
-    id: 'zabbix',
-    name: 'Zabbix',
-    category: 'Monitoring',
-    status: 'Available',
-    description: 'Sync hosts, service health, and monitoring state from Zabbix.',
-    href: '/app/admin/zabbix',
+    id: "zabbix",
+    name: "Zabbix",
+    category: "Monitoring",
+    status: "Available",
+    description:
+      "Sync hosts, service health, and monitoring state from Zabbix.",
+    href: "/app/admin/zabbix",
     icon: RadioTower,
   },
   {
-    id: 'smtp',
-    name: 'Email SMTP',
-    category: 'Communication',
-    status: 'Available',
-    description: 'Use SMTP as a notification and ticket update delivery channel.',
-    href: '/app/admin/email-test',
+    id: "smtp",
+    name: "Email SMTP",
+    category: "Communication",
+    status: "Available",
+    description:
+      "Use SMTP as a notification and ticket update delivery channel.",
+    href: "/app/admin/email-test",
     icon: Mail,
   },
   {
-    id: 'webhooks',
-    name: 'Webhooks',
-    category: 'Automation',
-    status: 'Available',
-    description: 'Send signed ticket and workflow events to external systems.',
-    href: '/app/settings/webhooks',
+    id: "webhooks",
+    name: "Webhooks",
+    category: "Automation",
+    status: "Available",
+    description: "Send signed ticket and workflow events to external systems.",
+    href: "/app/settings/webhooks",
     icon: Webhook,
   },
   {
-    id: 'sso',
-    name: 'SSO Providers',
-    category: 'Security',
-    status: 'Planned',
-    description: 'Centralized identity integrations for customer and agent access.',
+    id: "sso",
+    name: "SSO Providers",
+    category: "Security",
+    status: "Planned",
+    description:
+      "Centralized identity integrations for customer and agent access.",
     href: null,
     icon: ShieldCheck,
   },
   {
-    id: 'storage',
-    name: 'Object Storage',
-    category: 'Storage',
-    status: 'Planned',
-    description: 'External storage backends for attachments, exports, and archives.',
+    id: "storage",
+    name: "Object Storage",
+    category: "Storage",
+    status: "Planned",
+    description:
+      "External storage backends for attachments, exports, and archives.",
     href: null,
     icon: Database,
   },
   {
-    id: 'api-keys',
-    name: 'API Keys',
-    category: 'Developer',
-    status: 'Planned',
-    description: 'Programmatic access for custom tooling and private integrations.',
+    id: "api-keys",
+    name: "API Keys",
+    category: "Developer",
+    status: "Planned",
+    description:
+      "Programmatic access for custom tooling and private integrations.",
     href: null,
     icon: KeyRound,
   },
 ] as const;
 
 function statusBadge(status: string) {
-  if (status === 'Available') {
-    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Available</Badge>;
+  if (status === "Available") {
+    return (
+      <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+        Available
+      </Badge>
+    );
   }
   return <Badge variant="secondary">Planned</Badge>;
 }
@@ -117,7 +126,9 @@ export default async function IntegrationsPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Configured</p>
-              <p className="text-2xl font-semibold">{configuredZabbix.length}</p>
+              <p className="text-2xl font-semibold">
+                {configuredZabbix.length}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -129,7 +140,11 @@ export default async function IntegrationsPage() {
             <div>
               <p className="text-sm text-muted-foreground">Available</p>
               <p className="text-2xl font-semibold">
-                {AVAILABLE_INTEGRATIONS.filter((item) => item.status === 'Available').length}
+                {
+                  AVAILABLE_INTEGRATIONS.filter(
+                    (item) => item.status === "Available",
+                  ).length
+                }
               </p>
             </div>
           </CardContent>
@@ -142,7 +157,11 @@ export default async function IntegrationsPage() {
             <div>
               <p className="text-sm text-muted-foreground">Planned</p>
               <p className="text-2xl font-semibold">
-                {AVAILABLE_INTEGRATIONS.filter((item) => item.status === 'Planned').length}
+                {
+                  AVAILABLE_INTEGRATIONS.filter(
+                    (item) => item.status === "Planned",
+                  ).length
+                }
               </p>
             </div>
           </CardContent>
@@ -162,7 +181,8 @@ export default async function IntegrationsPage() {
             <CardContent className="p-6">
               <p className="font-medium">No integrations configured</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Start with Zabbix if you want monitoring data and service health synced into Atlas.
+                Start with Zabbix if you want monitoring data and service health
+                synced into Atlas.
               </p>
               <Button asChild className="mt-4">
                 <Link href="/app/admin/zabbix">Configure Zabbix</Link>
@@ -179,16 +199,21 @@ export default async function IntegrationsPage() {
                       <RadioTower className="h-4 w-4 text-muted-foreground" />
                       <h3 className="font-semibold">Zabbix</h3>
                       {item.isActive ? (
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Active</Badge>
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                          Active
+                        </Badge>
                       ) : (
                         <Badge variant="secondary">Inactive</Badge>
                       )}
                     </div>
                     <p className="mt-2 truncate text-sm text-muted-foreground">
-                      {item.orgName || 'Unknown organization'}
+                      {item.orgName || "Unknown organization"}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Last sync: {item.lastSyncedAt ? item.lastSyncedAt.toLocaleString() : 'Never'}
+                      Last sync:{" "}
+                      {item.lastSyncedAt
+                        ? item.lastSyncedAt.toLocaleString()
+                        : "Never"}
                     </p>
                   </div>
                   <Button asChild variant="outline" size="sm">
@@ -221,29 +246,41 @@ export default async function IntegrationsPage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <CardTitle className="text-base">{integration.name}</CardTitle>
-                        <p className="text-xs text-muted-foreground">{integration.category}</p>
+                        <CardTitle className="text-base">
+                          {integration.name}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          {integration.category}
+                        </p>
                       </div>
                     </div>
                     {statusBadge(integration.status)}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">{integration.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {integration.description}
+                  </p>
                   {integration.href ? (
                     <div className="mt-4 flex items-center text-sm font-medium text-primary">
                       Configure
                       <ExternalLink className="ml-2 h-3.5 w-3.5" />
                     </div>
                   ) : (
-                    <p className="mt-4 text-sm font-medium text-muted-foreground">Roadmap item</p>
+                    <p className="mt-4 text-sm font-medium text-muted-foreground">
+                      Roadmap item
+                    </p>
                   )}
                 </CardContent>
               </Card>
             );
 
             return integration.href ? (
-              <Link key={integration.id} href={integration.href} className="block">
+              <Link
+                key={integration.id}
+                href={integration.href}
+                className="block"
+              >
                 {content}
               </Link>
             ) : (

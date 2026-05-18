@@ -1,27 +1,31 @@
 /**
  * Public AI Endpoint - Most Restricted
- * 
+ *
  * ALLOWED: Answer general questions using ONLY public KB articles
  * BLOCKED: Everything else — tickets, users, orgs, assets, internal data
- * 
+ *
  * Rate limit: 20 requests per hour per IP
  * PII filtering: Maximum — strip everything
  * Audit logging: Log all interactions (no userId, capture IP)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { rateLimit } from '@/lib/rate-limit';
-import { getClientIP } from '@/lib/rate-limit';
-import { headers } from 'next/headers';
-import { db } from '@/db';
-import { aiAuditLog, orgAIMemory } from '@/db/schema';
-import { eq, and, inArray, desc } from 'drizzle-orm';
-import OpenAI from 'openai';
-import { detectPromptInjection, getSafeResponse, logSecurityEvent } from '@/lib/ai/prompt-guard';
-import { sanitizeResponse, type AISecurityContext } from '@/lib/ai/security';
-import { fetchKBForAI } from '@/lib/ai/data-fetchers';
-import { createHash } from 'crypto';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIP } from "@/lib/rate-limit";
+import { headers } from "next/headers";
+import { db } from "@/db";
+import { aiAuditLog, orgAIMemory } from "@/db/schema";
+import { eq, and, inArray, desc } from "drizzle-orm";
+import OpenAI from "openai";
+import {
+  detectPromptInjection,
+  getSafeResponse,
+  logSecurityEvent,
+} from "@/lib/ai/prompt-guard";
+import { sanitizeResponse, type AISecurityContext } from "@/lib/ai/security";
+import { fetchKBForAI } from "@/lib/ai/data-fetchers";
+import { createHash } from "crypto";
 
 const requestSchema = z.object({
   query: z.string().min(2).max(1000),
@@ -31,8 +35,8 @@ const requestSchema = z.object({
 });
 
 const client = new OpenAI({
-  apiKey: process.env.BASETEN_API_KEY || '',
-  baseURL: process.env.BASETEN_BASE_URL || 'https://inference.baseten.co/v1',
+  apiKey: process.env.BASETEN_API_KEY || "",
+  baseURL: process.env.BASETEN_BASE_URL || "https://inference.baseten.co/v1",
 });
 
 // System prompt hash for audit logging
@@ -51,19 +55,24 @@ STRICT RULES:
 KNOWLEDGE BASE ARTICLES:
 {kb_context}`;
 
-const SYSTEM_PROMPT_HASH = createHash('sha256').update(PUBLIC_SYSTEM_PROMPT).digest('hex');
+const SYSTEM_PROMPT_HASH = createHash("sha256")
+  .update(PUBLIC_SYSTEM_PROMPT)
+  .digest("hex");
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   const headersList = await headers();
   const ip = getClientIP(headersList);
-  
+
   // 1. Rate limit by IP (20 per hour)
-  const rateLimitResult = await rateLimit(`ai:public:${ip}`, { maxRequests: 20, windowSeconds: 60 * 60 });
+  const rateLimitResult = await rateLimit(`ai:public:${ip}`, {
+    maxRequests: 20,
+    windowSeconds: 60 * 60,
+  });
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
-      { error: 'Rate limit exceeded. Please try again later.' },
-      { status: 429 }
+      { error: "Rate limit exceeded. Please try again later." },
+      { status: 429 },
     );
   }
 
@@ -72,10 +81,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid request' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
     const { query, orgId } = parsed.data;
@@ -83,24 +89,24 @@ export async function POST(req: NextRequest) {
     // 3. Run prompt injection detection
     const guardResult = detectPromptInjection(query);
     if (guardResult.shouldBlock) {
-      logSecurityEvent('prompt_injection_blocked', {
+      logSecurityEvent("prompt_injection_blocked", {
         threats: guardResult.threats,
-        interface: 'public',
+        interface: "public",
         ipAddress: ip,
         inputLength: query.length,
       });
 
       // Audit log the blocked request
       await db.insert(aiAuditLog).values({
-        interface: 'public',
+        interface: "public",
         userQuery: query,
         systemPromptHash: SYSTEM_PROMPT_HASH,
         aiResponse: getSafeResponse(guardResult.threats),
-        modelUsed: 'deepseek-ai/DeepSeek-V3.1',
+        modelUsed: "deepseek-ai/DeepSeek-V3.1",
         responseTimeMs: Date.now() - startTime,
         wasFiltered: true,
         ipAddress: ip,
-        userAgent: headersList.get('user-agent') || undefined,
+        userAgent: headersList.get("user-agent") || undefined,
       });
 
       return NextResponse.json({
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Fetch public KB articles only
     const securityContext: AISecurityContext = {
-      interface: 'public',
+      interface: "public",
       orgId: null,
       userId: null,
       userRole: null,
@@ -119,51 +125,65 @@ export async function POST(req: NextRequest) {
       ipAddress: ip,
     };
 
-    const kbContext = await fetchKBForAI(securityContext, guardResult.sanitizedInput, 3);
+    const kbContext = await fetchKBForAI(
+      securityContext,
+      guardResult.sanitizedInput,
+      3,
+    );
 
     // 4b. Inject org policy/fact memories (public tier: only policy + fact, never instructions/preferences)
-    let orgMemoryContext = '';
+    let orgMemoryContext = "";
     if (orgId) {
       const memories = await db.query.orgAIMemory.findMany({
         where: and(
           eq(orgAIMemory.orgId, orgId),
           eq(orgAIMemory.isActive, true),
-          inArray(orgAIMemory.memoryType, ['policy', 'fact'])
+          inArray(orgAIMemory.memoryType, ["policy", "fact"]),
         ),
         orderBy: [desc(orgAIMemory.priority), desc(orgAIMemory.createdAt)],
         limit: 5,
         columns: { memoryType: true, content: true },
       });
       if (memories.length > 0) {
-        orgMemoryContext = '\n\nORG POLICIES & FACTS:\n' +
-          memories.map(m => `[${m.memoryType.toUpperCase()}] ${m.content}`).join('\n');
+        orgMemoryContext =
+          "\n\nORG POLICIES & FACTS:\n" +
+          memories
+            .map((m) => `[${m.memoryType.toUpperCase()}] ${m.content}`)
+            .join("\n");
       }
     }
 
     // 5. Build system prompt
-    const systemPrompt = PUBLIC_SYSTEM_PROMPT
-      .replace('{kb_context}', kbContext || 'No relevant articles found.')
-      + orgMemoryContext;
+    const systemPrompt =
+      PUBLIC_SYSTEM_PROMPT.replace(
+        "{kb_context}",
+        kbContext || "No relevant articles found.",
+      ) + orgMemoryContext;
 
     // 6. Call OpenAI
     const completion = await client.chat.completions.create({
-      model: 'deepseek-ai/DeepSeek-V3.1',
+      model: "deepseek-ai/DeepSeek-V3.1",
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: guardResult.sanitizedInput },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: guardResult.sanitizedInput },
       ],
       temperature: 0.3,
       max_tokens: 500,
     });
 
-    const aiResponse = completion.choices[0]?.message?.content || 'I was unable to generate a response.';
+    const aiResponse =
+      completion.choices[0]?.message?.content ||
+      "I was unable to generate a response.";
 
     // 7. Sanitize response (maximum PII stripping for public)
-    const { sanitized, piiDetected, piiTypes } = sanitizeResponse(aiResponse, securityContext);
+    const { sanitized, piiDetected, piiTypes } = sanitizeResponse(
+      aiResponse,
+      securityContext,
+    );
 
     // 8. Audit log
     await db.insert(aiAuditLog).values({
-      interface: 'public',
+      interface: "public",
       userQuery: query,
       systemPromptHash: SYSTEM_PROMPT_HASH,
       aiResponse: sanitized,
@@ -173,21 +193,20 @@ export async function POST(req: NextRequest) {
       piiDetected,
       piiTypes,
       wasFiltered: piiDetected,
-      sourcesUsed: kbContext ? ['kb:public'] : [],
+      sourcesUsed: kbContext ? ["kb:public"] : [],
       ipAddress: ip,
-      userAgent: headersList.get('user-agent') || undefined,
+      userAgent: headersList.get("user-agent") || undefined,
     });
 
     return NextResponse.json({
       answer: sanitized,
       suggestions: [],
     });
-
   } catch (error) {
-    console.error('[AI Public] Error:', error);
+    console.error("[AI Public] Error:", error);
     return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
+      { error: "Failed to process request" },
+      { status: 500 },
     );
   }
 }

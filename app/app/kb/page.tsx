@@ -1,14 +1,22 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { kbArticles, kbCategories, users, organizations } from '@/db/schema';
-import { desc, eq, asc } from 'drizzle-orm';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { BookOpen, Plus, Edit, Eye, ThumbsUp, Calendar, FolderTree } from 'lucide-react';
-import { formatDateTime } from '@/lib/utils/date';
-import { DeleteArticleButton } from '@/components/kb/delete-article-button';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { kbArticles, kbCategories, users, organizations } from "@/db/schema";
+import { desc, eq, asc } from "drizzle-orm";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  BookOpen,
+  Plus,
+  Edit,
+  Eye,
+  ThumbsUp,
+  Calendar,
+  FolderTree,
+} from "lucide-react";
+import { formatDateTime } from "@/lib/utils/date";
+import { DeleteArticleButton } from "@/components/kb/delete-article-button";
 
 export default async function KBAdminPage() {
   await requireInternalRole();
@@ -38,20 +46,24 @@ export default async function KBAdminPage() {
     .orderBy(asc(kbCategories.name));
 
   const statusColors: Record<string, string> = {
-    draft: 'bg-gray-100 text-gray-800',
-    published: 'bg-green-100 text-green-800',
-    archived: 'bg-red-100 text-red-800',
+    draft: "bg-gray-100 text-gray-800",
+    published: "bg-green-100 text-green-800",
+    archived: "bg-red-100 text-red-800",
   };
 
   const visibilityColors: Record<string, string> = {
-    public: 'bg-blue-100 text-blue-800',
-    internal: 'bg-yellow-100 text-yellow-800',
-    agents_only: 'bg-purple-100 text-purple-800',
+    public: "bg-blue-100 text-blue-800",
+    internal: "bg-yellow-100 text-yellow-800",
+    agents_only: "bg-purple-100 text-purple-800",
   };
 
-  const pendingArticles = articles.filter(a => a.article.status === 'pending_review');
-  const publishedArticles = articles.filter(a => a.article.status === 'published');
-  const draftArticles = articles.filter(a => a.article.status === 'draft');
+  const pendingArticles = articles.filter(
+    (a) => a.article.status === "pending_review",
+  );
+  const publishedArticles = articles.filter(
+    (a) => a.article.status === "published",
+  );
+  const draftArticles = articles.filter((a) => a.article.status === "draft");
 
   return (
     <div className="space-y-6">
@@ -62,7 +74,8 @@ export default async function KBAdminPage() {
             Knowledge Base
           </h1>
           <p className="mt-1 text-sm text-gray-600">
-            Manage knowledge base articles and categories across all organizations
+            Manage knowledge base articles and categories across all
+            organizations
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -92,7 +105,7 @@ export default async function KBAdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {articles.filter(a => a.article.status === 'published').length}
+              {articles.filter((a) => a.article.status === "published").length}
             </div>
             <p className="text-sm text-gray-600">Published</p>
           </CardContent>
@@ -100,7 +113,7 @@ export default async function KBAdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {articles.filter(a => a.article.status === 'draft').length}
+              {articles.filter((a) => a.article.status === "draft").length}
             </div>
             <p className="text-sm text-gray-600">Drafts</p>
           </CardContent>
@@ -131,7 +144,9 @@ export default async function KBAdminPage() {
                 >
                   <BookOpen className="h-3.5 w-3.5" />
                   {category.name}
-                  <span className="text-gray-500">({org?.name || 'Global'})</span>
+                  <span className="text-gray-500">
+                    ({org?.name || "Global"})
+                  </span>
                 </Link>
               ))}
             </div>
@@ -157,10 +172,18 @@ export default async function KBAdminPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-medium truncate">{article.title}</h3>
-                      <Badge className={statusColors[article.status] || 'bg-gray-100'}>
+                      <Badge
+                        className={
+                          statusColors[article.status] || "bg-gray-100"
+                        }
+                      >
                         {article.status}
                       </Badge>
-                      <Badge className={visibilityColors[article.visibility] || 'bg-gray-100'}>
+                      <Badge
+                        className={
+                          visibilityColors[article.visibility] || "bg-gray-100"
+                        }
+                      >
                         {article.visibility}
                       </Badge>
                     </div>
@@ -170,17 +193,25 @@ export default async function KBAdminPage() {
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <BookOpen className="h-3 w-3" />
-                        {category?.name || 'Uncategorized'}
+                        {category?.name || "Uncategorized"}
                       </span>
-                      <span className="text-gray-400">• {org?.name || 'Global'}</span>
+                      <span className="text-gray-400">
+                        • {org?.name || "Global"}
+                      </span>
                       {author && (
-                        <span className="text-gray-400">by {author.name || author.email}</span>
+                        <span className="text-gray-400">
+                          by {author.name || author.email}
+                        </span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <Link
-                      href={org?.subdomain ? `/s/${org.subdomain}/kb/${article.slug}` : `/kb/${article.slug}`}
+                      href={
+                        org?.subdomain
+                          ? `/s/${org.subdomain}/kb/${article.slug}`
+                          : `/kb/${article.slug}`
+                      }
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       View
@@ -191,9 +222,9 @@ export default async function KBAdminPage() {
                     >
                       Review
                     </Link>
-                    <DeleteArticleButton 
-                      articleId={article.id} 
-                      articleTitle={article.title} 
+                    <DeleteArticleButton
+                      articleId={article.id}
+                      articleTitle={article.title}
                     />
                   </div>
                 </div>
@@ -222,67 +253,89 @@ export default async function KBAdminPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {publishedArticles.concat(draftArticles).map(({ article, category, author, org }) => (
-                <div
-                  key={article.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium truncate">{article.title}</h3>
-                      <Badge className={statusColors[article.status] || 'bg-gray-100'}>
-                        {article.status}
-                      </Badge>
-                      <Badge className={visibilityColors[article.visibility] || 'bg-gray-100'}>
-                        {article.visibility}
-                      </Badge>
+              {publishedArticles
+                .concat(draftArticles)
+                .map(({ article, category, author, org }) => (
+                  <div
+                    key={article.id}
+                    className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium truncate">
+                          {article.title}
+                        </h3>
+                        <Badge
+                          className={
+                            statusColors[article.status] || "bg-gray-100"
+                          }
+                        >
+                          {article.status}
+                        </Badge>
+                        <Badge
+                          className={
+                            visibilityColors[article.visibility] ||
+                            "bg-gray-100"
+                          }
+                        >
+                          {article.visibility}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                        {article.excerpt || article.content.substring(0, 150)}
+                        ...
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" />
+                          {category?.name || "Uncategorized"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDateTime(article.createdAt)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {article.viewCount} views
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ThumbsUp className="h-3 w-3" />
+                          {article.helpfulCount} helpful
+                        </span>
+                        <span className="text-gray-400">
+                          • {org?.name || "Global"}
+                        </span>
+                        {author && (
+                          <span className="text-gray-400">
+                            by {author.name || author.email}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                      {article.excerpt || article.content.substring(0, 150)}...
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        {category?.name || 'Uncategorized'}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatDateTime(article.createdAt)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        {article.viewCount} views
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp className="h-3 w-3" />
-                        {article.helpfulCount} helpful
-                      </span>
-                      <span className="text-gray-400">• {org?.name || 'Global'}</span>
-                      {author && (
-                        <span className="text-gray-400">by {author.name || author.email}</span>
-                      )}
+                    <div className="flex items-center gap-2 ml-4">
+                      <Link
+                        href={
+                          org?.subdomain
+                            ? `/s/${org.subdomain}/kb/${article.slug}`
+                            : `/kb/${article.slug}`
+                        }
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/app/kb/${article.id}/edit`}
+                        className="text-sm text-gray-600 hover:text-gray-900"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                      <DeleteArticleButton
+                        articleId={article.id}
+                        articleTitle={article.title}
+                      />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <Link
-                      href={org?.subdomain ? `/s/${org.subdomain}/kb/${article.slug}` : `/kb/${article.slug}`}
-                      className="text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      View
-                    </Link>
-                    <Link
-                      href={`/app/kb/${article.id}/edit`}
-                      className="text-sm text-gray-600 hover:text-gray-900"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                    <DeleteArticleButton 
-                      articleId={article.id} 
-                      articleTitle={article.title} 
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </CardContent>

@@ -1,23 +1,26 @@
-'use client';
+"use client";
 
-import { useTicketPresence } from '@/hooks/use-realtime';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Edit } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from './avatar';
+import { useTicketPresence } from "@/hooks/use-realtime";
+import { motion, AnimatePresence } from "framer-motion";
+import { Edit } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 
 interface PresenceIndicatorProps {
   ticketId: string;
   className?: string;
 }
 
-export function PresenceIndicator({ ticketId, className }: PresenceIndicatorProps) {
+export function PresenceIndicator({
+  ticketId,
+  className,
+}: PresenceIndicatorProps) {
   const { activeUsers } = useTicketPresence(ticketId);
 
   if (activeUsers.length === 0) return null;
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <div className="flex -space-x-2">
         <AnimatePresence>
           {activeUsers.slice(0, 3).map((user, idx) => (
@@ -63,17 +66,25 @@ interface LiveIndicatorProps {
   className?: string;
 }
 
-export function LiveIndicator({ isLive = true, className }: LiveIndicatorProps) {
+export function LiveIndicator({
+  isLive = true,
+  className,
+}: LiveIndicatorProps) {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       {isLive && (
         <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
         </span>
       )}
-      <span className={cn('text-xs font-medium', isLive ? 'text-green-600' : 'text-gray-500')}>
-        {isLive ? 'Live' : 'Offline'}
+      <span
+        className={cn(
+          "text-xs font-medium",
+          isLive ? "text-green-600" : "text-gray-500",
+        )}
+      >
+        {isLive ? "Live" : "Offline"}
       </span>
     </div>
   );
@@ -84,15 +95,18 @@ interface EditingIndicatorProps {
   className?: string;
 }
 
-export function EditingIndicator({ userName, className }: EditingIndicatorProps) {
+export function EditingIndicator({
+  userName,
+  className,
+}: EditingIndicatorProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg',
-        className
+        "flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg",
+        className,
       )}
     >
       <Edit className="w-4 h-4 text-blue-600" />
@@ -109,9 +123,15 @@ interface DraftSavedIndicatorProps {
   className?: string;
 }
 
-export function DraftSavedIndicator({ lastSaved, isSaving, className }: DraftSavedIndicatorProps) {
+export function DraftSavedIndicator({
+  lastSaved,
+  isSaving,
+  className,
+}: DraftSavedIndicatorProps) {
   return (
-    <div className={cn('flex items-center gap-2 text-xs text-gray-500', className)}>
+    <div
+      className={cn("flex items-center gap-2 text-xs text-gray-500", className)}
+    >
       {isSaving ? (
         <>
           <span className="animate-pulse">Saving...</span>
@@ -130,15 +150,15 @@ function formatTimeAgo(date: Date): string {
   const diff = now.getTime() - date.getTime();
   const seconds = Math.floor(diff / 1000);
 
-  if (seconds < 10) return 'just now';
+  if (seconds < 10) return "just now";
   if (seconds < 60) return `${seconds}s ago`;
-  
+
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
-  
+
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  
+
   return date.toLocaleDateString();
 }
 
@@ -158,7 +178,7 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({ activities, className }: ActivityFeedProps) {
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn("space-y-3", className)}>
       <AnimatePresence initial={false}>
         {activities.map((activity) => (
           <motion.div
@@ -174,8 +194,10 @@ export function ActivityFeed({ activities, className }: ActivityFeedProps) {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-gray-900 dark:text-gray-100">
-                <span className="font-medium">{activity.user.name}</span>{' '}
-                <span className="text-gray-600 dark:text-gray-400">{activity.action}</span>
+                <span className="font-medium">{activity.user.name}</span>{" "}
+                <span className="text-gray-600 dark:text-gray-400">
+                  {activity.action}
+                </span>
                 {activity.target && (
                   <span className="font-medium"> {activity.target}</span>
                 )}
@@ -198,17 +220,25 @@ interface OnlineStatusProps {
   className?: string;
 }
 
-export function OnlineStatus({ isOnline, lastSeen, className }: OnlineStatusProps) {
+export function OnlineStatus({
+  isOnline,
+  lastSeen,
+  className,
+}: OnlineStatusProps) {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <span
         className={cn(
-          'w-2.5 h-2.5 rounded-full',
-          isOnline ? 'bg-green-500' : 'bg-gray-400'
+          "w-2.5 h-2.5 rounded-full",
+          isOnline ? "bg-green-500" : "bg-gray-400",
         )}
       />
       <span className="text-sm text-gray-600">
-        {isOnline ? 'Online' : lastSeen ? `Last seen ${formatTimeAgo(lastSeen)}` : 'Offline'}
+        {isOnline
+          ? "Online"
+          : lastSeen
+            ? `Last seen ${formatTimeAgo(lastSeen)}`
+            : "Offline"}
       </span>
     </div>
   );
@@ -228,12 +258,21 @@ export function TypingIndicator({ users, className }: TypingIndicatorProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className={cn('flex items-center gap-2 text-sm text-gray-500', className)}
+      className={cn("flex items-center gap-2 text-sm text-gray-500", className)}
     >
       <span className="flex gap-0.5">
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span
+          className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: "0ms" }}
+        />
+        <span
+          className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: "150ms" }}
+        />
+        <span
+          className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: "300ms" }}
+        />
       </span>
       <span>
         {users.length === 1

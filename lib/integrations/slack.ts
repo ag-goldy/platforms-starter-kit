@@ -18,18 +18,34 @@
  * }
  */
 
-import type { IntegrationConfig, IntegrationResult, IntegrationProvider } from './types';
+import type {
+  IntegrationConfig,
+  IntegrationResult,
+  IntegrationProvider,
+} from "./types";
 
 export const slackIntegration: IntegrationProvider = {
   async testConnection(_config: IntegrationConfig): Promise<IntegrationResult> {
-    return { success: false, error: 'Slack integration is not yet implemented' };
+    return {
+      success: false,
+      error: "Slack integration is not yet implemented",
+    };
   },
 
-  async sendNotification(_config: IntegrationConfig, _payload: unknown): Promise<IntegrationResult> {
-    return { success: false, error: 'Slack integration is not yet implemented' };
+  async sendNotification(
+    _config: IntegrationConfig,
+    _payload: unknown,
+  ): Promise<IntegrationResult> {
+    return {
+      success: false,
+      error: "Slack integration is not yet implemented",
+    };
   },
 
   async syncData(_config: IntegrationConfig): Promise<IntegrationResult> {
-    return { success: false, error: 'Slack integration is not yet implemented' };
+    return {
+      success: false,
+      error: "Slack integration is not yet implemented",
+    };
   },
 };

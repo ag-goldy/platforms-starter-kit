@@ -12,12 +12,12 @@
  * For more frequent syncs, use an external cron service or upgrade to Pro
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { zabbixConfigs } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { syncOrgAssets, syncOrgServices } from '@/lib/zabbix/sync';
-import { verifyCronAuth } from '@/lib/auth/cron';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { zabbixConfigs } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { syncOrgAssets, syncOrgServices } from "@/lib/zabbix/sync";
+import { verifyCronAuth } from "@/lib/auth/cron";
 
 export async function GET(request: NextRequest) {
   // Fail-closed: rejects if CRON_SECRET not set or header mismatch.
@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
   if (rejection) return rejection;
 
   try {
-
     // Get all active Zabbix configurations
     const configs = await db.query.zabbixConfigs.findMany({
       where: eq(zabbixConfigs.isActive, true),
@@ -38,12 +37,15 @@ export async function GET(request: NextRequest) {
         // Check if it's time to sync based on syncIntervalMinutes
         const lastSync = config.lastSyncedAt;
         const intervalMs = (config.syncIntervalMinutes || 5) * 60 * 1000;
-        
-        if (lastSync && new Date().getTime() - new Date(lastSync).getTime() < intervalMs) {
+
+        if (
+          lastSync &&
+          new Date().getTime() - new Date(lastSync).getTime() < intervalMs
+        ) {
           results.push({
             orgId: config.orgId,
-            status: 'skipped',
-            reason: 'Too soon since last sync',
+            status: "skipped",
+            reason: "Too soon since last sync",
           });
           continue;
         }
@@ -53,19 +55,22 @@ export async function GET(request: NextRequest) {
           syncOrgServices(config.orgId),
           syncOrgAssets(config.orgId),
         ]);
-        
+
         results.push({
           orgId: config.orgId,
-          status: 'success',
+          status: "success",
           syncedServices: serviceResults.length,
           syncedAssets: assetResults.length,
         });
       } catch (error) {
-        console.error(`[Zabbix Cron] Failed to sync org ${config.orgId}:`, error);
+        console.error(
+          `[Zabbix Cron] Failed to sync org ${config.orgId}:`,
+          error,
+        );
         results.push({
           orgId: config.orgId,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          status: "error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -76,10 +81,10 @@ export async function GET(request: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('[Zabbix Sync Cron] Error:', error);
+    console.error("[Zabbix Sync Cron] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Sync failed' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : "Sync failed" },
+      { status: 500 },
     );
   }
 }

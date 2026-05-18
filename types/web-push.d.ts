@@ -1,4 +1,4 @@
-declare module 'web-push' {
+declare module "web-push" {
   interface PushSubscription {
     endpoint: string;
     keys: {
@@ -16,20 +16,24 @@ declare module 'web-push' {
       privateKey: string;
     };
     TTL?: number;
-    contentEncoding?: 'aes128gcm' | 'aesgcm';
+    contentEncoding?: "aes128gcm" | "aesgcm";
   }
 
   function setVapidDetails(
     subject: string,
     publicKey: string,
-    privateKey: string
+    privateKey: string,
   ): void;
 
   function sendNotification(
     subscription: PushSubscription,
     payload?: string | Buffer,
-    options?: RequestOptions
-  ): Promise<{ statusCode: number; headers: Record<string, string>; body: string }>;
+    options?: RequestOptions,
+  ): Promise<{
+    statusCode: number;
+    headers: Record<string, string>;
+    body: string;
+  }>;
 
   function generateVAPIDKeys(): {
     publicKey: string;

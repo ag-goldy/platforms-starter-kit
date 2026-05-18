@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  ArrowLeft, 
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  ArrowLeft,
   Globe,
   ThumbsUp,
   ThumbsDown,
@@ -20,18 +20,18 @@ import {
   Send,
   X,
   Sparkles,
-  ChevronRight
-} from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { PublicSiteHeader } from '@/components/public/site-header';
+  ChevronRight,
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { PublicSiteHeader } from "@/components/public/site-header";
 
 interface Article {
   id: string;
   title: string;
   slug: string;
   content: string;
-  contentType: 'markdown' | 'html';
+  contentType: "markdown" | "html";
   excerpt: string | null;
   categoryId: string | null;
   category?: {
@@ -66,22 +66,30 @@ export default function GlobalArticlePage() {
   const [error, setError] = useState<string | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [showAiAssistant, setShowAiAssistant] = useState(false);
-  const [aiMessages, setAiMessages] = useState<{ id: string; type: 'user' | 'ai'; content: string; timestamp?: Date }[]>([
+  const [aiMessages, setAiMessages] = useState<
+    { id: string; type: "user" | "ai"; content: string; timestamp?: Date }[]
+  >([
     {
-      id: 'welcome',
-      type: 'ai',
-      content: 'Hello! I\'m Zeus AI. How can I help you today?',
+      id: "welcome",
+      type: "ai",
+      content: "Hello! I'm Zeus AI. How can I help you today?",
       timestamp: new Date(),
     },
   ]);
-  const [aiQuery, setAiQuery] = useState('');
+  const [aiQuery, setAiQuery] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSessionId] = useState<string>(() => {
-    const hasCrypto = typeof self !== 'undefined' && typeof (self as Window & { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID === 'function';
-    if (hasCrypto) return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
+    const hasCrypto =
+      typeof self !== "undefined" &&
+      typeof (self as Window & { crypto?: { randomUUID?: () => string } })
+        .crypto?.randomUUID === "function";
+    if (hasCrypto)
+      return (
+        self as Window & { crypto: { randomUUID: () => string } }
+      ).crypto.randomUUID();
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [supportIssue, setSupportIssue] = useState('');
+  const [supportIssue, setSupportIssue] = useState("");
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
@@ -90,19 +98,21 @@ export default function GlobalArticlePage() {
   useEffect(() => {
     async function loadArticle() {
       try {
-        const response = await fetch(`/api/kb/articles/${slug}?global=true&bySlug=true`);
+        const response = await fetch(
+          `/api/kb/articles/${slug}?global=true&bySlug=true`,
+        );
         if (!response.ok) {
           if (response.status === 404) {
-            setError('Article not found');
+            setError("Article not found");
           } else {
-            setError('Failed to load article');
+            setError("Failed to load article");
           }
           return;
         }
         const data = await response.json();
         setArticle(data.article);
       } catch {
-        setError('Failed to load article');
+        setError("Failed to load article");
       } finally {
         setIsLoading(false);
       }
@@ -114,10 +124,12 @@ export default function GlobalArticlePage() {
     async function loadRelated() {
       if (!article || !article.category?.slug) return;
       try {
-        const res = await fetch(`/api/kb/articles?global=true&category=${article.category.slug}`);
+        const res = await fetch(
+          `/api/kb/articles?global=true&category=${article.category.slug}`,
+        );
         if (res.ok) {
           const data = await res.json();
-          const items = (data.articles as Article[] || [])
+          const items = ((data.articles as Article[]) || [])
             .filter((a) => a.slug !== article.slug)
             .slice(0, 3);
           setRelatedArticles(items);
@@ -140,17 +152,18 @@ export default function GlobalArticlePage() {
       setPanelWidth(w);
     };
     const onMouseUp = () => setIsResizing(false);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   }, [isResizing]);
   const handleAiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuery.trim()) return;
-    const intent = /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
+    const intent =
+      /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
     if (intent.test(aiQuery)) {
       setSupportIssue(aiQuery);
       await handleSupportSubmit();
@@ -158,25 +171,35 @@ export default function GlobalArticlePage() {
     }
     const userMessage = {
       id: Date.now().toString(),
-      type: 'user' as const,
+      type: "user" as const,
       content: aiQuery,
       timestamp: new Date(),
     };
     setAiMessages((prev) => [...prev, userMessage]);
-    setAiQuery('');
+    setAiQuery("");
     setIsAiLoading(true);
     try {
-      const res = await fetch('/api/ai/kb-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMessage.content, sessionId: aiSessionId }),
+      const res = await fetch("/api/ai/kb-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: userMessage.content,
+          sessionId: aiSessionId,
+        }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed to get AI response' })) as ErrorResponse;
+        const err = (await res
+          .json()
+          .catch(() => ({
+            error: "Failed to get AI response",
+          }))) as ErrorResponse;
         const aiMessage = {
           id: (Date.now() + 1).toString(),
-          type: 'ai' as const,
-          content: typeof err.error === 'string' ? err.error : 'Sorry, I can only assist with technology-related questions.',
+          type: "ai" as const,
+          content:
+            typeof err.error === "string"
+              ? err.error
+              : "Sorry, I can only assist with technology-related questions.",
           timestamp: new Date(),
         };
         setAiMessages((prev) => [...prev, aiMessage]);
@@ -184,13 +207,16 @@ export default function GlobalArticlePage() {
         return;
       }
       const data = await res.json();
-      const base = data.answer || 'I could not find a precise match in the knowledge base.';
-      const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-        ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
-        : '';
+      const base =
+        data.answer ||
+        "I could not find a precise match in the knowledge base.";
+      const suggestions =
+        Array.isArray(data.suggestions) && data.suggestions.length
+          ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || "#"})`).join("\n")}`
+          : "";
       const aiMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai' as const,
+        type: "ai" as const,
         content: base + suggestions,
         timestamp: new Date(),
       };
@@ -198,8 +224,8 @@ export default function GlobalArticlePage() {
     } catch {
       const aiMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai' as const,
-        content: 'Something went wrong fetching the AI response.',
+        type: "ai" as const,
+        content: "Something went wrong fetching the AI response.",
         timestamp: new Date(),
       };
       setAiMessages((prev) => [...prev, aiMessage]);
@@ -213,40 +239,41 @@ export default function GlobalArticlePage() {
     if (!issue) return;
     setIsAiLoading(true);
     try {
-      const res = await fetch('/api/ai/kb-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ai/kb-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: `${issue}\n\nopen a ticket`,
           sessionId: aiSessionId,
         }),
       });
-      let content = 'Ticket created. Check your email for the tracking link.';
+      let content = "Ticket created. Check your email for the tracking link.";
       if (res.ok) {
         const data = await res.json();
         const base = data.ticketKey
-          ? 'Ticket created. Check your email to stay updated.'
-          : (data.answer || 'Ticket created. Check your email to stay updated.');
-        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
-        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
-        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
-          : '';
-        content = base + created + (track ? `\n${track}` : '') + suggestions;
+          ? "Ticket created. Check your email to stay updated."
+          : data.answer || "Ticket created. Check your email to stay updated.";
+        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : "";
+        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : "";
+        const suggestions =
+          Array.isArray(data.suggestions) && data.suggestions.length
+            ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || "#"})`).join("\n")}`
+            : "";
+        content = base + created + (track ? `\n${track}` : "") + suggestions;
       }
       const aiMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai' as const,
+        type: "ai" as const,
         content,
         timestamp: new Date(),
       };
       setAiMessages((prev) => [...prev, aiMessage]);
-      setSupportIssue('');
+      setSupportIssue("");
     } catch {
       const aiMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai' as const,
-        content: 'Failed to create ticket. Please try again.',
+        type: "ai" as const,
+        content: "Failed to create ticket. Please try again.",
         timestamp: new Date(),
       };
       setAiMessages((prev) => [...prev, aiMessage]);
@@ -256,16 +283,16 @@ export default function GlobalArticlePage() {
   };
   const handleFeedback = async (isHelpful: boolean) => {
     if (!article || feedbackSubmitted) return;
-    
+
     try {
       await fetch(`/api/kb/articles/${article.id}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isHelpful }),
       });
       setFeedbackSubmitted(true);
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
+      console.error("Failed to submit feedback:", error);
     }
   };
 
@@ -283,7 +310,7 @@ export default function GlobalArticlePage() {
         <PublicSiteHeader />
         <div className="px-6 lg:px-10 py-12 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            {error || 'Article not found'}
+            {error || "Article not found"}
           </h1>
           <Link href="/kb">
             <Button>Browse Knowledge Base</Button>
@@ -299,121 +326,130 @@ export default function GlobalArticlePage() {
 
       {/* Article Content */}
       <main className="w-full px-0 py-0">
-          <div className="px-6 lg:px-10 py-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              {article.category?.slug && (
-                <>
-                  <Link href={`/kb?category=${article.category.slug}`}>{article.category.name}</Link>
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </>
-              )}
-              <span className="text-gray-800">{article.title}</span>
-            </div>
-          </div>
-          <div className="px-6 lg:px-10">
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-              <Folder className="h-4 w-4" />
-              <span>{article.category?.name || 'Uncategorized'}</span>
-              <span className="mx-2">•</span>
-              <Globe className="h-4 w-4 text-blue-500" />
-              <span className="text-blue-600">Public</span>
-            </div>
-            
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              {article.title}
-            </h1>
-            
-            <div className="flex items-center gap-6 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                <span>{article.viewCount} views</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>Updated {new Date(article.updatedAt).toLocaleDateString()}</span>
-              </div>
-              {article.author?.name && (
-                <span>By {article.author.name}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="px-6 lg:px-10 pb-8">
-            {article.contentType === 'html' ? (
-              <div 
-                className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600"
-                dangerouslySetInnerHTML={{ __html: article.content }}
-              />
-            ) : (
-              <div className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600">
-                <ReactMarkdown>{article.content}</ReactMarkdown>
-              </div>
+        <div className="px-6 lg:px-10 py-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            {article.category?.slug && (
+              <>
+                <Link href={`/kb?category=${article.category.slug}`}>
+                  {article.category.name}
+                </Link>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </>
             )}
+            <span className="text-gray-800">{article.title}</span>
+          </div>
+        </div>
+        <div className="px-6 lg:px-10">
+          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+            <Folder className="h-4 w-4" />
+            <span>{article.category?.name || "Uncategorized"}</span>
+            <span className="mx-2">•</span>
+            <Globe className="h-4 w-4 text-blue-500" />
+            <span className="text-blue-600">Public</span>
           </div>
 
-          {relatedArticles.length > 0 && (
-            <div className="px-6 lg:px-10 mt-12 pt-8 border-t border-gray-200">
-              <h2 className="mb-4 text-xl font-semibold text-gray-900">Related Articles</h2>
-              <div className="grid md:grid-cols-3 gap-0">
-                {relatedArticles.map((related) => (
-                  <Link
-                    key={related.id}
-                    href={`/kb/${related.slug}`}
-                    className="block rounded-lg border border-transparent p-4 transition-colors hover:border-orange-200 hover:bg-white"
-                  >
-                    <h3 className="line-clamp-2 font-medium text-gray-900">{related.title}</h3>
-                    {related.excerpt && (
-                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                        {related.excerpt}
-                      </p>
-                    )}
-                  </Link>
-                ))}
-              </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            {article.title}
+          </h1>
+
+          <div className="flex items-center gap-6 text-sm text-gray-600">
+            <div className="flex items-center gap-1">
+              <Eye className="h-4 w-4" />
+              <span>{article.viewCount} views</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>
+                Updated {new Date(article.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
+            {article.author?.name && <span>By {article.author.name}</span>}
+          </div>
+        </div>
+
+        <div className="px-6 lg:px-10 pb-8">
+          {article.contentType === "html" ? (
+            <div
+              className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600"
+              dangerouslySetInnerHTML={{ __html: article.content }}
+            />
+          ) : (
+            <div className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600">
+              <ReactMarkdown>{article.content}</ReactMarkdown>
             </div>
           )}
+        </div>
 
-          <div className="px-6 lg:px-10 pb-8">
-            <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
-              <CardContent className="p-6">
-                {feedbackSubmitted ? (
-                  <div className="flex items-center justify-center gap-2 text-green-600">
-                    <CheckCircle className="h-5 w-5" />
-                    <span>Thank you for your feedback!</span>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-center text-gray-700 mb-4">
-                      Was this article helpful?
+        {relatedArticles.length > 0 && (
+          <div className="px-6 lg:px-10 mt-12 pt-8 border-t border-gray-200">
+            <h2 className="mb-4 text-xl font-semibold text-gray-900">
+              Related Articles
+            </h2>
+            <div className="grid md:grid-cols-3 gap-0">
+              {relatedArticles.map((related) => (
+                <Link
+                  key={related.id}
+                  href={`/kb/${related.slug}`}
+                  className="block rounded-lg border border-transparent p-4 transition-colors hover:border-orange-200 hover:bg-white"
+                >
+                  <h3 className="line-clamp-2 font-medium text-gray-900">
+                    {related.title}
+                  </h3>
+                  {related.excerpt && (
+                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                      {related.excerpt}
                     </p>
-                    <div className="flex justify-center gap-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleFeedback(true)}
-                        className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                        Yes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleFeedback(false)}
-                        className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                        No
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
+        )}
+
+        <div className="px-6 lg:px-10 pb-8">
+          <Card className="border-gray-200 bg-white text-gray-900 shadow-sm">
+            <CardContent className="p-6">
+              {feedbackSubmitted ? (
+                <div className="flex items-center justify-center gap-2 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                  <span>Thank you for your feedback!</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-center text-gray-700 mb-4">
+                    Was this article helpful?
+                  </p>
+                  <div className="flex justify-center gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleFeedback(true)}
+                      className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    >
+                      <ThumbsUp className="h-4 w-4" />
+                      Yes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleFeedback(false)}
+                      className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    >
+                      <ThumbsDown className="h-4 w-4" />
+                      No
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Footer Navigation */}
         <div className="mt-8 flex justify-between px-6 pb-10 lg:px-10">
           <Link href="/kb">
-            <Button variant="outline" className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
+            <Button
+              variant="outline"
+              className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+            >
               <ArrowLeft className="h-4 w-4" />
               Browse All Articles
             </Button>
@@ -448,8 +484,8 @@ export default function GlobalArticlePage() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setShowAiAssistant(false)}
             >
@@ -460,20 +496,22 @@ export default function GlobalArticlePage() {
             {aiMessages.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <Bot className="h-12 w-12 text-orange-300 mx-auto mb-3" />
-                <p className="font-medium text-gray-900 mb-1">How can I help?</p>
+                <p className="font-medium text-gray-900 mb-1">
+                  How can I help?
+                </p>
                 <p className="text-sm">Ask me anything about our platform.</p>
               </div>
             ) : (
               aiMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
                     className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                      msg.type === 'user'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                      msg.type === "user"
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-900"
                     }`}
                   >
                     <div className="prose prose-sm max-w-none">
@@ -494,52 +532,55 @@ export default function GlobalArticlePage() {
               </div>
             )}
           </div>
-          
-            <form ref={formRef} onSubmit={handleAiSubmit} className="p-4 border-t border-gray-200">
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Textarea
-                    value={aiQuery}
-                    onChange={(e) => setAiQuery(e.target.value)}
-                    placeholder="Type your question... (Shift+Enter for newline)"
-                    className="flex-1 min-h-[80px] border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
-                    disabled={isAiLoading}
-                    rows={3}
-                    onKeyDown={(e) => {
-                      if (
-                        e.key === 'Enter' &&
-                        !e.shiftKey &&
-                        !e.altKey &&
-                        !e.ctrlKey &&
-                        !e.metaKey
-                      ) {
-                        e.preventDefault();
-                        formRef.current?.requestSubmit();
-                      }
-                    }}
-                  />
-                  <Button 
-                    type="submit" 
-                    disabled={!aiQuery.trim() || isAiLoading}
-                    className="bg-orange-600 hover:bg-orange-700"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Need help from our support team?</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSupportSubmit}
-                    className="h-7 px-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Create Ticket
-                  </Button>
-                </div>
+
+          <form
+            ref={formRef}
+            onSubmit={handleAiSubmit}
+            className="p-4 border-t border-gray-200"
+          >
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Textarea
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  placeholder="Type your question... (Shift+Enter for newline)"
+                  className="flex-1 min-h-[80px] border-gray-200 bg-white text-gray-900 placeholder:text-gray-500"
+                  disabled={isAiLoading}
+                  rows={3}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.altKey &&
+                      !e.ctrlKey &&
+                      !e.metaKey
+                    ) {
+                      e.preventDefault();
+                      formRef.current?.requestSubmit();
+                    }
+                  }}
+                />
+                <Button
+                  type="submit"
+                  disabled={!aiQuery.trim() || isAiLoading}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
-            </form>
-          
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>Need help from our support team?</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSupportSubmit}
+                  className="h-7 px-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Create Ticket
+                </Button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
 

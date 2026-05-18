@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   Server,
   AlertTriangle,
@@ -12,8 +12,7 @@ import {
   Video,
   Shield,
   ChevronRight,
-} from 'lucide-react';
-
+} from "lucide-react";
 
 interface OrgFeatures {
   assets?: boolean;
@@ -33,7 +32,7 @@ interface Asset {
   id: string;
   name: string;
   type: string;
-  status: 'healthy' | 'warning' | 'critical';
+  status: "healthy" | "warning" | "critical";
   lastSeen: string;
   alerts: number;
 }
@@ -55,7 +54,7 @@ export function AssetAlertsWidget({ org }: AssetAlertsWidgetProps) {
             setAssets(data.assets || []);
           }
         } catch (error) {
-          console.error('Failed to fetch assets:', error);
+          console.error("Failed to fetch assets:", error);
         } finally {
           setLoading(false);
         }
@@ -70,45 +69,45 @@ export function AssetAlertsWidget({ org }: AssetAlertsWidgetProps) {
 
   const getAssetIcon = (type: string) => {
     switch (type.toUpperCase()) {
-      case 'AP':
+      case "AP":
         return <Wifi className="w-4 h-4" />;
-      case 'SWITCH':
-      case 'ROUTER':
+      case "SWITCH":
+      case "ROUTER":
         return <Router className="w-4 h-4" />;
-      case 'CAMERA':
-      case 'NVR':
+      case "CAMERA":
+      case "NVR":
         return <Video className="w-4 h-4" />;
-      case 'FIREWALL':
+      case "FIREWALL":
         return <Shield className="w-4 h-4" />;
       default:
         return <Server className="w-4 h-4" />;
     }
   };
 
-  const getStatusIcon = (status: Asset['status']) => {
+  const getStatusIcon = (status: Asset["status"]) => {
     switch (status) {
-      case 'healthy':
+      case "healthy":
         return <CheckCircle className="w-4 h-4 text-emerald-500" />;
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-      case 'critical':
+      case "critical":
         return <AlertCircle className="w-4 h-4 text-red-500" />;
     }
   };
 
-  const getStatusColor = (status: Asset['status']) => {
+  const getStatusColor = (status: Asset["status"]) => {
     switch (status) {
-      case 'healthy':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'warning':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'critical':
-        return 'bg-red-50 text-red-700 border-red-200';
+      case "healthy":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "warning":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "critical":
+        return "bg-red-50 text-red-700 border-red-200";
     }
   };
 
-  const criticalCount = assets.filter((a) => a.status === 'critical').length;
-  const warningCount = assets.filter((a) => a.status === 'warning').length;
+  const criticalCount = assets.filter((a) => a.status === "critical").length;
+  const warningCount = assets.filter((a) => a.status === "warning").length;
 
   if (!hasAssets) {
     return (
@@ -169,7 +168,7 @@ export function AssetAlertsWidget({ org }: AssetAlertsWidgetProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={`flex items-center gap-3 p-2.5 rounded-lg border ${getStatusColor(
-                  asset.status
+                  asset.status,
                 )}`}
               >
                 <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center">
@@ -178,7 +177,8 @@ export function AssetAlertsWidget({ org }: AssetAlertsWidgetProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{asset.name}</p>
                   <p className="text-[10px] opacity-70">
-                    {asset.type} • {asset.alerts > 0 ? `${asset.alerts} alerts` : 'No alerts'}
+                    {asset.type} •{" "}
+                    {asset.alerts > 0 ? `${asset.alerts} alerts` : "No alerts"}
                   </p>
                 </div>
                 {getStatusIcon(asset.status)}

@@ -1,15 +1,15 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { organizations } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { OrganizationEmailSettings } from '@/components/organizations/organization-email-settings';
-import { supportBaseUrl } from '@/lib/utils';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { OrganizationEmailSettings } from "@/components/organizations/organization-email-settings";
+import { supportBaseUrl } from "@/lib/utils";
 
 export const metadata = {
-  title: 'Email Settings | Organization',
-  description: 'Configure email-to-ticket settings',
+  title: "Email Settings | Organization",
+  description: "Configure email-to-ticket settings",
 };
 
 export default async function OrgEmailSettingsPage({
@@ -76,20 +76,31 @@ export default async function OrgEmailSettingsPage({
         <h3 className="font-medium text-gray-900 mb-2">How it works</h3>
         <ol className="list-decimal list-inside space-y-1">
           <li>
-            Configure your email provider (SendGrid, Mailgun, AWS SES, etc.) to forward 
-            incoming emails to the webhook URL shown above.
+            Configure your email provider (SendGrid, Mailgun, AWS SES, etc.) to
+            forward incoming emails to the webhook URL shown above.
           </li>
           <li>
             When an email is received, Atlas will:
             <ul className="list-disc list-inside ml-4 mt-1">
-              <li>Check if it&apos;s a reply to an existing ticket (by subject/thread)</li>
-              <li>If new: Create a ticket and assign it to this organization</li>
-              <li>If reply: Add the email as a comment to the existing ticket</li>
-              <li>Send a confirmation email to the sender (if auto-reply is enabled)</li>
+              <li>
+                Check if it&apos;s a reply to an existing ticket (by
+                subject/thread)
+              </li>
+              <li>
+                If new: Create a ticket and assign it to this organization
+              </li>
+              <li>
+                If reply: Add the email as a comment to the existing ticket
+              </li>
+              <li>
+                Send a confirmation email to the sender (if auto-reply is
+                enabled)
+              </li>
             </ul>
           </li>
           <li>
-            The sender receives a magic link to view and reply to the ticket without needing an account.
+            The sender receives a magic link to view and reply to the ticket
+            without needing an account.
           </li>
         </ol>
       </div>

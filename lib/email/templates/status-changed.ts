@@ -1,4 +1,4 @@
-import { escapeHtml, renderBaseTemplate } from './utils';
+import { escapeHtml, renderBaseTemplate } from "./utils";
 
 export function renderStatusChangedEmail(options: {
   ticketKey: string;
@@ -9,7 +9,7 @@ export function renderStatusChangedEmail(options: {
 }) {
   const { ticketKey, subject, oldStatus, newStatus, ticketUrl } = options;
   const title = `Status Update: ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -54,7 +54,7 @@ View Ticket: ${ticketUrl}
   return {
     subject: `Ticket ${ticketKey} Status Updated`,
     html: renderBaseTemplate({
-      title: 'Status Updated',
+      title: "Status Updated",
       preheader: `Status updated to ${newStatus} for ticket ${ticketKey}`,
       bodyHtml,
     }),

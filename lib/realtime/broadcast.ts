@@ -1,5 +1,5 @@
-import { redis } from '@/lib/redis';
-import { getRealtimeSecret, signRealtimePayload } from './signing';
+import { redis } from "@/lib/redis";
+import { getRealtimeSecret, signRealtimePayload } from "./signing";
 
 export interface RealtimeBroadcast {
   orgId: string;
@@ -35,11 +35,11 @@ export async function publishRealtimeEvent(payload: RealtimeBroadcast) {
   const signature = signRealtimePayload(body, timestamp, secret);
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'content-type': 'application/json',
-      'x-atlas-timestamp': timestamp,
-      'x-atlas-signature': signature,
+      "content-type": "application/json",
+      "x-atlas-timestamp": timestamp,
+      "x-atlas-signature": signature,
     },
     body,
   });

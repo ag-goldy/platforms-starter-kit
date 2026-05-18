@@ -12,25 +12,26 @@
 
 ## File Map
 
-| Action | File | Why |
-|--------|------|-----|
-| Modify | `lib/auth/permissions.ts` | Fix `requireInternalRole` role check (lines 38-45) |
-| Modify | `app/api/ai/customer/route.ts` | Harden orgId validation + 403 on null |
-| Delete | `lib/jobs/queue.ts` | Remove legacy PostgreSQL queue |
-| Delete | `lib/jobs/worker.ts` | Remove legacy PostgreSQL worker |
-| Modify | `lib/jobs/index.ts` | Remove toggle logic, export BullMQ directly |
-| Create | `app/api/jobs/health/route.ts` | Queue health endpoint |
-| Modify | `db/schema-extensions.ts` | Remove duplicate type re-exports |
-| Modify | `drizzle/meta/_journal.json` | Register 6 untracked migration files |
-| Modify | `app/api/cron/zabbix-sync/route.ts` | Remove stale CRON_SECRET_TOKEN comment lines |
-| Create | `tests/unit/auth/permissions.test.ts` | Tests for requireInternalRole |
-| Create | `tests/unit/api/jobs-health.test.ts` | Tests for health endpoint |
+| Action | File                                  | Why                                                |
+| ------ | ------------------------------------- | -------------------------------------------------- |
+| Modify | `lib/auth/permissions.ts`             | Fix `requireInternalRole` role check (lines 38-45) |
+| Modify | `app/api/ai/customer/route.ts`        | Harden orgId validation + 403 on null              |
+| Delete | `lib/jobs/queue.ts`                   | Remove legacy PostgreSQL queue                     |
+| Delete | `lib/jobs/worker.ts`                  | Remove legacy PostgreSQL worker                    |
+| Modify | `lib/jobs/index.ts`                   | Remove toggle logic, export BullMQ directly        |
+| Create | `app/api/jobs/health/route.ts`        | Queue health endpoint                              |
+| Modify | `db/schema-extensions.ts`             | Remove duplicate type re-exports                   |
+| Modify | `drizzle/meta/_journal.json`          | Register 6 untracked migration files               |
+| Modify | `app/api/cron/zabbix-sync/route.ts`   | Remove stale CRON_SECRET_TOKEN comment lines       |
+| Create | `tests/unit/auth/permissions.test.ts` | Tests for requireInternalRole                      |
+| Create | `tests/unit/api/jobs-health.test.ts`  | Tests for health endpoint                          |
 
 ---
 
 ## Task 1: Fix `requireInternalRole()` — enforce roles via `users.role`
 
 **Files:**
+
 - Modify: `lib/auth/permissions.ts:38-45`
 - Create: `tests/unit/auth/permissions.test.ts`
 
@@ -41,39 +42,43 @@ The `users` table has a `role` column with values `'ADMIN' | 'AGENT' | 'READONLY
 Create `tests/unit/auth/permissions.test.ts`:
 
 ```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AuthorizationError } from '@/lib/auth/permissions';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { AuthorizationError } from "@/lib/auth/permissions";
 
 // We test the role-check logic directly since getRequestContext is hard to mock end-to-end.
 // Extract the role check into a pure helper so it can be unit tested.
-describe('checkInternalRole', () => {
-  it('allows ADMIN when ADMIN is required', () => {
-    expect(() => checkInternalRole('ADMIN', ['ADMIN'])).not.toThrow();
+describe("checkInternalRole", () => {
+  it("allows ADMIN when ADMIN is required", () => {
+    expect(() => checkInternalRole("ADMIN", ["ADMIN"])).not.toThrow();
   });
 
-  it('allows AGENT when AGENT is in allowedRoles', () => {
-    expect(() => checkInternalRole('AGENT', ['AGENT', 'ADMIN'])).not.toThrow();
+  it("allows AGENT when AGENT is in allowedRoles", () => {
+    expect(() => checkInternalRole("AGENT", ["AGENT", "ADMIN"])).not.toThrow();
   });
 
-  it('throws when role is not in allowedRoles', () => {
-    expect(() => checkInternalRole('AGENT', ['ADMIN'])).toThrow(AuthorizationError);
+  it("throws when role is not in allowedRoles", () => {
+    expect(() => checkInternalRole("AGENT", ["ADMIN"])).toThrow(
+      AuthorizationError,
+    );
   });
 
-  it('allows any role when allowedRoles is empty', () => {
-    expect(() => checkInternalRole('READONLY', [])).not.toThrow();
+  it("allows any role when allowedRoles is empty", () => {
+    expect(() => checkInternalRole("READONLY", [])).not.toThrow();
   });
 
-  it('allows any role when allowedRoles is undefined', () => {
-    expect(() => checkInternalRole('AGENT', undefined)).not.toThrow();
+  it("allows any role when allowedRoles is undefined", () => {
+    expect(() => checkInternalRole("AGENT", undefined)).not.toThrow();
   });
 
-  it('throws for customer roles even if somehow passed', () => {
-    expect(() => checkInternalRole('REQUESTER', ['ADMIN', 'AGENT'])).toThrow(AuthorizationError);
+  it("throws for customer roles even if somehow passed", () => {
+    expect(() => checkInternalRole("REQUESTER", ["ADMIN", "AGENT"])).toThrow(
+      AuthorizationError,
+    );
   });
 });
 
 // Import the helper after writing it in step 3
-import { checkInternalRole } from '@/lib/auth/permissions';
+import { checkInternalRole } from "@/lib/auth/permissions";
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -90,11 +95,14 @@ In `lib/auth/permissions.ts`, replace lines 38-45 with:
 
 ```typescript
 // Pure helper — exported for unit testing
-export function checkInternalRole(userRole: string, allowedRoles?: string[]): void {
+export function checkInternalRole(
+  userRole: string,
+  allowedRoles?: string[],
+): void {
   if (!allowedRoles || allowedRoles.length === 0) return;
   if (!allowedRoles.includes(userRole)) {
     throw new AuthorizationError(
-      `Role '${userRole}' is not authorized. Required: ${allowedRoles.join(', ')}`
+      `Role '${userRole}' is not authorized. Required: ${allowedRoles.join(", ")}`,
     );
   }
 }
@@ -108,15 +116,17 @@ export async function requireInternalRole(allowedRoles?: InternalRole[]) {
   const user = ctx.user;
 
   if (!user) {
-    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
+    redirect("/api/auth/signout?callbackUrl=/login?error=SessionExpired");
   }
 
   if (!ctx.isInternal) {
-    throw new AuthorizationError('This resource is only accessible to internal users');
+    throw new AuthorizationError(
+      "This resource is only accessible to internal users",
+    );
   }
 
   // Platform admins pass as ADMIN for all internal role checks
-  const effectiveRole = ctx.isPlatformAdmin ? 'ADMIN' : (user.role ?? 'AGENT');
+  const effectiveRole = ctx.isPlatformAdmin ? "ADMIN" : (user.role ?? "AGENT");
   checkInternalRole(effectiveRole, allowedRoles);
 
   return user;
@@ -143,6 +153,7 @@ git commit -m "fix: enforce role check in requireInternalRole via users.role"
 ## Task 2: Token plaintext audit — scrub raw tokens from logs and responses
 
 **Files:**
+
 - Scan: `lib/tickets/`, `app/api/tickets/[id]/`, `app/ticket/[token]/`
 
 - [ ] **Step 1: Find all raw token usages**
@@ -162,9 +173,10 @@ grep -rn "console\.log.*token\|console\.error.*token\|console\.warn.*token" \
 - [ ] **Step 2: For each raw token found — remove it**
 
 For each result from step 1: remove the raw token from the return value, response body, or log statement. Only `tokenHash` (the bcrypt hash) should persist server-side. The raw token sent via email URL is intentional — do not remove it from the email sending code. Only remove from:
-  - API response bodies (any key that holds the raw token)
-  - `console.log` / `console.error` statements
-  - Return values from server functions that are not the email-sending path
+
+- API response bodies (any key that holds the raw token)
+- `console.log` / `console.error` statements
+- Return values from server functions that are not the email-sending path
 
 - [ ] **Step 3: Verify no raw token in response bodies**
 
@@ -187,6 +199,7 @@ git commit -m "security: remove raw token values from server logs and API respon
 ## Task 3: Remove legacy PostgreSQL queue
 
 **Files:**
+
 - Delete: `lib/jobs/queue.ts`
 - Delete: `lib/jobs/worker.ts`
 - Modify: `lib/jobs/index.ts`
@@ -211,7 +224,7 @@ rm lib/jobs/queue.ts lib/jobs/worker.ts
 Replace the entire file with:
 
 ```typescript
-export type { Job, JobType } from './types';
+export type { Job, JobType } from "./types";
 
 export {
   getEmailQueue,
@@ -230,14 +243,14 @@ export {
   type ExportJobData,
   type ZabbixSyncJobData,
   type MaintenanceJobData,
-} from './redis-queue';
+} from "./redis-queue";
 
 export {
   startWorkers,
   stopWorkers,
   getWorkerStatus,
   areWorkersRunning,
-} from './redis-worker';
+} from "./redis-worker";
 
 interface EnqueueOptions {
   type: JobType;
@@ -247,32 +260,54 @@ interface EnqueueOptions {
 }
 
 export async function enqueueJob(
-  options: EnqueueOptions
+  options: EnqueueOptions,
 ): Promise<{ success: boolean; jobId?: string; error?: string }> {
   if (!process.env.REDIS_URL) {
-    console.error('[Jobs] REDIS_URL is not set — cannot enqueue job');
-    return { success: false, error: 'Redis not configured' };
+    console.error("[Jobs] REDIS_URL is not set — cannot enqueue job");
+    return { success: false, error: "Redis not configured" };
   }
 
-  const { enqueueEmail, enqueueExport, enqueueZabbixSync, enqueueMaintenance } = await import('./redis-queue');
+  const { enqueueEmail, enqueueExport, enqueueZabbixSync, enqueueMaintenance } =
+    await import("./redis-queue");
 
   switch (options.type) {
-    case 'SEND_EMAIL':
-      return enqueueEmail(options.data as { to: string; subject: string; html: string });
+    case "SEND_EMAIL":
+      return enqueueEmail(
+        options.data as { to: string; subject: string; html: string },
+      );
 
-    case 'GENERATE_EXPORT':
-      return enqueueExport(options.data as { orgId: string; exportType: string; format: string; userId: string }, false);
+    case "GENERATE_EXPORT":
+      return enqueueExport(
+        options.data as {
+          orgId: string;
+          exportType: string;
+          format: string;
+          userId: string;
+        },
+        false,
+      );
 
-    case 'GENERATE_ORG_EXPORT':
-      return enqueueExport(options.data as { orgId: string; exportType: string; format: string; userId: string }, true);
+    case "GENERATE_ORG_EXPORT":
+      return enqueueExport(
+        options.data as {
+          orgId: string;
+          exportType: string;
+          format: string;
+          userId: string;
+        },
+        true,
+      );
 
-    case 'ZABBIX_SYNC':
+    case "ZABBIX_SYNC":
       return enqueueZabbixSync(options.data as { orgId: string });
 
-    case 'AUDIT_COMPACTION':
-    case 'SLA_WARNING_CHECK':
-    case 'RECALCULATE_SLA':
-      return enqueueMaintenance({ type: options.type, ...(options.data as object) });
+    case "AUDIT_COMPACTION":
+    case "SLA_WARNING_CHECK":
+    case "RECALCULATE_SLA":
+      return enqueueMaintenance({
+        type: options.type,
+        ...(options.data as object),
+      });
 
     default:
       return { success: false, error: `Unknown job type: ${options.type}` };
@@ -280,13 +315,13 @@ export async function enqueueJob(
 }
 
 export async function initializeWorkers(): Promise<void> {
-  const { startWorkers } = await import('./redis-worker');
+  const { startWorkers } = await import("./redis-worker");
   startWorkers();
 }
 
 export async function shutdownWorkers(): Promise<void> {
-  const { stopWorkers } = await import('./redis-worker');
-  const { closeQueues } = await import('./redis-queue');
+  const { stopWorkers } = await import("./redis-worker");
+  const { closeQueues } = await import("./redis-queue");
   await stopWorkers();
   await closeQueues();
 }
@@ -313,6 +348,7 @@ git commit -m "feat: remove legacy PostgreSQL queue, BullMQ is now the only back
 ## Task 4: Add `/api/jobs/health` endpoint
 
 **Files:**
+
 - Create: `app/api/jobs/health/route.ts`
 - Create: `tests/unit/api/jobs-health.test.ts`
 
@@ -321,9 +357,9 @@ git commit -m "feat: remove legacy PostgreSQL queue, BullMQ is now the only back
 Create `tests/unit/api/jobs-health.test.ts`:
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 
-vi.mock('@/lib/jobs', () => ({
+vi.mock("@/lib/jobs", () => ({
   getQueueStats: vi.fn().mockResolvedValue({
     email: { waiting: 0, active: 1, completed: 42, failed: 0 },
     export: { waiting: 2, active: 0, completed: 10, failed: 1 },
@@ -332,25 +368,27 @@ vi.mock('@/lib/jobs', () => ({
   }),
   getWorkerStatus: vi.fn().mockReturnValue(
     new Map([
-      ['email', 'running'],
-      ['export', 'running'],
-      ['zabbix-sync', 'running'],
-      ['maintenance', 'running'],
-    ])
+      ["email", "running"],
+      ["export", "running"],
+      ["zabbix-sync", "running"],
+      ["maintenance", "running"],
+    ]),
   ),
 }));
 
-vi.mock('@/lib/api/verify-cron', () => ({
+vi.mock("@/lib/api/verify-cron", () => ({
   verifyCronRequest: vi.fn().mockResolvedValue({ valid: true }),
 }));
 
-describe('GET /api/jobs/health', () => {
-  it('returns 200 with queue stats when all workers running', async () => {
-    const { GET } = await import('@/app/api/jobs/health/route');
-    const req = new Request('http://localhost/api/jobs/health', {
-      headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? 'test-secret'}` },
+describe("GET /api/jobs/health", () => {
+  it("returns 200 with queue stats when all workers running", async () => {
+    const { GET } = await import("@/app/api/jobs/health/route");
+    const req = new Request("http://localhost/api/jobs/health", {
+      headers: {
+        authorization: `Bearer ${process.env.CRON_SECRET ?? "test-secret"}`,
+      },
     });
-    process.env.CRON_SECRET = 'test-secret';
+    process.env.CRON_SECRET = "test-secret";
 
     const res = await GET(req as any);
     expect(res.status).toBe(200);
@@ -358,7 +396,7 @@ describe('GET /api/jobs/health', () => {
     const body = await res.json();
     expect(body.healthy).toBe(true);
     expect(body.queues.email.active).toBe(1);
-    expect(body.workers.email).toBe('running');
+    expect(body.workers.email).toBe("running");
   });
 });
 ```
@@ -376,15 +414,15 @@ Expected: FAIL — module not found.
 Create `app/api/jobs/health/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { getQueueStats, getWorkerStatus } from '@/lib/jobs';
+import { NextRequest, NextResponse } from "next/server";
+import { getQueueStats, getWorkerStatus } from "@/lib/jobs";
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('authorization');
+  const authHeader = req.headers.get("authorization");
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -394,18 +432,24 @@ export async function GET(req: NextRequest) {
     ]);
 
     const workers = Object.fromEntries(workerMap);
-    const allRunning = Object.values(workers).every((s) => s === 'running');
+    const allRunning = Object.values(workers).every((s) => s === "running");
 
-    const totalFailed = Object.values(stats).reduce((sum, q) => sum + (q.failed ?? 0), 0);
+    const totalFailed = Object.values(stats).reduce(
+      (sum, q) => sum + (q.failed ?? 0),
+      0,
+    );
     const healthy = allRunning && totalFailed === 0;
 
     return NextResponse.json(
       { healthy, queues: stats, workers },
-      { status: healthy ? 200 : 503 }
+      { status: healthy ? 200 : 503 },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ healthy: false, error: message }, { status: 503 });
+    return NextResponse.json(
+      { healthy: false, error: message },
+      { status: 503 },
+    );
   }
 }
 ```
@@ -430,6 +474,7 @@ git commit -m "feat: add /api/jobs/health endpoint for queue and worker monitori
 ## Task 5: Consolidate schema type re-exports
 
 **Files:**
+
 - Modify: `db/schema-extensions.ts:309-312`
 
 - [ ] **Step 1: Verify no files import TicketSubtask/TicketDependency from schema-extensions**
@@ -475,6 +520,7 @@ git commit -m "refactor: remove duplicate TicketSubtask/TicketDependency type ex
 ## Task 6: Register untracked migration files in journal
 
 **Files:**
+
 - Modify: `drizzle/meta/_journal.json`
 
 Six migration files exist on disk but are not in `_journal.json` (journal ends at idx 7):
@@ -562,6 +608,7 @@ git commit -m "fix: register 6 untracked migration files in drizzle journal (idx
 ## Task 7: Remove stale CRON_SECRET_TOKEN comments from zabbix-sync route
 
 **Files:**
+
 - Modify: `app/api/cron/zabbix-sync/route.ts:14-15,27`
 
 All routes now use `CRON_SECRET`. The zabbix-sync route still contains two comment lines referencing the old `CRON_SECRET_TOKEN` pattern — remove them.
@@ -602,6 +649,7 @@ git commit -m "chore: remove stale CRON_SECRET_TOKEN comment references"
 ## Task 8: Harden AI customer orgId — validate UUID and add schema field
 
 **Files:**
+
 - Modify: `app/api/ai/customer/route.ts`
 
 Currently `orgId` is extracted directly from the raw body (line 94) before Zod validation. The membership check prevents cross-tenant access but there is no type/format validation on `orgId` itself, and no audit log entry when the guard fires.
@@ -623,7 +671,7 @@ Replace with:
 const requestSchema = z.object({
   query: z.string().min(2).max(2000),
   sessionId: z.string().optional(),
-  orgId: z.string().uuid('orgId must be a valid UUID'),
+  orgId: z.string().uuid("orgId must be a valid UUID"),
 });
 ```
 
@@ -644,8 +692,8 @@ const body = await req.json();
 const parsed = requestSchema.safeParse(body);
 if (!parsed.success) {
   return NextResponse.json(
-    { error: 'Invalid request', details: parsed.error.flatten() },
-    { status: 400 }
+    { error: "Invalid request", details: parsed.error.flatten() },
+    { status: 400 },
   );
 }
 
@@ -658,7 +706,7 @@ Find the section after the membership query where it returns 403 on missing memb
 
 ```typescript
 if (!membership) {
-  return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  return NextResponse.json({ error: "Access denied" }, { status: 403 });
 }
 ```
 
@@ -666,12 +714,12 @@ Replace with:
 
 ```typescript
 if (!membership) {
-  console.warn('[AI:Customer] Access denied — no active membership', {
+  console.warn("[AI:Customer] Access denied — no active membership", {
     userId: session.user.id,
     orgId,
     ip,
   });
-  return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  return NextResponse.json({ error: "Access denied" }, { status: 403 });
 }
 ```
 

@@ -1,12 +1,12 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { areas, sites } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { and, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
-import { slugify } from '@/lib/utils/slug';
+import { db } from "@/db";
+import { areas, sites } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { slugify } from "@/lib/utils/slug";
 
 const siteSchema = z.object({
   name: z.string().min(1).max(200),
@@ -38,13 +38,16 @@ export async function getSitesAction(orgId: string, includeInactive = true) {
   });
 }
 
-export async function createSiteAction(orgId: string, data: z.input<typeof siteSchema>) {
+export async function createSiteAction(
+  orgId: string,
+  data: z.input<typeof siteSchema>,
+) {
   await requireInternalRole();
   const validated = siteSchema.parse(data);
   const slug = slugify(validated.slug || validated.name);
 
   if (!slug) {
-    throw new Error('Slug is required');
+    throw new Error("Slug is required");
   }
 
   const [created] = await db
@@ -69,14 +72,14 @@ export async function createSiteAction(orgId: string, data: z.input<typeof siteS
 export async function updateSiteAction(
   orgId: string,
   siteId: string,
-  data: z.input<typeof siteSchema>
+  data: z.input<typeof siteSchema>,
 ) {
   await requireInternalRole();
   const validated = siteSchema.parse(data);
   const slug = slugify(validated.slug || validated.name);
 
   if (!slug) {
-    throw new Error('Slug is required');
+    throw new Error("Slug is required");
   }
 
   const [updated] = await db
@@ -94,14 +97,18 @@ export async function updateSiteAction(
     .returning();
 
   if (!updated) {
-    throw new Error('Site not found');
+    throw new Error("Site not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/sites`);
   return { site: updated };
 }
 
-export async function toggleSiteActiveAction(orgId: string, siteId: string, isActive: boolean) {
+export async function toggleSiteActiveAction(
+  orgId: string,
+  siteId: string,
+  isActive: boolean,
+) {
   await requireInternalRole();
   const [updated] = await db
     .update(sites)
@@ -110,21 +117,25 @@ export async function toggleSiteActiveAction(orgId: string, siteId: string, isAc
     .returning();
 
   if (!updated) {
-    throw new Error('Site not found');
+    throw new Error("Site not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/sites`);
   return { site: updated };
 }
 
-export async function getAreasAction(orgId: string, siteId: string, includeInactive = true) {
+export async function getAreasAction(
+  orgId: string,
+  siteId: string,
+  includeInactive = true,
+) {
   await requireInternalRole();
   const site = await db.query.sites.findFirst({
     where: and(eq(sites.id, siteId), eq(sites.orgId, orgId)),
   });
 
   if (!site) {
-    throw new Error('Site not found');
+    throw new Error("Site not found");
   }
 
   return db.query.areas.findMany({
@@ -138,7 +149,7 @@ export async function getAreasAction(orgId: string, siteId: string, includeInact
 export async function createAreaAction(
   orgId: string,
   siteId: string,
-  data: z.input<typeof areaSchema>
+  data: z.input<typeof areaSchema>,
 ) {
   await requireInternalRole();
   const validated = areaSchema.parse(data);
@@ -148,7 +159,7 @@ export async function createAreaAction(
   });
 
   if (!site) {
-    throw new Error('Site not found');
+    throw new Error("Site not found");
   }
 
   const [created] = await db
@@ -171,7 +182,7 @@ export async function createAreaAction(
 export async function updateAreaAction(
   orgId: string,
   areaId: string,
-  data: z.input<typeof areaSchema>
+  data: z.input<typeof areaSchema>,
 ) {
   await requireInternalRole();
   const validated = areaSchema.parse(data);
@@ -183,7 +194,7 @@ export async function updateAreaAction(
   const site1 = area?.site as SiteWithOrgId | undefined;
 
   if (!area || !site1 || site1.orgId !== orgId) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
   const [updated] = await db
@@ -202,7 +213,11 @@ export async function updateAreaAction(
   return { area: updated };
 }
 
-export async function toggleAreaActiveAction(orgId: string, areaId: string, isActive: boolean) {
+export async function toggleAreaActiveAction(
+  orgId: string,
+  areaId: string,
+  isActive: boolean,
+) {
   await requireInternalRole();
 
   const area = await db.query.areas.findFirst({
@@ -212,7 +227,7 @@ export async function toggleAreaActiveAction(orgId: string, areaId: string, isAc
   const site2 = area?.site as SiteWithOrgId | undefined;
 
   if (!area || !site2 || site2.orgId !== orgId) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
   const [updated] = await db

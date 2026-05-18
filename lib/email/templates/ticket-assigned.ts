@@ -1,4 +1,4 @@
-import { escapeHtml, renderBaseTemplate } from './utils';
+import { escapeHtml, renderBaseTemplate } from "./utils";
 
 export function renderTicketAssignedEmail(options: {
   ticketKey: string;
@@ -8,7 +8,7 @@ export function renderTicketAssignedEmail(options: {
 }) {
   const { ticketKey, subject, assigneeName, ticketUrl } = options;
   const title = `Ticket Assigned: ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -51,7 +51,7 @@ View Ticket: ${ticketUrl}
   return {
     subject: `Ticket ${ticketKey} Assigned to ${assigneeName}`,
     html: renderBaseTemplate({
-      title: 'Ticket Assigned',
+      title: "Ticket Assigned",
       preheader: `Ticket ${ticketKey} has been assigned to ${assigneeName}`,
       bodyHtml,
     }),

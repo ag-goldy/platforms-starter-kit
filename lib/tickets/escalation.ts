@@ -1,29 +1,50 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { escalationRules, notifications, ticketComments, tickets, ticketTagAssignments } from '@/db/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { calculateSLAClock } from '@/lib/tickets/sla';
+import { db } from "@/db";
+import {
+  escalationRules,
+  notifications,
+  ticketComments,
+  tickets,
+  ticketTagAssignments,
+} from "@/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { calculateSLAClock } from "@/lib/tickets/sla";
 
-const openSLAStatuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_ON_CUSTOMER'] as const;
-type EscalationTrigger = 'sla_warning' | 'sla_breach';
+const openSLAStatuses = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_ON_CUSTOMER",
+] as const;
+type EscalationTrigger = "sla_warning" | "sla_breach";
 
-function escalationMarker(trigger: EscalationTrigger, metric: 'response' | 'resolution') {
+function escalationMarker(
+  trigger: EscalationTrigger,
+  metric: "response" | "resolution",
+) {
   return `[atlas:${trigger}:${metric}]`;
 }
 
-async function hasEscalationMarker(ticketId: string, marker: string): Promise<boolean> {
+async function hasEscalationMarker(
+  ticketId: string,
+  marker: string,
+): Promise<boolean> {
   const existing = await db.query.ticketComments.findFirst({
     where: and(
       eq(ticketComments.ticketId, ticketId),
-      sql`${ticketComments.content} like ${`%${marker}%`}`
+      sql`${ticketComments.content} like ${`%${marker}%`}`,
     ),
     columns: { id: true },
   });
   return Boolean(existing);
 }
 
-async function addSystemEscalationComment(ticketId: string, marker: string, content: string): Promise<boolean> {
+async function addSystemEscalationComment(
+  ticketId: string,
+  marker: string,
+  content: string,
+): Promise<boolean> {
   if (await hasEscalationMarker(ticketId, marker)) {
     return false;
   }
@@ -37,10 +58,16 @@ async function addSystemEscalationComment(ticketId: string, marker: string, cont
 }
 
 async function applyEscalationActions(params: {
-  ticket: { id: string; key: string; orgId: string | null; assigneeId: string | null; priority: 'P1' | 'P2' | 'P3' | 'P4' };
+  ticket: {
+    id: string;
+    key: string;
+    orgId: string | null;
+    assigneeId: string | null;
+    priority: "P1" | "P2" | "P3" | "P4";
+  };
   actions: {
     notifyUserIds?: string[];
-    changePriority?: 'P1' | 'P2' | 'P3' | 'P4';
+    changePriority?: "P1" | "P2" | "P3" | "P4";
     addTags?: string[];
     assignToUserId?: string;
     addComment?: string;
@@ -70,27 +97,33 @@ async function applyEscalationActions(params: {
   }
 
   if (actions.addTags?.length) {
-    await db.insert(ticketTagAssignments).values(
-      actions.addTags.map((tagId) => ({
-        ticketId: ticket.id,
-        tagId,
-        assignedById: actions.assignToUserId || null,
-      }))
-    ).onConflictDoNothing();
+    await db
+      .insert(ticketTagAssignments)
+      .values(
+        actions.addTags.map((tagId) => ({
+          ticketId: ticket.id,
+          tagId,
+          assignedById: actions.assignToUserId || null,
+        })),
+      )
+      .onConflictDoNothing();
   }
 
   const orgId = ticket.orgId;
   if (orgId && actions.notifyUserIds?.length) {
-    await db.insert(notifications).values(
-      actions.notifyUserIds.map((userId) => ({
-        userId,
-        type: 'TICKET_SLA_WARNING' as const,
-        title: `SLA escalation for ${ticket.key}`,
-        message: `Ticket ${ticket.key} matched an escalation rule.`,
-        data: { ticketId: ticket.id, orgId },
-        link: `/app/tickets/${ticket.id}`,
-      }))
-    ).onConflictDoNothing();
+    await db
+      .insert(notifications)
+      .values(
+        actions.notifyUserIds.map((userId) => ({
+          userId,
+          type: "TICKET_SLA_WARNING" as const,
+          title: `SLA escalation for ${ticket.key}`,
+          message: `Ticket ${ticket.key} matched an escalation rule.`,
+          data: { ticketId: ticket.id, orgId },
+          link: `/app/tickets/${ticket.id}`,
+        })),
+      )
+      .onConflictDoNothing();
   }
 }
 
@@ -111,27 +144,43 @@ export async function processEscalationRules(orgId?: string) {
     where: and(...conditions),
   });
 
-  const results: { ruleId: string; escalations: number; errors: string[] }[] = [];
+  const results: { ruleId: string; escalations: number; errors: string[] }[] =
+    [];
 
   for (const rule of rules) {
-    const ruleResult = { ruleId: rule.id, escalations: 0, errors: [] as string[] };
+    const ruleResult = {
+      ruleId: rule.id,
+      escalations: 0,
+      errors: [] as string[],
+    };
 
     try {
-      const applicablePriorities = (rule.applicablePriorities as string[]) || ['P1', 'P2', 'P3', 'P4'];
-      const applicableCategories = (rule.applicableCategories as string[]) || ['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST'];
+      const applicablePriorities = (rule.applicablePriorities as string[]) || [
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+      ];
+      const applicableCategories = (rule.applicableCategories as string[]) || [
+        "INCIDENT",
+        "SERVICE_REQUEST",
+        "CHANGE_REQUEST",
+      ];
 
       // Find tickets matching this rule's criteria
-      const timeThreshold = new Date(now.getTime() - rule.timeThreshold * 60 * 1000);
+      const timeThreshold = new Date(
+        now.getTime() - rule.timeThreshold * 60 * 1000,
+      );
 
       const ticketConditions = [
         eq(tickets.orgId, rule.orgId),
-        eq(tickets.status, 'OPEN'),
+        eq(tickets.status, "OPEN"),
         sql`${tickets.priority} = ANY(${applicablePriorities})`,
         sql`${tickets.category} = ANY(${applicableCategories})`,
       ];
 
       // Add trigger-specific conditions
-      if (rule.triggerType === 'no_response') {
+      if (rule.triggerType === "no_response") {
         // Tickets with no response in timeThreshold
         ticketConditions.push(
           sql`(
@@ -144,17 +193,17 @@ export async function processEscalationRules(orgId?: string) {
             WHERE ${ticketComments.ticketId} = ${tickets.id}
             AND ${ticketComments.createdAt} > ${timeThreshold}
           )
-        )`
+        )`,
         );
-      } else if (rule.triggerType === 'no_resolution') {
+      } else if (rule.triggerType === "no_resolution") {
         // Tickets not resolved in timeThreshold
         ticketConditions.push(
-          sql`${tickets.resolvedAt} IS NULL AND ${tickets.createdAt} < ${timeThreshold}`
+          sql`${tickets.resolvedAt} IS NULL AND ${tickets.createdAt} < ${timeThreshold}`,
         );
-      } else if (rule.triggerType === 'sla_warning') {
+      } else if (rule.triggerType === "sla_warning") {
         // Tickets approaching SLA breach (handled separately by SLA tracking)
         continue;
-      } else if (rule.triggerType === 'sla_breach') {
+      } else if (rule.triggerType === "sla_breach") {
         // Tickets that have breached SLA (handled separately by SLA tracking)
         continue;
       }
@@ -173,7 +222,7 @@ export async function processEscalationRules(orgId?: string) {
       const actions = rule.actions as {
         notifyUserIds?: string[];
         notifyGroupIds?: string[];
-        changePriority?: 'P1' | 'P2' | 'P3' | 'P4';
+        changePriority?: "P1" | "P2" | "P3" | "P4";
         addTags?: string[];
         assignToUserId?: string;
         addComment?: string;
@@ -181,15 +230,23 @@ export async function processEscalationRules(orgId?: string) {
 
       for (const ticket of matchingTickets) {
         try {
-          await applyEscalationActions({ ticket: { ...ticket, orgId: rule.orgId }, actions, now });
+          await applyEscalationActions({
+            ticket: { ...ticket, orgId: rule.orgId },
+            actions,
+            now,
+          });
 
           ruleResult.escalations++;
         } catch (error) {
-          ruleResult.errors.push(`Ticket ${ticket.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          ruleResult.errors.push(
+            `Ticket ${ticket.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
         }
       }
     } catch (error) {
-      ruleResult.errors.push(`Rule processing error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      ruleResult.errors.push(
+        `Rule processing error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
 
     results.push(ruleResult);
@@ -207,7 +264,7 @@ export async function checkSLAEscalations(orgId?: string) {
     where: and(
       orgId ? eq(tickets.orgId, orgId) : undefined,
       inArray(tickets.status, [...openSLAStatuses]),
-      sql`(${tickets.slaResponseTargetHours} IS NOT NULL OR ${tickets.slaResolutionTargetHours} IS NOT NULL)`
+      sql`(${tickets.slaResponseTargetHours} IS NOT NULL OR ${tickets.slaResolutionTargetHours} IS NOT NULL)`,
     ),
     columns: {
       id: true,
@@ -240,22 +297,30 @@ export async function checkSLAEscalations(orgId?: string) {
       pausedAt: ticket.slaPausedAt,
     });
 
-    if (clock.responseStatus === 'warning' || clock.resolutionStatus === 'warning') {
-      const metric = clock.responseStatus === 'warning' ? 'response' : 'resolution';
+    if (
+      clock.responseStatus === "warning" ||
+      clock.resolutionStatus === "warning"
+    ) {
+      const metric =
+        clock.responseStatus === "warning" ? "response" : "resolution";
       const added = await addSystemEscalationComment(
         ticket.id,
-        escalationMarker('sla_warning', metric),
-        `SLA ${metric} warning for ticket ${ticket.key}.`
+        escalationMarker("sla_warning", metric),
+        `SLA ${metric} warning for ticket ${ticket.key}.`,
       );
       if (added) warnings.push(ticket);
     }
 
-    if (clock.responseStatus === 'breached' || clock.resolutionStatus === 'breached') {
-      const metric = clock.responseStatus === 'breached' ? 'response' : 'resolution';
+    if (
+      clock.responseStatus === "breached" ||
+      clock.resolutionStatus === "breached"
+    ) {
+      const metric =
+        clock.responseStatus === "breached" ? "response" : "resolution";
       const added = await addSystemEscalationComment(
         ticket.id,
-        escalationMarker('sla_breach', metric),
-        `SLA ${metric} breached for ticket ${ticket.key}.`
+        escalationMarker("sla_breach", metric),
+        `SLA ${metric} breached for ticket ${ticket.key}.`,
       );
       if (added) breaches.push(ticket);
     }

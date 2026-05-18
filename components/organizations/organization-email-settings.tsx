@@ -1,20 +1,29 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/toast';
-import { Mail, Check, AlertCircle, Copy } from 'lucide-react';
-import { updateOrgEmailSettingsAction, type OrgEmailSettings } from '@/app/app/actions/organizations';
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
+import { Mail, Check, AlertCircle, Copy } from "lucide-react";
+import {
+  updateOrgEmailSettingsAction,
+  type OrgEmailSettings,
+} from "@/app/app/actions/organizations";
 
 interface OrganizationEmailSettingsProps {
   orgId: string;
   orgSlug: string;
-  orgSubdomain: string;  // eslint-disable-line @typescript-eslint/no-unused-vars
+  orgSubdomain: string; // eslint-disable-line @typescript-eslint/no-unused-vars
   currentSettings: {
     allowPublicIntake: boolean;
     intakeEmailAddress?: string | null;
@@ -48,18 +57,18 @@ export function OrganizationEmailSettings({
   const [copied, setCopied] = useState(false);
   const [settings, setSettings] = useState<OrgEmailSettings>({
     allowPublicIntake: currentSettings.allowPublicIntake ?? true,
-    intakeEmailAddress: currentSettings.intakeEmailAddress ?? '',
+    intakeEmailAddress: currentSettings.intakeEmailAddress ?? "",
     autoReplyEnabled: currentSettings.autoReplyEnabled ?? true,
-    autoReplyTemplate: currentSettings.autoReplyTemplate ?? '',
-    emailDomain: currentSettings.emailDomain ?? '',
+    autoReplyTemplate: currentSettings.autoReplyTemplate ?? "",
+    emailDomain: currentSettings.emailDomain ?? "",
   });
   const { success, error: showError } = useToast();
 
   // Generate the webhook URL for this organization
   const webhookUrl = `${rootDomain}/api/inbound-email`;
-  
+
   // Generate suggested intake email
-  const suggestedIntakeEmail = `support+${orgSlug}@${rootDomain.replace(/^https?:\/\//, '')}`;
+  const suggestedIntakeEmail = `support+${orgSlug}@${rootDomain.replace(/^https?:\/\//, "")}`;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -75,10 +84,10 @@ export function OrganizationEmailSettings({
         throw new Error(result.error);
       }
 
-      success('Email settings saved successfully');
+      success("Email settings saved successfully");
       setIsEditing(false);
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to save settings');
+      showError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setIsSaving(false);
     }
@@ -88,7 +97,7 @@ export function OrganizationEmailSettings({
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    success('Webhook URL copied to clipboard');
+    success("Webhook URL copied to clipboard");
   };
 
   const useSuggestedEmail = () => {
@@ -122,29 +131,39 @@ export function OrganizationEmailSettings({
           <div className="space-y-4">
             <div className="flex items-center justify-between py-2 border-b">
               <span className="text-sm font-medium">Email Intake Enabled</span>
-              <span className={settings.allowPublicIntake ? 'text-green-600' : 'text-gray-500'}>
-                {settings.allowPublicIntake ? 'Yes' : 'No'}
+              <span
+                className={
+                  settings.allowPublicIntake
+                    ? "text-green-600"
+                    : "text-gray-500"
+                }
+              >
+                {settings.allowPublicIntake ? "Yes" : "No"}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between py-2 border-b">
               <span className="text-sm font-medium">Intake Email Address</span>
               <span className="text-sm text-gray-600">
-                {settings.intakeEmailAddress || 'Not configured'}
+                {settings.intakeEmailAddress || "Not configured"}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between py-2 border-b">
               <span className="text-sm font-medium">Auto-Reply Enabled</span>
-              <span className={settings.autoReplyEnabled ? 'text-green-600' : 'text-gray-500'}>
-                {settings.autoReplyEnabled ? 'Yes' : 'No'}
+              <span
+                className={
+                  settings.autoReplyEnabled ? "text-green-600" : "text-gray-500"
+                }
+              >
+                {settings.autoReplyEnabled ? "Yes" : "No"}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between py-2 border-b">
               <span className="text-sm font-medium">Email Domain Matching</span>
               <span className="text-sm text-gray-600">
-                {settings.emailDomain || 'Not configured'}
+                {settings.emailDomain || "Not configured"}
               </span>
             </div>
 
@@ -152,9 +171,12 @@ export function OrganizationEmailSettings({
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="text-sm font-medium text-amber-900">Webhook Configuration</h4>
+                  <h4 className="text-sm font-medium text-amber-900">
+                    Webhook Configuration
+                  </h4>
                   <p className="text-sm text-amber-800 mt-1">
-                    Configure your email provider to forward emails to this webhook URL:
+                    Configure your email provider to forward emails to this
+                    webhook URL:
                   </p>
                   <div className="mt-2 flex items-center gap-2">
                     <code className="flex-1 bg-white px-3 py-1.5 rounded text-xs font-mono text-amber-900 border border-amber-200 break-all">
@@ -166,7 +188,11 @@ export function OrganizationEmailSettings({
                       onClick={copyWebhookUrl}
                       className="shrink-0"
                     >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -205,7 +231,10 @@ export function OrganizationEmailSettings({
                   placeholder="e.g., support@yourhotel.com"
                   value={settings.intakeEmailAddress}
                   onChange={(e) =>
-                    setSettings({ ...settings, intakeEmailAddress: e.target.value })
+                    setSettings({
+                      ...settings,
+                      intakeEmailAddress: e.target.value,
+                    })
                   }
                   className="flex-1"
                 />
@@ -219,15 +248,21 @@ export function OrganizationEmailSettings({
                 </Button>
               </div>
               <p className="text-xs text-gray-500">
-                Suggested: <code className="bg-gray-100 px-1 rounded">{suggestedIntakeEmail}</code>
+                Suggested:{" "}
+                <code className="bg-gray-100 px-1 rounded">
+                  {suggestedIntakeEmail}
+                </code>
               </p>
             </div>
 
             {/* Email Domain for Auto-Matching */}
             <div className="space-y-2">
-              <Label htmlFor="emailDomain">Email Domain for Auto-Matching</Label>
+              <Label htmlFor="emailDomain">
+                Email Domain for Auto-Matching
+              </Label>
               <p className="text-sm text-gray-500">
-                Automatically assign tickets from this domain to this organization
+                Automatically assign tickets from this domain to this
+                organization
               </p>
               <Input
                 id="emailDomain"
@@ -271,14 +306,18 @@ export function OrganizationEmailSettings({
                   </Button>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Available variables: {'{{ticketKey}}'}, {'{{magicLink}}'}, {'{{senderEmail}}'}
+                  Available variables: {"{{ticketKey}}"}, {"{{magicLink}}"},{" "}
+                  {"{{senderEmail}}"}
                 </p>
                 <Textarea
                   id="autoReplyTemplate"
                   rows={8}
                   value={settings.autoReplyTemplate}
                   onChange={(e) =>
-                    setSettings({ ...settings, autoReplyTemplate: e.target.value })
+                    setSettings({
+                      ...settings,
+                      autoReplyTemplate: e.target.value,
+                    })
                   }
                   placeholder={DEFAULT_AUTO_REPLY}
                   className="font-mono text-sm"
@@ -290,7 +329,8 @@ export function OrganizationEmailSettings({
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-blue-900">Webhook URL</h4>
               <p className="text-sm text-blue-800 mt-1">
-                Configure this URL in your email provider (SendGrid, Mailgun, etc.):
+                Configure this URL in your email provider (SendGrid, Mailgun,
+                etc.):
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <code className="flex-1 bg-white px-3 py-1.5 rounded text-xs font-mono text-blue-900 border border-blue-200 break-all">
@@ -302,14 +342,18 @@ export function OrganizationEmailSettings({
                   onClick={copyWebhookUrl}
                   className="shrink-0"
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
 
             <div className="flex gap-2 pt-4">
               <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save Settings'}
+                {isSaving ? "Saving..." : "Save Settings"}
               </Button>
               <Button
                 variant="outline"

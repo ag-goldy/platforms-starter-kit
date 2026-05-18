@@ -1,8 +1,8 @@
-import { eq, and, sql } from 'drizzle-orm';
-import { db } from '@/db';
-import { dashboardWidgets, widgetTypeEnum } from '@/db/schema';
+import { eq, and, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { dashboardWidgets, widgetTypeEnum } from "@/db/schema";
 
-export type WidgetType = typeof widgetTypeEnum.enumValues[number];
+export type WidgetType = (typeof widgetTypeEnum.enumValues)[number];
 
 export interface CreateWidgetInput {
   userId: string;
@@ -32,11 +32,14 @@ export interface UpdateWidgetInput {
  * Get all widgets for a user
  */
 export async function getUserWidgets(userId: string, orgId?: string) {
-  const conditions = [eq(dashboardWidgets.userId, userId), eq(dashboardWidgets.isVisible, true)];
+  const conditions = [
+    eq(dashboardWidgets.userId, userId),
+    eq(dashboardWidgets.isVisible, true),
+  ];
 
   if (orgId) {
     conditions.push(
-      sql`(${dashboardWidgets.orgId} IS NULL OR ${dashboardWidgets.orgId} = ${orgId})`
+      sql`(${dashboardWidgets.orgId} IS NULL OR ${dashboardWidgets.orgId} = ${orgId})`,
     );
   }
 
@@ -104,7 +107,9 @@ export async function updateWidget(id: string, input: UpdateWidgetInput) {
 export async function deleteWidget(id: string, userId: string) {
   const result = await db
     .delete(dashboardWidgets)
-    .where(and(eq(dashboardWidgets.id, id), eq(dashboardWidgets.userId, userId)))
+    .where(
+      and(eq(dashboardWidgets.id, id), eq(dashboardWidgets.userId, userId)),
+    )
     .returning();
 
   return result.length > 0;
@@ -114,7 +119,7 @@ export async function deleteWidget(id: string, userId: string) {
  * Update widget positions (for drag-and-drop reordering)
  */
 export async function updateWidgetPositions(
-  updates: Array<{ id: string; positionX: number; positionY: number }>
+  updates: Array<{ id: string; positionX: number; positionY: number }>,
 ) {
   for (const update of updates) {
     await db
@@ -134,32 +139,32 @@ export async function updateWidgetPositions(
 export async function createDefaultWidgets(userId: string, orgId?: string) {
   const defaults = [
     {
-      type: 'ticket_count',
-      title: 'Ticket Overview',
+      type: "ticket_count",
+      title: "Ticket Overview",
       positionX: 0,
       positionY: 0,
       width: 2,
       height: 2,
     },
     {
-      type: 'assigned_to_me',
-      title: 'My Tickets',
+      type: "assigned_to_me",
+      title: "My Tickets",
       positionX: 2,
       positionY: 0,
       width: 2,
       height: 2,
     },
     {
-      type: 'sla_compliance',
-      title: 'SLA Compliance',
+      type: "sla_compliance",
+      title: "SLA Compliance",
       positionX: 0,
       positionY: 2,
       width: 2,
       height: 2,
     },
     {
-      type: 'recent_tickets',
-      title: 'Recent Activity',
+      type: "recent_tickets",
+      title: "Recent Activity",
       positionX: 2,
       positionY: 2,
       width: 2,
@@ -233,8 +238,14 @@ export async function getSLAComplianceWidgetData(orgId?: string) {
     total,
     metResponse: Number(data?.met_response || 0),
     metResolution: Number(data?.met_resolution || 0),
-    responseCompliance: total > 0 ? Math.round((Number(data?.met_response || 0) / total) * 100) : 100,
-    resolutionCompliance: total > 0 ? Math.round((Number(data?.met_resolution || 0) / total) * 100) : 100,
+    responseCompliance:
+      total > 0
+        ? Math.round((Number(data?.met_response || 0) / total) * 100)
+        : 100,
+    resolutionCompliance:
+      total > 0
+        ? Math.round((Number(data?.met_resolution || 0) / total) * 100)
+        : 100,
   };
 }
 
@@ -333,9 +344,7 @@ export async function getRecentActivityWidgetData(orgId?: string, limit = 10) {
  */
 export async function resetDashboard(userId: string, orgId?: string) {
   // Delete existing widgets
-  await db
-    .delete(dashboardWidgets)
-    .where(eq(dashboardWidgets.userId, userId));
+  await db.delete(dashboardWidgets).where(eq(dashboardWidgets.userId, userId));
 
   // Create defaults
   return await createDefaultWidgets(userId, orgId);

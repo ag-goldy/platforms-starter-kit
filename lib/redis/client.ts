@@ -1,6 +1,6 @@
 /**
  * Redis Client - Supports both Upstash REST API and standard Redis connections
- * 
+ *
  * Priority:
  * 1. KV_REST_API_URL + KV_REST_API_TOKEN (Upstash REST API)
  * 2. REDIS_URL (standard Redis connection string)
@@ -8,13 +8,17 @@
  * 4. Fallback to mock in-memory Redis for development
  */
 
-import { Redis as UpstashRedis } from '@upstash/redis';
-import { Redis as IORedis } from 'ioredis';
+import { Redis as UpstashRedis } from "@upstash/redis";
+import { Redis as IORedis } from "ioredis";
 
 // Redis-like interface for type safety
 export interface RedisLike {
   get<T = unknown>(key: string): Promise<T | null>;
-  set(key: string, value: unknown, opts?: { ex?: number; px?: number }): Promise<string | null>;
+  set(
+    key: string,
+    value: unknown,
+    opts?: { ex?: number; px?: number },
+  ): Promise<string | null>;
   setex(key: string, seconds: number, value: unknown): Promise<string | null>;
   del(key: string): Promise<number>;
   ttl(key: string): Promise<number>;
@@ -43,8 +47,10 @@ type StoredValue = {
 // Check which Redis configuration is available
 const upstashUrl = process.env.KV_REST_API_URL;
 const upstashToken = process.env.KV_REST_API_TOKEN;
-const redisDisabled = process.env.DISABLE_REDIS === 'true';
-const redisUrl = redisDisabled ? undefined : process.env.REDIS_URL || process.env.TCKREDIS_REDIS_URL;
+const redisDisabled = process.env.DISABLE_REDIS === "true";
+const redisUrl = redisDisabled
+  ? undefined
+  : process.env.REDIS_URL || process.env.TCKREDIS_REDIS_URL;
 
 const isUpstashConfigured = !!(upstashUrl && upstashToken);
 export const isRedisConfigured = !!redisUrl;
@@ -66,9 +72,9 @@ function createMockRedis(): RedisLike {
   };
 
   const matchPattern = (key: string, pattern: string) => {
-    if (pattern === '*') return true;
-    if (!pattern.includes('*')) return key === pattern;
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    if (pattern === "*") return true;
+    if (!pattern.includes("*")) return key === pattern;
+    const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
     return regex.test(key);
   };
 
@@ -77,20 +83,24 @@ function createMockRedis(): RedisLike {
       const entry = readEntry(key);
       return (entry?.value as T) ?? null;
     },
-    async set(key: string, value: unknown, opts?: { ex?: number; px?: number }) {
+    async set(
+      key: string,
+      value: unknown,
+      opts?: { ex?: number; px?: number },
+    ) {
       const ttlMs = opts?.ex ? opts.ex * 1000 : opts?.px;
-      store.set(key, { 
-        value, 
-        expiresAt: ttlMs ? Date.now() + ttlMs : undefined 
+      store.set(key, {
+        value,
+        expiresAt: ttlMs ? Date.now() + ttlMs : undefined,
       });
-      return 'OK';
+      return "OK";
     },
     async setex(key: string, seconds: number, value: unknown) {
-      store.set(key, { 
-        value, 
-        expiresAt: Date.now() + seconds * 1000 
+      store.set(key, {
+        value,
+        expiresAt: Date.now() + seconds * 1000,
       });
-      return 'OK';
+      return "OK";
     },
     async del(key: string) {
       const existed = store.delete(key);
@@ -124,7 +134,9 @@ function createMockRedis(): RedisLike {
       return next;
     },
     async keys(pattern: string) {
-      return Array.from(store.keys()).filter((key) => matchPattern(key, pattern));
+      return Array.from(store.keys()).filter((key) =>
+        matchPattern(key, pattern),
+      );
     },
     async mget<T = unknown>(...keys: string[]) {
       return keys.map((key) => {
@@ -240,7 +252,11 @@ function wrapUpstashClient(client: UpstashRedis): RedisLike {
       const value = await client.get<T>(key);
       return value ?? null;
     },
-    async set(key: string, value: unknown, opts?: { ex?: number; px?: number }) {
+    async set(
+      key: string,
+      value: unknown,
+      opts?: { ex?: number; px?: number },
+    ) {
       if (opts?.ex) {
         return await client.set(key, value, { ex: opts.ex });
       }
@@ -272,7 +288,7 @@ function wrapUpstashClient(client: UpstashRedis): RedisLike {
     },
     async mget<T = unknown>(...keys: string[]) {
       const values = await client.mget<T[]>(keys);
-      return values.map(v => v ?? null);
+      return values.map((v) => v ?? null);
     },
     async hset(key: string, field: string, value: unknown) {
       return await client.hset(key, { [field]: value });
@@ -316,21 +332,25 @@ function wrapIORedisClient(client: IORedis): RedisLike {
   return {
     async get<T = unknown>(key: string) {
       const value = await client.get(key);
-      return value ? JSON.parse(value) as T : null;
+      return value ? (JSON.parse(value) as T) : null;
     },
-    async set(key: string, value: unknown, opts?: { ex?: number; px?: number }) {
+    async set(
+      key: string,
+      value: unknown,
+      opts?: { ex?: number; px?: number },
+    ) {
       const serialized = JSON.stringify(value);
       if (opts?.ex) {
-        return await client.set(key, serialized, 'EX', opts.ex);
+        return await client.set(key, serialized, "EX", opts.ex);
       }
       if (opts?.px) {
-        return await client.set(key, serialized, 'PX', opts.px);
+        return await client.set(key, serialized, "PX", opts.px);
       }
       return await client.set(key, serialized);
     },
     async setex(key: string, seconds: number, value: unknown) {
       const serialized = JSON.stringify(value);
-      return await client.set(key, serialized, 'EX', seconds);
+      return await client.set(key, serialized, "EX", seconds);
     },
     async del(key: string) {
       return await client.del(key);
@@ -352,14 +372,14 @@ function wrapIORedisClient(client: IORedis): RedisLike {
     },
     async mget<T = unknown>(...keys: string[]) {
       const values = await client.mget(keys);
-      return values.map(v => v ? JSON.parse(v) as T : null);
+      return values.map((v) => (v ? (JSON.parse(v) as T) : null));
     },
     async hset(key: string, field: string, value: unknown) {
       return await client.hset(key, field, JSON.stringify(value));
     },
     async hget<T = unknown>(key: string, field: string) {
       const value = await client.hget(key, field);
-      return value ? JSON.parse(value) as T : null;
+      return value ? (JSON.parse(value) as T) : null;
     },
     async hgetall<T = Record<string, unknown>>(key: string) {
       const result = await client.hgetall(key);
@@ -383,7 +403,7 @@ function wrapIORedisClient(client: IORedis): RedisLike {
       return await client.lpush(key, ...values);
     },
     async rpop<T = string>(key: string) {
-      return await client.rpop(key) as T | null;
+      return (await client.rpop(key)) as T | null;
     },
     async llen(key: string) {
       return await client.llen(key);
@@ -392,7 +412,7 @@ function wrapIORedisClient(client: IORedis): RedisLike {
       return await client.lrem(key, count, value);
     },
     async lrange<T = string>(key: string, start: number, stop: number) {
-      return await client.lrange(key, start, stop) as T[];
+      return (await client.lrange(key, start, stop)) as T[];
     },
   };
 }
@@ -404,7 +424,7 @@ let redisConnectionWarningLogged = false;
 
 function initializeRedis(): void {
   if (isUpstashConfigured) {
-    console.log('[Redis] Using Upstash REST API client');
+    console.log("[Redis] Using Upstash REST API client");
     const upstash = new UpstashRedis({
       url: upstashUrl!,
       token: upstashToken!,
@@ -414,14 +434,14 @@ function initializeRedis(): void {
   }
 
   if (isRedisConfigured) {
-    console.log('[Redis] Using standard Redis client (IORedis)');
+    console.log("[Redis] Using standard Redis client (IORedis)");
     const ioRedis = new IORedis(redisUrl!, {
       maxRetriesPerRequest: 3,
       enableReadyCheck: true,
       connectTimeout: 10000, // 10s connection timeout
       retryStrategy: (times) => {
         if (times > 3) {
-          console.info('[Redis] Max retries reached, switching to mock client');
+          console.info("[Redis] Max retries reached, switching to mock client");
           // Switch to mock client on failure
           redisFallbackActive = true;
           backingClient = createMockRedis();
@@ -430,23 +450,26 @@ function initializeRedis(): void {
         return Math.min(times * 100, 3000);
       },
     });
-    
-    ioRedis.on('error', (err) => {
+
+    ioRedis.on("error", (err) => {
       if (!redisFallbackActive && !redisConnectionWarningLogged) {
         redisConnectionWarningLogged = true;
-        console.info('[Redis] Connection unavailable, will use mock client if retries fail:', err.message);
+        console.info(
+          "[Redis] Connection unavailable, will use mock client if retries fail:",
+          err.message,
+        );
       }
     });
-    
-    ioRedis.on('connect', () => {
-      console.log('[Redis] Connected successfully');
+
+    ioRedis.on("connect", () => {
+      console.log("[Redis] Connected successfully");
     });
-    
+
     backingClient = wrapIORedisClient(ioRedis);
     return;
   }
 
-  console.warn('[Redis] No Redis configuration found, using mock client');
+  console.warn("[Redis] No Redis configuration found, using mock client");
   backingClient = createMockRedis();
 }
 
@@ -466,8 +489,6 @@ export const redisConfig = {
   isRedis: isRedisConfigured,
   isMock: !isUpstashConfigured && !isRedisConfigured,
 };
-
-
 
 // In-memory fallback store for when Redis is unavailable
 const memoryStore = new Map<string, unknown>();
@@ -489,7 +510,7 @@ export async function safeRedisGet<T>(key: string): Promise<T | null> {
     const memValue = memoryStore.get(key);
     return memValue !== undefined ? (memValue as T) : null;
   } catch {
-    console.warn('[Redis] Get failed, using memory fallback:', key);
+    console.warn("[Redis] Get failed, using memory fallback:", key);
     const memValue = memoryStore.get(key);
     return memValue !== undefined ? (memValue as T) : null;
   }
@@ -500,18 +521,18 @@ export async function safeRedisGet<T>(key: string): Promise<T | null> {
  * Writes to Redis if available, always writes to memory store as backup
  */
 export async function safeRedisSet(
-  key: string, 
-  value: unknown, 
-  opts?: { ex?: number }
+  key: string,
+  value: unknown,
+  opts?: { ex?: number },
 ): Promise<void> {
   // Always write to memory store first
   memoryStore.set(key, value);
-  
+
   try {
     // Try to write to Redis
     await redis.set(key, value, opts);
   } catch {
-    console.warn('[Redis] Set failed, using memory fallback:', key);
+    console.warn("[Redis] Set failed, using memory fallback:", key);
     // Memory store already updated above
   }
 }
@@ -519,11 +540,14 @@ export async function safeRedisSet(
 /**
  * Safe Redis expire with in-memory fallback
  */
-export async function safeRedisExpire(key: string, seconds: number): Promise<void> {
+export async function safeRedisExpire(
+  key: string,
+  seconds: number,
+): Promise<void> {
   try {
     await redis.expire(key, seconds);
   } catch {
-    console.warn('[Redis] Expire failed:', key);
+    console.warn("[Redis] Expire failed:", key);
     // Memory store entries don't expire automatically in this implementation
     // In production, you might want to implement TTL in memory store too
   }

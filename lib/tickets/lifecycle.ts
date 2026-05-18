@@ -1,10 +1,21 @@
-import { db } from '@/db';
-import { auditLogs, ticketComments, tickets, ticketStatusEnum } from '@/db/schema';
-import { and, eq, isNull, lt, sql } from 'drizzle-orm';
+import { db } from "@/db";
+import {
+  auditLogs,
+  ticketComments,
+  tickets,
+  ticketStatusEnum,
+} from "@/db/schema";
+import { and, eq, isNull, lt, sql } from "drizzle-orm";
 
 export type TicketStatus = (typeof ticketStatusEnum.enumValues)[number];
-export type LifecycleActorType = 'customer' | 'agent' | 'automation' | 'system';
-export type LifecycleSource = 'portal' | 'staff' | 'api' | 'cron' | 'automation' | 'migration';
+export type LifecycleActorType = "customer" | "agent" | "automation" | "system";
+export type LifecycleSource =
+  | "portal"
+  | "staff"
+  | "api"
+  | "cron"
+  | "automation"
+  | "migration";
 
 export interface LifecycleActor {
   type: LifecycleActorType;
@@ -26,12 +37,14 @@ export interface TransitionCheck {
   reason?: string;
 }
 
-const customerClosableStatuses: TicketStatus[] = ['RESOLVED'];
-const reopenableStatuses: TicketStatus[] = ['RESOLVED', 'CLOSED'];
+const customerClosableStatuses: TicketStatus[] = ["RESOLVED"];
+const reopenableStatuses: TicketStatus[] = ["RESOLVED", "CLOSED"];
 
-export function assertTicketMutable(ticket: Pick<TicketLifecycleShape, 'status' | 'mergedIntoId'>): void {
-  if (ticket.mergedIntoId || ticket.status === 'MERGED') {
-    throw new Error('Merged source tickets are read-only');
+export function assertTicketMutable(
+  ticket: Pick<TicketLifecycleShape, "status" | "mergedIntoId">,
+): void {
+  if (ticket.mergedIntoId || ticket.status === "MERGED") {
+    throw new Error("Merged source tickets are read-only");
   }
 }
 
@@ -42,29 +55,42 @@ export function canTransitionTicketStatus(params: {
 }): TransitionCheck {
   const { ticket, actor, targetStatus } = params;
 
-  if (ticket.mergedIntoId || ticket.status === 'MERGED') {
-    return { allowed: false, reason: 'Merged source tickets are read-only' };
+  if (ticket.mergedIntoId || ticket.status === "MERGED") {
+    return { allowed: false, reason: "Merged source tickets are read-only" };
   }
 
-  if (actor.type === 'agent' || actor.type === 'automation' || actor.type === 'system') {
+  if (
+    actor.type === "agent" ||
+    actor.type === "automation" ||
+    actor.type === "system"
+  ) {
     return { allowed: true };
   }
 
-  if (actor.type === 'customer') {
-    if (targetStatus === 'CLOSED') {
+  if (actor.type === "customer") {
+    if (targetStatus === "CLOSED") {
       if (!customerClosableStatuses.includes(ticket.status)) {
-        return { allowed: false, reason: 'Customers can only close resolved tickets' };
+        return {
+          allowed: false,
+          reason: "Customers can only close resolved tickets",
+        };
       }
       if (ticket.requesterId !== actor.userId) {
-        return { allowed: false, reason: 'Customers can only close their own tickets' };
+        return {
+          allowed: false,
+          reason: "Customers can only close their own tickets",
+        };
       }
       return { allowed: true };
     }
 
-    return { allowed: false, reason: 'Customers cannot make this status transition' };
+    return {
+      allowed: false,
+      reason: "Customers cannot make this status transition",
+    };
   }
 
-  return { allowed: false, reason: 'Unsupported actor type' };
+  return { allowed: false, reason: "Unsupported actor type" };
 }
 
 export async function transitionTicketStatus({
@@ -87,12 +113,12 @@ export async function transitionTicketStatus({
   });
 
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
 
   const check = canTransitionTicketStatus({ ticket, actor, targetStatus });
   if (!check.allowed) {
-    throw new Error(check.reason || 'Status transition not allowed');
+    throw new Error(check.reason || "Status transition not allowed");
   }
 
   const now = new Date();
@@ -101,7 +127,12 @@ export async function transitionTicketStatus({
     .update(tickets)
     .set({
       status: targetStatus,
-      resolvedAt: targetStatus === 'RESOLVED' ? now : targetStatus === 'CLOSED' ? (ticket.resolvedAt || now) : ticket.resolvedAt,
+      resolvedAt:
+        targetStatus === "RESOLVED"
+          ? now
+          : targetStatus === "CLOSED"
+            ? ticket.resolvedAt || now
+            : ticket.resolvedAt,
       slaPausedAt: null,
       updatedAt: now,
     })
@@ -112,7 +143,7 @@ export async function transitionTicketStatus({
     ticketId,
     userId: actor.userId || null,
     platformAdminId: actor.platformAdminId || null,
-    content: `Status changed from ${oldStatus} to ${targetStatus}.${reason ? ` ${reason}` : ''}`,
+    content: `Status changed from ${oldStatus} to ${targetStatus}.${reason ? ` ${reason}` : ""}`,
     isInternal: false,
   });
 
@@ -121,8 +152,14 @@ export async function transitionTicketStatus({
     platformAdminId: actor.platformAdminId || null,
     orgId,
     ticketId,
-    action: 'TICKET_STATUS_CHANGED',
-    details: JSON.stringify({ oldStatus, newStatus: targetStatus, reason, source, actorType: actor.type }),
+    action: "TICKET_STATUS_CHANGED",
+    details: JSON.stringify({
+      oldStatus,
+      newStatus: targetStatus,
+      reason,
+      source,
+      actorType: actor.type,
+    }),
   });
 
   return updated;
@@ -143,20 +180,21 @@ export async function reopenTicket({
     where: and(eq(tickets.id, ticketId), eq(tickets.orgId, orgId)),
   });
 
-  if (!ticket) throw new Error('Ticket not found');
+  if (!ticket) throw new Error("Ticket not found");
   assertTicketMutable(ticket);
 
   if (!reopenableStatuses.includes(ticket.status)) {
     return ticket;
   }
-  if (actor.type === 'customer' && ticket.requesterId !== actor.userId) {
-    throw new Error('Customers can only reopen their own tickets');
+  if (actor.type === "customer" && ticket.requesterId !== actor.userId) {
+    throw new Error("Customers can only reopen their own tickets");
   }
 
   const now = new Date();
-  const [updated] = await db.update(tickets)
+  const [updated] = await db
+    .update(tickets)
     .set({
-      status: 'OPEN',
+      status: "OPEN",
       resolvedAt: null,
       firstResponseAt: null,
       slaPausedAt: null,
@@ -178,14 +216,14 @@ export async function reopenTicket({
     platformAdminId: actor.platformAdminId || null,
     orgId,
     ticketId,
-    action: 'TICKET_STATUS_CHANGED',
+    action: "TICKET_STATUS_CHANGED",
     details: JSON.stringify({
-      event: 'ticket.reopened',
+      event: "ticket.reopened",
       oldStatus: ticket.status,
-      newStatus: 'OPEN',
+      newStatus: "OPEN",
       reason,
       actorType: actor.type,
-      slaCycle: 'new',
+      slaCycle: "new",
     }),
   });
 
@@ -207,9 +245,9 @@ export async function closeResolvedTicket({
     ticketId,
     orgId,
     actor,
-    targetStatus: 'CLOSED',
+    targetStatus: "CLOSED",
     reason,
-    source: actor.type === 'system' ? 'cron' : 'portal',
+    source: actor.type === "system" ? "cron" : "portal",
   });
 }
 
@@ -218,7 +256,8 @@ export async function autoCloseResolvedTickets(now = new Date()) {
     columns: { id: true, autoCloseResolvedDays: true },
   });
 
-  const results: Array<{ orgId: string; closed: number; errors: string[] }> = [];
+  const results: Array<{ orgId: string; closed: number; errors: string[] }> =
+    [];
 
   for (const org of orgRows) {
     const days = org.autoCloseResolvedDays || 7;
@@ -229,10 +268,13 @@ export async function autoCloseResolvedTickets(now = new Date()) {
       .where(
         and(
           eq(tickets.orgId, org.id),
-          eq(tickets.status, 'RESOLVED'),
-          lt(sql<Date>`coalesce(${tickets.resolvedAt}, ${tickets.updatedAt})`, cutoff),
-          isNull(tickets.deletedAt)
-        )
+          eq(tickets.status, "RESOLVED"),
+          lt(
+            sql<Date>`coalesce(${tickets.resolvedAt}, ${tickets.updatedAt})`,
+            cutoff,
+          ),
+          isNull(tickets.deletedAt),
+        ),
       )
       .limit(200);
 
@@ -243,7 +285,7 @@ export async function autoCloseResolvedTickets(now = new Date()) {
         await closeResolvedTicket({
           ticketId: row.id,
           orgId: org.id,
-          actor: { type: 'system' },
+          actor: { type: "system" },
           reason: `Auto-closed after ${days} days in RESOLVED.`,
         });
         closed++;

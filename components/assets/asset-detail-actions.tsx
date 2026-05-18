@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/toast';
-import { Archive, ArchiveRestore, Trash2, Loader2, Edit } from 'lucide-react';
-import Link from 'next/link';
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { Archive, ArchiveRestore, Trash2, Loader2, Edit } from "lucide-react";
+import Link from "next/link";
 
 interface AssetDetailActionsProps {
   assetId: string;
@@ -41,20 +41,20 @@ export function AssetDetailActions({
     setIsProcessing(true);
     try {
       const response = await fetch(`/api/assets/${assetId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'archive' }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive" }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to archive asset');
+        throw new Error(data.error || "Failed to archive asset");
       }
 
-      success('Asset archived successfully');
+      success("Asset archived successfully");
       router.refresh();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to archive asset');
+      showError(err instanceof Error ? err.message : "Failed to archive asset");
     } finally {
       setIsProcessing(false);
       setShowArchiveDialog(false);
@@ -65,20 +65,22 @@ export function AssetDetailActions({
     setIsProcessing(true);
     try {
       const response = await fetch(`/api/assets/${assetId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'unarchive' }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unarchive" }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to unarchive asset');
+        throw new Error(data.error || "Failed to unarchive asset");
       }
 
-      success('Asset unarchived successfully');
+      success("Asset unarchived successfully");
       router.refresh();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to unarchive asset');
+      showError(
+        err instanceof Error ? err.message : "Failed to unarchive asset",
+      );
     } finally {
       setIsProcessing(false);
       setShowUnarchiveDialog(false);
@@ -89,23 +91,25 @@ export function AssetDetailActions({
     setIsProcessing(true);
     try {
       const response = await fetch(`/api/assets/${assetId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         if (data.linkedTicketCount) {
-          throw new Error(`Cannot delete: Asset has ${data.linkedTicketCount} linked ticket(s). Please unlink tickets first.`);
+          throw new Error(
+            `Cannot delete: Asset has ${data.linkedTicketCount} linked ticket(s). Please unlink tickets first.`,
+          );
         }
-        throw new Error(data.error || 'Failed to delete asset');
+        throw new Error(data.error || "Failed to delete asset");
       }
 
-      success('Asset deleted successfully');
+      success("Asset deleted successfully");
       router.push(`${basePath}`);
       router.refresh();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to delete asset');
+      showError(err instanceof Error ? err.message : "Failed to delete asset");
     } finally {
       setIsProcessing(false);
       setShowDeleteDialog(false);
@@ -121,7 +125,7 @@ export function AssetDetailActions({
             Edit
           </Button>
         </Link>
-        
+
         {!isArchived ? (
           <Button
             variant="outline"
@@ -143,7 +147,7 @@ export function AssetDetailActions({
             Unarchive
           </Button>
         )}
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -162,12 +166,18 @@ export function AssetDetailActions({
             <DialogTitle>Archive Asset</DialogTitle>
             <DialogDescription>
               Are you sure you want to archive &quot;{assetName}&quot;?
-              <br /><br />
-              Archived assets will be hidden from the default view but can be restored later.
+              <br />
+              <br />
+              Archived assets will be hidden from the default view but can be
+              restored later.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowArchiveDialog(false)} disabled={isProcessing}>
+            <Button
+              variant="outline"
+              onClick={() => setShowArchiveDialog(false)}
+              disabled={isProcessing}
+            >
               Cancel
             </Button>
             <Button onClick={handleArchive} disabled={isProcessing}>
@@ -197,7 +207,11 @@ export function AssetDetailActions({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUnarchiveDialog(false)} disabled={isProcessing}>
+            <Button
+              variant="outline"
+              onClick={() => setShowUnarchiveDialog(false)}
+              disabled={isProcessing}
+            >
               Cancel
             </Button>
             <Button onClick={handleUnarchive} disabled={isProcessing}>
@@ -223,27 +237,36 @@ export function AssetDetailActions({
           <DialogHeader>
             <DialogTitle>Delete Asset</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently delete &quot;{assetName}&quot;?
-              <br /><br />
-              <span className="text-red-600 font-medium">This action cannot be undone.</span>
+              Are you sure you want to permanently delete &quot;{assetName}
+              &quot;?
+              <br />
+              <br />
+              <span className="text-red-600 font-medium">
+                This action cannot be undone.
+              </span>
               {linkedTicketCount > 0 && (
                 <>
-                  <br /><br />
+                  <br />
+                  <br />
                   <span className="text-amber-600">
-                    Warning: This asset has {linkedTicketCount} linked ticket(s). 
-                    You must unlink all tickets before deleting.
+                    Warning: This asset has {linkedTicketCount} linked
+                    ticket(s). You must unlink all tickets before deleting.
                   </span>
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isProcessing}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isProcessing}
+            >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete} 
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
               disabled={isProcessing || linkedTicketCount > 0}
             >
               {isProcessing ? (

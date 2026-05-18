@@ -1,41 +1,41 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Folder, 
-  FolderOpen, 
-  Trash2, 
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ArrowLeft,
+  Plus,
+  Folder,
+  FolderOpen,
+  Trash2,
   Building2,
   ChevronRight,
   ChevronDown,
   Loader2,
   MoreHorizontal,
   Globe,
-  Pencil
-} from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
+  Pencil,
+} from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 
 interface Organization {
   id: string;
@@ -66,29 +66,33 @@ export default function CategoriesPage() {
   const { success, error: showError } = useToast();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState('');
+  const [selectedOrgId, setSelectedOrgId] = useState("");
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editCategory, setEditCategory] = useState({
-    name: '',
-    slug: '',
-    description: '',
-    parentId: '',
+    name: "",
+    slug: "",
+    description: "",
+    parentId: "",
     isPublic: true,
     sortOrder: 0,
   });
-  
+
   // New category form state
   const [newCategory, setNewCategory] = useState({
-    name: '',
-    description: '',
-    parentId: '',
+    name: "",
+    description: "",
+    parentId: "",
     isPublic: true,
     sortOrder: 0,
   });
@@ -98,7 +102,7 @@ export default function CategoriesPage() {
     async function loadOrganizations() {
       setIsLoadingOrgs(true);
       try {
-        const response = await fetch('/api/organizations');
+        const response = await fetch("/api/organizations");
         if (response.ok) {
           const data = await response.json();
           setOrganizations(data.organizations || []);
@@ -107,7 +111,7 @@ export default function CategoriesPage() {
           }
         }
       } catch (error) {
-        console.error('Failed to load organizations:', error);
+        console.error("Failed to load organizations:", error);
       } finally {
         setIsLoadingOrgs(false);
       }
@@ -118,17 +122,20 @@ export default function CategoriesPage() {
   // Load categories when org changes
   const loadCategories = useCallback(async () => {
     if (!selectedOrgId) return;
-    
+
     setIsLoading(true);
     try {
-      const queryParam = selectedOrgId === 'global' ? '' : `?orgId=${selectedOrgId}&includeInternal=true`;
+      const queryParam =
+        selectedOrgId === "global"
+          ? ""
+          : `?orgId=${selectedOrgId}&includeInternal=true`;
       const response = await fetch(`/api/kb/categories${queryParam}`);
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
       }
     } catch (error) {
-      console.error('Failed to load categories:', error);
+      console.error("Failed to load categories:", error);
     } finally {
       setIsLoading(false);
     }
@@ -144,27 +151,38 @@ export default function CategoriesPage() {
 
     setIsCreating(true);
     try {
-      const response = await fetch('/api/kb/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/kb/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...newCategory,
-          orgId: selectedOrgId === 'global' ? null : selectedOrgId,
-          parentId: newCategory.parentId && newCategory.parentId !== 'none' ? newCategory.parentId : null,
+          orgId: selectedOrgId === "global" ? null : selectedOrgId,
+          parentId:
+            newCategory.parentId && newCategory.parentId !== "none"
+              ? newCategory.parentId
+              : null,
           isPublic: true, // Global categories are always public
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create category');
+        throw new Error(error.error || "Failed to create category");
       }
 
-      success('Category created successfully');
-      setNewCategory({ name: '', description: '', parentId: '', isPublic: true, sortOrder: 0 });
+      success("Category created successfully");
+      setNewCategory({
+        name: "",
+        description: "",
+        parentId: "",
+        isPublic: true,
+        sortOrder: 0,
+      });
       loadCategories();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to create category');
+      showError(
+        err instanceof Error ? err.message : "Failed to create category",
+      );
     } finally {
       setIsCreating(false);
     }
@@ -175,20 +193,25 @@ export default function CategoriesPage() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/kb/categories?id=${categoryToDelete.id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/kb/categories?id=${categoryToDelete.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete category');
+        throw new Error(error.error || "Failed to delete category");
       }
 
-      success('Category deleted successfully');
+      success("Category deleted successfully");
       setCategoryToDelete(null);
       loadCategories();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to delete category');
+      showError(
+        err instanceof Error ? err.message : "Failed to delete category",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -197,10 +220,10 @@ export default function CategoriesPage() {
   const openEditCategory = (category: Category) => {
     setCategoryToEdit(category);
     setEditCategory({
-      name: category.name || '',
-      slug: category.slug || '',
-      description: category.description || '',
-      parentId: category.parentId || 'none',
+      name: category.name || "",
+      slug: category.slug || "",
+      description: category.description || "",
+      parentId: category.parentId || "none",
       isPublic: category.isPublic,
       sortOrder: category.sortOrder || 0,
     });
@@ -213,15 +236,18 @@ export default function CategoriesPage() {
 
     setIsUpdating(true);
     try {
-      const response = await fetch('/api/kb/categories', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/kb/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: categoryToEdit.id,
           name: editCategory.name,
           slug: editCategory.slug,
           description: editCategory.description,
-          parentId: editCategory.parentId && editCategory.parentId !== 'none' ? editCategory.parentId : null,
+          parentId:
+            editCategory.parentId && editCategory.parentId !== "none"
+              ? editCategory.parentId
+              : null,
           isPublic: editCategory.isPublic,
           sortOrder: editCategory.sortOrder,
         }),
@@ -229,14 +255,16 @@ export default function CategoriesPage() {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to update category');
+        throw new Error(error.error || "Failed to update category");
       }
 
-      success('Category updated successfully');
+      success("Category updated successfully");
       setCategoryToEdit(null);
       loadCategories();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to update category');
+      showError(
+        err instanceof Error ? err.message : "Failed to update category",
+      );
     } finally {
       setIsUpdating(false);
     }
@@ -253,10 +281,13 @@ export default function CategoriesPage() {
   };
 
   // Build category tree
-  const buildCategoryTree = (parentId: string | null = null, depth = 0): { category: Category; depth: number }[] => {
+  const buildCategoryTree = (
+    parentId: string | null = null,
+    depth = 0,
+  ): { category: Category; depth: number }[] => {
     const result: { category: Category; depth: number }[] = [];
-    const children = categories.filter(c => c.parentId === parentId);
-    
+    const children = categories.filter((c) => c.parentId === parentId);
+
     for (const cat of children) {
       result.push({ category: cat, depth });
       if (expandedCategories.has(cat.id)) {
@@ -267,7 +298,8 @@ export default function CategoriesPage() {
   };
 
   const categoryTree = buildCategoryTree();
-  const hasChildren = (categoryId: string) => categories.some(c => c.parentId === categoryId);
+  const hasChildren = (categoryId: string) =>
+    categories.some((c) => c.parentId === categoryId);
 
   return (
     <div className="space-y-6">
@@ -318,7 +350,9 @@ export default function CategoriesPage() {
               <div className="text-center py-8 text-gray-500">
                 <Folder className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p>No categories yet</p>
-                <p className="text-sm">Create your first category using the form</p>
+                <p className="text-sm">
+                  Create your first category using the form
+                </p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -346,26 +380,37 @@ export default function CategoriesPage() {
                       <FolderOpen className="h-4 w-4 text-blue-500" />
                       <span className="font-medium">{category.name}</span>
                       {!category.isPublic && (
-                        <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">Private</span>
+                        <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">
+                          Private
+                        </span>
                       )}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={() => {
-                            setNewCategory(prev => ({ ...prev, parentId: category.id }));
-                            document.getElementById('category-name')?.focus();
+                            setNewCategory((prev) => ({
+                              ...prev,
+                              parentId: category.id,
+                            }));
+                            document.getElementById("category-name")?.focus();
                           }}
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Add Subfolder
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEditCategory(category)}>
+                        <DropdownMenuItem
+                          onClick={() => openEditCategory(category)}
+                        >
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
@@ -394,13 +439,15 @@ export default function CategoriesPage() {
             <form onSubmit={handleCreateCategory} className="space-y-4">
               {!selectedOrgId && !isLoadingOrgs && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
-                  Please select an organization or &quot;Global (Public)&quot; from the dropdown first.
+                  Please select an organization or &quot;Global (Public)&quot;
+                  from the dropdown first.
                 </div>
               )}
-              {selectedOrgId === 'global' && (
+              {selectedOrgId === "global" && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
                   <Globe className="h-4 w-4 inline mr-1" />
-                  Creating a <strong>Global</strong> category visible to all organizations.
+                  Creating a <strong>Global</strong> category visible to all
+                  organizations.
                 </div>
               )}
               <div className="space-y-2">
@@ -408,7 +455,9 @@ export default function CategoriesPage() {
                 <Input
                   id="category-name"
                   value={newCategory.name}
-                  onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewCategory({ ...newCategory, name: e.target.value })
+                  }
                   placeholder="e.g., Getting Started"
                   required
                 />
@@ -419,7 +468,12 @@ export default function CategoriesPage() {
                 <Textarea
                   id="category-description"
                   value={newCategory.description}
-                  onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                  onChange={(e) =>
+                    setNewCategory({
+                      ...newCategory,
+                      description: e.target.value,
+                    })
+                  }
                   placeholder="Brief description of this category"
                   rows={3}
                 />
@@ -427,9 +481,11 @@ export default function CategoriesPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="parent-category">Parent Category</Label>
-                <Select 
-                  value={newCategory.parentId} 
-                  onValueChange={(value) => setNewCategory({ ...newCategory, parentId: value })}
+                <Select
+                  value={newCategory.parentId}
+                  onValueChange={(value) =>
+                    setNewCategory({ ...newCategory, parentId: value })
+                  }
                 >
                   <SelectTrigger id="parent-category">
                     <SelectValue placeholder="None (Top Level)" />
@@ -451,16 +507,26 @@ export default function CategoriesPage() {
                   id="sort-order"
                   type="number"
                   value={newCategory.sortOrder}
-                  onChange={(e) => setNewCategory({ ...newCategory, sortOrder: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setNewCategory({
+                      ...newCategory,
+                      sortOrder: parseInt(e.target.value) || 0,
+                    })
+                  }
                   placeholder="0"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="visibility">Visibility</Label>
-                <Select 
-                  value={newCategory.isPublic ? 'public' : 'private'} 
-                  onValueChange={(value) => setNewCategory({ ...newCategory, isPublic: value === 'public' })}
+                <Select
+                  value={newCategory.isPublic ? "public" : "private"}
+                  onValueChange={(value) =>
+                    setNewCategory({
+                      ...newCategory,
+                      isPublic: value === "public",
+                    })
+                  }
                 >
                   <SelectTrigger id="visibility">
                     <SelectValue />
@@ -472,11 +538,20 @@ export default function CategoriesPage() {
                 </Select>
               </div>
 
-              <Button 
-                type="submit" 
-                disabled={isCreating || isLoadingOrgs || !newCategory.name.trim() || !selectedOrgId}
+              <Button
+                type="submit"
+                disabled={
+                  isCreating ||
+                  isLoadingOrgs ||
+                  !newCategory.name.trim() ||
+                  !selectedOrgId
+                }
                 className="w-full"
-                title={selectedOrgId === 'global' ? 'Create global category' : 'Create category'}
+                title={
+                  selectedOrgId === "global"
+                    ? "Create global category"
+                    : "Create category"
+                }
               >
                 {isCreating ? (
                   <>
@@ -496,21 +571,24 @@ export default function CategoriesPage() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>
+      <Dialog
+        open={!!categoryToDelete}
+        onOpenChange={() => setCategoryToDelete(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Category</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{categoryToDelete?.name}&quot;? 
-              This action cannot be undone.
+              Are you sure you want to delete &quot;{categoryToDelete?.name}
+              &quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCategoryToDelete(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteCategory}
               disabled={isDeleting}
             >
@@ -545,7 +623,9 @@ export default function CategoriesPage() {
               <Input
                 id="edit-category-name"
                 value={editCategory.name}
-                onChange={(e) => setEditCategory((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setEditCategory((prev) => ({ ...prev, name: e.target.value }))
+                }
                 required
               />
             </div>
@@ -555,7 +635,9 @@ export default function CategoriesPage() {
               <Input
                 id="edit-category-slug"
                 value={editCategory.slug}
-                onChange={(e) => setEditCategory((prev) => ({ ...prev, slug: e.target.value }))}
+                onChange={(e) =>
+                  setEditCategory((prev) => ({ ...prev, slug: e.target.value }))
+                }
                 placeholder="e.g., getting-started"
               />
             </div>
@@ -565,7 +647,12 @@ export default function CategoriesPage() {
               <Textarea
                 id="edit-category-description"
                 value={editCategory.description}
-                onChange={(e) => setEditCategory((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setEditCategory((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 rows={3}
               />
             </div>
@@ -574,7 +661,9 @@ export default function CategoriesPage() {
               <Label htmlFor="edit-parent-category">Parent Category</Label>
               <Select
                 value={editCategory.parentId}
-                onValueChange={(value) => setEditCategory((prev) => ({ ...prev, parentId: value }))}
+                onValueChange={(value) =>
+                  setEditCategory((prev) => ({ ...prev, parentId: value }))
+                }
               >
                 <SelectTrigger id="edit-parent-category">
                   <SelectValue placeholder="None (Top Level)" />
@@ -610,8 +699,13 @@ export default function CategoriesPage() {
             <div className="space-y-2">
               <Label htmlFor="edit-visibility">Visibility</Label>
               <Select
-                value={editCategory.isPublic ? 'public' : 'private'}
-                onValueChange={(value) => setEditCategory((prev) => ({ ...prev, isPublic: value === 'public' }))}
+                value={editCategory.isPublic ? "public" : "private"}
+                onValueChange={(value) =>
+                  setEditCategory((prev) => ({
+                    ...prev,
+                    isPublic: value === "public",
+                  }))
+                }
               >
                 <SelectTrigger id="edit-visibility">
                   <SelectValue />
@@ -624,17 +718,24 @@ export default function CategoriesPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCategoryToEdit(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCategoryToEdit(null)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isUpdating || !editCategory.name.trim()}>
+              <Button
+                type="submit"
+                disabled={isUpdating || !editCategory.name.trim()}
+              >
                 {isUpdating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Saving...
                   </>
                 ) : (
-                  'Save changes'
+                  "Save changes"
                 )}
               </Button>
             </DialogFooter>

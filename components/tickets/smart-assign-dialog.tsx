@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { AssignmentRecommendation, AgentScore } from '@/lib/ai/assignment';
-import { Loader2, UserCheck, Users } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { AssignmentRecommendation, AgentScore } from "@/lib/ai/assignment";
+import { Loader2, UserCheck, Users } from "lucide-react";
 
 interface SmartAssignDialogProps {
   ticketId: string;
@@ -31,7 +31,8 @@ export function SmartAssignDialog({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [recommendation, setRecommendation] = useState<AssignmentRecommendation | null>(null);
+  const [recommendation, setRecommendation] =
+    useState<AssignmentRecommendation | null>(null);
 
   useEffect(() => {
     if (open && !recommendation) {
@@ -43,9 +44,9 @@ export function SmartAssignDialog({
   async function loadRecommendation() {
     setLoading(true);
     try {
-      const response = await fetch('/api/ai/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/ai/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orgId, category, priority }),
       });
 
@@ -54,7 +55,7 @@ export function SmartAssignDialog({
         setRecommendation(data);
       }
     } catch (error) {
-      console.error('Failed to load recommendation:', error);
+      console.error("Failed to load recommendation:", error);
     } finally {
       setLoading(false);
     }
@@ -63,9 +64,9 @@ export function SmartAssignDialog({
   async function handleAutoAssign() {
     setAssigning(true);
     try {
-      const response = await fetch('/api/ai/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/ai/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticketId }),
       });
 
@@ -74,7 +75,7 @@ export function SmartAssignDialog({
         onAssign?.();
       }
     } catch (error) {
-      console.error('Failed to auto-assign:', error);
+      console.error("Failed to auto-assign:", error);
     } finally {
       setAssigning(false);
     }
@@ -111,18 +112,19 @@ export function SmartAssignDialog({
                         {recommendation.recommendedAgentName}
                       </p>
                       <p className="text-sm text-green-700">
-                        Confidence: {Math.round(recommendation.confidence * 100)}%
+                        Confidence:{" "}
+                        {Math.round(recommendation.confidence * 100)}%
                       </p>
                     </div>
-                    <Button 
-                      onClick={handleAutoAssign} 
+                    <Button
+                      onClick={handleAutoAssign}
                       disabled={assigning}
                       className="bg-green-600 hover:bg-green-700"
                     >
                       {assigning ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        'Assign'
+                        "Assign"
                       )}
                     </Button>
                   </div>
@@ -143,10 +145,12 @@ export function SmartAssignDialog({
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                         >
                           <div>
-                            <p className="font-medium">{alt.name || alt.email}</p>
+                            <p className="font-medium">
+                              {alt.name || alt.email}
+                            </p>
                             <p className="text-xs text-gray-500">
-                              Score: {Math.round(alt.score)} • 
-                              Workload: {alt.workload.openTickets} tickets
+                              Score: {Math.round(alt.score)} • Workload:{" "}
+                              {alt.workload.openTickets} tickets
                             </p>
                           </div>
                         </div>

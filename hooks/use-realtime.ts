@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // Types
 interface RealtimeMessage {
@@ -9,11 +9,11 @@ interface RealtimeMessage {
   timestamp: number;
 }
 
-type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
 // Simple EventSource-based real-time hook
 export function useRealtime(channel: string) {
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [lastMessage, setLastMessage] = useState<RealtimeMessage | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -24,14 +24,16 @@ export function useRealtime(channel: string) {
       return;
     }
 
-    setStatus('connecting');
+    setStatus("connecting");
 
     try {
-      const es = new EventSource(`/api/realtime?channel=${encodeURIComponent(channel)}`);
+      const es = new EventSource(
+        `/api/realtime?channel=${encodeURIComponent(channel)}`,
+      );
       eventSourceRef.current = es;
 
       es.onopen = () => {
-        setStatus('connected');
+        setStatus("connected");
         setError(null);
       };
 
@@ -44,13 +46,13 @@ export function useRealtime(channel: string) {
             timestamp: Date.now(),
           });
         } catch (e) {
-          console.error('Failed to parse realtime message:', e);
+          console.error("Failed to parse realtime message:", e);
         }
       };
 
       es.onerror = () => {
-        setStatus('error');
-        setError(new Error('Realtime connection error'));
+        setStatus("error");
+        setError(new Error("Realtime connection error"));
         es.close();
 
         // Auto reconnect after 5 seconds
@@ -59,7 +61,7 @@ export function useRealtime(channel: string) {
         }, 5000);
       };
     } catch (e) {
-      setStatus('error');
+      setStatus("error");
       setError(e as Error);
     }
   }, [channel]);
@@ -70,7 +72,7 @@ export function useRealtime(channel: string) {
     }
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
-    setStatus('disconnected');
+    setStatus("disconnected");
   }, []);
 
   useEffect(() => {
@@ -99,12 +101,12 @@ export function useTicketPresence(ticketId: string) {
     const registerPresence = async () => {
       try {
         await fetch(`/api/tickets/${ticketId}/presence`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isEditing }),
         });
       } catch (e) {
-        console.error('Failed to register presence:', e);
+        console.error("Failed to register presence:", e);
       }
     };
 
@@ -119,7 +121,7 @@ export function useTicketPresence(ticketId: string) {
       }
       // Unregister on unmount
       fetch(`/api/tickets/${ticketId}/presence`, {
-        method: 'DELETE',
+        method: "DELETE",
       }).catch(console.error);
     };
   }, [ticketId, isEditing]);
@@ -134,7 +136,7 @@ export function useTicketPresence(ticketId: string) {
           setActiveUsers(data.users || []);
         }
       } catch (e) {
-        console.error('Failed to fetch presence:', e);
+        console.error("Failed to fetch presence:", e);
       }
     };
 
@@ -151,17 +153,17 @@ export function useTicketPresence(ticketId: string) {
 export function useDraftAutosave({
   ticketId,
   content,
-  draftType = 'comment',
+  draftType = "comment",
   debounceMs = 2000,
 }: {
   ticketId?: string;
   content: string;
-  draftType?: 'comment' | 'internal_note' | 'reply';
+  draftType?: "comment" | "internal_note" | "reply";
   debounceMs?: number;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [draft, setDraft] = useState<string>('');
+  const [draft, setDraft] = useState<string>("");
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   // Load existing draft
@@ -171,7 +173,7 @@ export function useDraftAutosave({
     const loadDraft = async () => {
       try {
         const res = await fetch(
-          `/api/tickets/${ticketId}/draft?type=${draftType}`
+          `/api/tickets/${ticketId}/draft?type=${draftType}`,
         );
         if (res.ok) {
           const data = await res.json();
@@ -181,7 +183,7 @@ export function useDraftAutosave({
           }
         }
       } catch (e) {
-        console.error('Failed to load draft:', e);
+        console.error("Failed to load draft:", e);
       }
     };
 
@@ -200,13 +202,13 @@ export function useDraftAutosave({
       setIsSaving(true);
       try {
         await fetch(`/api/tickets/${ticketId}/draft`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content, draftType }),
         });
         setLastSaved(new Date());
       } catch (e) {
-        console.error('Failed to save draft:', e);
+        console.error("Failed to save draft:", e);
       } finally {
         setIsSaving(false);
       }
@@ -224,12 +226,12 @@ export function useDraftAutosave({
 
     try {
       await fetch(`/api/tickets/${ticketId}/draft?type=${draftType}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-      setDraft('');
+      setDraft("");
       setLastSaved(null);
     } catch (e) {
-      console.error('Failed to clear draft:', e);
+      console.error("Failed to clear draft:", e);
     }
   }, [ticketId, draftType]);
 
@@ -239,7 +241,7 @@ export function useDraftAutosave({
 // Hook for optimistic updates
 export function useOptimisticUpdate<T>(
   initialData: T,
-  updateFn: (current: T, update: Partial<T>) => T
+  updateFn: (current: T, update: Partial<T>) => T,
 ) {
   const [data, setData] = useState<T>(initialData);
   const [isPending, setIsPending] = useState(false);
@@ -247,7 +249,7 @@ export function useOptimisticUpdate<T>(
   const optimisticUpdate = useCallback(
     async (update: Partial<T>, serverAction: () => Promise<void>) => {
       const previousData = data;
-      
+
       // Optimistically update
       setData((current) => updateFn(current, update));
       setIsPending(true);
@@ -262,7 +264,7 @@ export function useOptimisticUpdate<T>(
         setIsPending(false);
       }
     },
-    [data, updateFn]
+    [data, updateFn],
   );
 
   return { data, setData, isPending, optimisticUpdate };
@@ -311,7 +313,7 @@ export function useInfiniteScroll<T>({
           loadMore();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     observerRef.current.observe(element);
@@ -319,23 +321,29 @@ export function useInfiniteScroll<T>({
     return () => observerRef.current?.disconnect();
   }, [loadMore]);
 
-  return { items, isLoading, error, loadMoreRef, refresh: () => {
-    setItems([]);
-    setPage(1);
-  }};
+  return {
+    items,
+    isLoading,
+    error,
+    loadMoreRef,
+    refresh: () => {
+      setItems([]);
+      setPage(1);
+    },
+  };
 }
 
 // Hook for network status
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState(true);
-  const [connectionType, setConnectionType] = useState<string>('unknown');
+  const [connectionType, setConnectionType] = useState<string>("unknown");
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     // Get connection info if available
     interface NetworkInformation {
@@ -343,20 +351,22 @@ export function useNetworkStatus() {
       addEventListener: (type: string, listener: () => void) => void;
       removeEventListener: (type: string, listener: () => void) => void;
     }
-    const connection = (navigator as { connection?: NetworkInformation }).connection;
+    const connection = (navigator as { connection?: NetworkInformation })
+      .connection;
     let connectionCleanup: (() => void) | undefined;
     if (connection) {
-      setConnectionType(connection.effectiveType || 'unknown');
+      setConnectionType(connection.effectiveType || "unknown");
       const handleChange = () => {
-        setConnectionType(connection.effectiveType || 'unknown');
+        setConnectionType(connection.effectiveType || "unknown");
       };
-      connection.addEventListener('change', handleChange);
-      connectionCleanup = () => connection.removeEventListener('change', handleChange);
+      connection.addEventListener("change", handleChange);
+      connectionCleanup = () =>
+        connection.removeEventListener("change", handleChange);
     }
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
       connectionCleanup?.();
     };
   }, []);
@@ -373,8 +383,9 @@ export function useVisibility() {
       setIsVisible(!document.hidden);
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   return isVisible;
@@ -387,7 +398,7 @@ export function usePolling<T>(
   options: {
     enabled?: boolean;
     onError?: (error: Error) => void;
-  } = {}
+  } = {},
 ) {
   const { enabled = true, onError } = options;
   const [data, setData] = useState<T | null>(null);

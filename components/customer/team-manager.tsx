@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/toast';
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
 
 interface TeamMember {
   membershipId: string;
@@ -39,8 +45,10 @@ interface CustomerTeamManagerProps {
 export function CustomerTeamManager(props: CustomerTeamManagerProps) {
   const { orgId, members, pendingInvitations, currentUserId, isAdmin } = props;
   const [showInviteForm, setShowInviteForm] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'REQUESTER' | 'VIEWER'>('REQUESTER');
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"REQUESTER" | "VIEWER">(
+    "REQUESTER",
+  );
   const [isInviting, setIsInviting] = useState(false);
   const [invitations, setInvitations] = useState(pendingInvitations);
   const [teamMembers, setTeamMembers] = useState(members);
@@ -54,9 +62,9 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
 
     setIsInviting(true);
     try {
-      const response = await fetch('/api/customer/team/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/customer/team/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgId,
           email: inviteEmail,
@@ -66,16 +74,16 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to send invitation');
+        throw new Error(data.error || "Failed to send invitation");
       }
 
       const data = await response.json();
       setInvitations([...invitations, data.invitation]);
-      setInviteEmail('');
+      setInviteEmail("");
       setShowInviteForm(false);
-      success('Invitation sent!');
+      success("Invitation sent!");
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to invite');
+      showError(err instanceof Error ? err.message : "Failed to invite");
     } finally {
       setIsInviting(false);
     }
@@ -83,59 +91,64 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
 
   const handleCancelInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch('/api/customer/team/invite', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/customer/team/invite", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invitationId }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to cancel invitation');
+        throw new Error("Failed to cancel invitation");
       }
 
-      setInvitations(invitations.filter(i => i.id !== invitationId));
-      success('Invitation cancelled');
+      setInvitations(invitations.filter((i) => i.id !== invitationId));
+      success("Invitation cancelled");
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to cancel');
+      showError(err instanceof Error ? err.message : "Failed to cancel");
     }
   };
 
   const getRoleBadgeVariant = (role: string) => {
-    if (role === 'CUSTOMER_ADMIN') return 'default';
-    if (role === 'REQUESTER') return 'outline';
-    return 'secondary';
+    if (role === "CUSTOMER_ADMIN") return "default";
+    if (role === "REQUESTER") return "outline";
+    return "secondary";
   };
 
   const handleRoleChange = async (membershipId: string, role: string) => {
     setUpdatingMemberId(membershipId);
     try {
-      const response = await fetch('/api/customer/team/members', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/customer/team/members", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ membershipId, role }),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update role');
+        throw new Error(data.error || "Failed to update role");
       }
 
       setTeamMembers((prev) =>
         prev.map((member) =>
-          member.membershipId === membershipId ? { ...member, role } : member
-        )
+          member.membershipId === membershipId ? { ...member, role } : member,
+        ),
       );
-      success('Role updated');
+      success("Role updated");
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to update role');
+      showError(err instanceof Error ? err.message : "Failed to update role");
     } finally {
       setUpdatingMemberId(null);
     }
   };
 
-  const handleToggleMemberStatus = async (membershipId: string, nextActive: boolean) => {
+  const handleToggleMemberStatus = async (
+    membershipId: string,
+    nextActive: boolean,
+  ) => {
     if (!nextActive) {
-      const confirmed = confirm('Deactivate this member? They will be signed out immediately.');
+      const confirmed = confirm(
+        "Deactivate this member? They will be signed out immediately.",
+      );
       if (!confirmed) {
         return;
       }
@@ -143,15 +156,15 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
 
     setTogglingMemberId(membershipId);
     try {
-      const response = await fetch('/api/customer/team/members', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/customer/team/members", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ membershipId, isActive: nextActive }),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update member');
+        throw new Error(data.error || "Failed to update member");
       }
 
       setTeamMembers((prev) =>
@@ -162,12 +175,12 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
                 isActive: nextActive,
                 deactivatedAt: nextActive ? null : new Date(),
               }
-            : member
-        )
+            : member,
+        ),
       );
-      success(nextActive ? 'Member reactivated' : 'Member deactivated');
+      success(nextActive ? "Member reactivated" : "Member deactivated");
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to update member');
+      showError(err instanceof Error ? err.message : "Failed to update member");
     } finally {
       setTogglingMemberId(null);
     }
@@ -179,17 +192,22 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Team Members</CardTitle>
-            <CardDescription>{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</CardDescription>
+            <CardDescription>
+              {teamMembers.length} member{teamMembers.length !== 1 ? "s" : ""}
+            </CardDescription>
           </div>
           {isAdmin && (
             <Button onClick={() => setShowInviteForm(!showInviteForm)}>
-              {showInviteForm ? 'Cancel' : 'Invite Member'}
+              {showInviteForm ? "Cancel" : "Invite Member"}
             </Button>
           )}
         </CardHeader>
         <CardContent>
           {showInviteForm && (
-            <form onSubmit={handleInvite} className="mb-6 p-4 border rounded-lg bg-gray-50">
+            <form
+              onSubmit={handleInvite}
+              className="mb-6 p-4 border rounded-lg bg-gray-50"
+            >
               <h4 className="font-medium mb-4">Invite New Member</h4>
               <div className="space-y-4">
                 <div>
@@ -208,15 +226,21 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
                   <select
                     id="role"
                     value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as 'REQUESTER' | 'VIEWER')}
+                    onChange={(e) =>
+                      setInviteRole(e.target.value as "REQUESTER" | "VIEWER")
+                    }
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="REQUESTER">Requester - Can create and view tickets</option>
-                    <option value="VIEWER">Viewer - Can only view tickets</option>
+                    <option value="REQUESTER">
+                      Requester - Can create and view tickets
+                    </option>
+                    <option value="VIEWER">
+                      Viewer - Can only view tickets
+                    </option>
                   </select>
                 </div>
                 <Button type="submit" disabled={isInviting}>
-                  {isInviting ? 'Sending...' : 'Send Invitation'}
+                  {isInviting ? "Sending..." : "Send Invitation"}
                 </Button>
               </div>
             </form>
@@ -240,7 +264,10 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
                   )}
                   {!member.isActive && (
                     <div className="text-xs text-gray-500">
-                      Deactivated {member.deactivatedAt ? new Date(member.deactivatedAt).toLocaleDateString() : ''}
+                      Deactivated{" "}
+                      {member.deactivatedAt
+                        ? new Date(member.deactivatedAt).toLocaleDateString()
+                        : ""}
                     </div>
                   )}
                 </div>
@@ -248,9 +275,14 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
                   {isAdmin && member.id !== currentUserId ? (
                     <select
                       value={member.role}
-                      onChange={(e) => handleRoleChange(member.membershipId, e.target.value)}
+                      onChange={(e) =>
+                        handleRoleChange(member.membershipId, e.target.value)
+                      }
                       className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      disabled={!member.isActive || updatingMemberId === member.membershipId}
+                      disabled={
+                        !member.isActive ||
+                        updatingMemberId === member.membershipId
+                      }
                     >
                       <option value="CUSTOMER_ADMIN">Customer Admin</option>
                       <option value="REQUESTER">Requester</option>
@@ -258,34 +290,42 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
                     </select>
                   ) : (
                     <Badge variant={getRoleBadgeVariant(member.role)}>
-                      {member.role.replace('_', ' ')}
+                      {member.role.replace("_", " ")}
                     </Badge>
                   )}
                   {!member.isActive && (
                     <Badge variant="secondary">Deactivated</Badge>
                   )}
-                  {isAdmin && member.id !== currentUserId && (
-                    member.isActive ? (
+                  {isAdmin &&
+                    member.id !== currentUserId &&
+                    (member.isActive ? (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleToggleMemberStatus(member.membershipId, false)}
+                        onClick={() =>
+                          handleToggleMemberStatus(member.membershipId, false)
+                        }
                         disabled={togglingMemberId === member.membershipId}
                         className="text-red-600 hover:text-red-700"
                       >
-                        {togglingMemberId === member.membershipId ? 'Deactivating...' : 'Deactivate'}
+                        {togglingMemberId === member.membershipId
+                          ? "Deactivating..."
+                          : "Deactivate"}
                       </Button>
                     ) : (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleToggleMemberStatus(member.membershipId, true)}
+                        onClick={() =>
+                          handleToggleMemberStatus(member.membershipId, true)
+                        }
                         disabled={togglingMemberId === member.membershipId}
                       >
-                        {togglingMemberId === member.membershipId ? 'Reactivating...' : 'Reactivate'}
+                        {togglingMemberId === member.membershipId
+                          ? "Reactivating..."
+                          : "Reactivate"}
                       </Button>
-                    )
-                  )}
+                    ))}
                 </div>
               </div>
             ))}
@@ -297,7 +337,9 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
         <Card>
           <CardHeader>
             <CardTitle>Pending Invitations</CardTitle>
-            <CardDescription>Invitations that haven&apos;t been accepted yet</CardDescription>
+            <CardDescription>
+              Invitations that haven&apos;t been accepted yet
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -309,11 +351,14 @@ export function CustomerTeamManager(props: CustomerTeamManagerProps) {
                   <div>
                     <div className="font-medium">{invitation.email}</div>
                     <div className="text-sm text-gray-500">
-                      Expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                      Expires{" "}
+                      {new Date(invitation.expiresAt).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{invitation.role.replace('_', ' ')}</Badge>
+                    <Badge variant="outline">
+                      {invitation.role.replace("_", " ")}
+                    </Badge>
                     <Button
                       variant="ghost"
                       size="sm"

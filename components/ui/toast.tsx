@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type ToastType = 'success' | 'error' | 'info' | 'warning';
+type ToastType = "success" | "error" | "info" | "warning";
 
 interface Toast {
   id: string;
@@ -21,7 +27,7 @@ interface Toast {
 
 interface ToastContextType {
   toasts: Toast[];
-  addToast: (toast: Omit<Toast, 'id'>) => void;
+  addToast: (toast: Omit<Toast, "id">) => void;
   removeToast: (id: string) => void;
   success: (title: string, description?: string) => void;
   error: (title: string, description?: string) => void;
@@ -39,46 +45,49 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    const newToast: Toast = { ...toast, id };
-    
-    setToasts((prev) => [...prev, newToast]);
+  const addToast = useCallback(
+    (toast: Omit<Toast, "id">) => {
+      const id = Math.random().toString(36).substring(2, 9);
+      const newToast: Toast = { ...toast, id };
 
-    // Auto remove
-    if (toast.duration !== 0) {
-      setTimeout(() => {
-        removeToast(id);
-      }, toast.duration || 5000);
-    }
-  }, [removeToast]);
+      setToasts((prev) => [...prev, newToast]);
+
+      // Auto remove
+      if (toast.duration !== 0) {
+        setTimeout(() => {
+          removeToast(id);
+        }, toast.duration || 5000);
+      }
+    },
+    [removeToast],
+  );
 
   const success = useCallback(
     (title: string, description?: string) => {
-      addToast({ type: 'success', title, description });
+      addToast({ type: "success", title, description });
     },
-    [addToast]
+    [addToast],
   );
 
   const error = useCallback(
     (title: string, description?: string) => {
-      addToast({ type: 'error', title, description, duration: 8000 });
+      addToast({ type: "error", title, description, duration: 8000 });
     },
-    [addToast]
+    [addToast],
   );
 
   const info = useCallback(
     (title: string, description?: string) => {
-      addToast({ type: 'info', title, description });
+      addToast({ type: "info", title, description });
     },
-    [addToast]
+    [addToast],
   );
 
   const warning = useCallback(
     (title: string, description?: string) => {
-      addToast({ type: 'warning', title, description });
+      addToast({ type: "warning", title, description });
     },
-    [addToast]
+    [addToast],
   );
 
   return (
@@ -94,7 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
 }
@@ -107,17 +116,20 @@ const toastIcons = {
 };
 
 const toastStyles = {
-  success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200',
-  error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200',
-  info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200',
+  success:
+    "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200",
+  error:
+    "bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200",
+  info: "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200",
+  warning:
+    "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200",
 };
 
 const iconStyles = {
-  success: 'text-green-500',
-  error: 'text-red-500',
-  info: 'text-blue-500',
-  warning: 'text-yellow-500',
+  success: "text-green-500",
+  error: "text-red-500",
+  info: "text-blue-500",
+  warning: "text-yellow-500",
 };
 
 function ToastContainer({
@@ -138,7 +150,13 @@ function ToastContainer({
   );
 }
 
-function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
+function ToastItem({
+  toast,
+  onRemove,
+}: {
+  toast: Toast;
+  onRemove: (id: string) => void;
+}) {
   const Icon = toastIcons[toast.type];
 
   return (
@@ -148,12 +166,14 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: 100, scale: 0.9 }}
       className={cn(
-        'pointer-events-auto min-w-[320px] max-w-md rounded-lg border shadow-lg p-4',
-        toastStyles[toast.type]
+        "pointer-events-auto min-w-[320px] max-w-md rounded-lg border shadow-lg p-4",
+        toastStyles[toast.type],
       )}
     >
       <div className="flex items-start gap-3">
-        <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', iconStyles[toast.type])} />
+        <Icon
+          className={cn("w-5 h-5 mt-0.5 flex-shrink-0", iconStyles[toast.type])}
+        />
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold">{toast.title}</h4>
           {toast.description && (
@@ -185,53 +205,53 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 // Preset toast messages for common actions
 export const toastMessages = {
   ticket: {
-    created: 'Ticket created successfully',
-    updated: 'Ticket updated',
-    assigned: 'Ticket assigned',
-    closed: 'Ticket closed',
-    reopened: 'Ticket reopened',
-    merged: 'Tickets merged',
-    deleted: 'Ticket deleted',
-    error: 'Failed to update ticket',
+    created: "Ticket created successfully",
+    updated: "Ticket updated",
+    assigned: "Ticket assigned",
+    closed: "Ticket closed",
+    reopened: "Ticket reopened",
+    merged: "Tickets merged",
+    deleted: "Ticket deleted",
+    error: "Failed to update ticket",
   },
   comment: {
-    added: 'Comment added',
-    updated: 'Comment updated',
-    deleted: 'Comment deleted',
-    error: 'Failed to add comment',
+    added: "Comment added",
+    updated: "Comment updated",
+    deleted: "Comment deleted",
+    error: "Failed to add comment",
   },
   user: {
-    created: 'User created successfully',
-    updated: 'User updated',
-    invited: 'Invitation sent',
-    deleted: 'User deleted',
-    error: 'Failed to update user',
+    created: "User created successfully",
+    updated: "User updated",
+    invited: "Invitation sent",
+    deleted: "User deleted",
+    error: "Failed to update user",
   },
   org: {
-    created: 'Organization created',
-    updated: 'Organization updated',
-    deleted: 'Organization deleted',
-    error: 'Failed to update organization',
+    created: "Organization created",
+    updated: "Organization updated",
+    deleted: "Organization deleted",
+    error: "Failed to update organization",
   },
   kb: {
-    articleCreated: 'Article created',
-    articleUpdated: 'Article updated',
-    articlePublished: 'Article published',
-    articleDeleted: 'Article deleted',
-    error: 'Failed to save article',
+    articleCreated: "Article created",
+    articleUpdated: "Article updated",
+    articlePublished: "Article published",
+    articleDeleted: "Article deleted",
+    error: "Failed to save article",
   },
   settings: {
-    saved: 'Settings saved',
-    error: 'Failed to save settings',
+    saved: "Settings saved",
+    error: "Failed to save settings",
   },
   export: {
-    started: 'Export started',
-    ready: 'Export ready for download',
-    error: 'Export failed',
+    started: "Export started",
+    ready: "Export ready for download",
+    error: "Export failed",
   },
   network: {
-    error: 'Network error. Please try again.',
-    offline: 'You are offline',
-    online: 'You are back online',
+    error: "Network error. Please try again.",
+    offline: "You are offline",
+    online: "You are back online",
   },
 };

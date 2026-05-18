@@ -1,6 +1,10 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { getTickets, type TicketPriority, type TicketStatus } from '@/lib/tickets/queries';
-import { ticketPriorityEnum, ticketStatusEnum, Ticket } from '@/db/schema';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import {
+  getTickets,
+  type TicketPriority,
+  type TicketStatus,
+} from "@/lib/tickets/queries";
+import { ticketPriorityEnum, ticketStatusEnum, Ticket } from "@/db/schema";
 
 interface TicketWithRelations extends Ticket {
   organization: { id: string; name: string } | null;
@@ -13,16 +17,21 @@ interface TicketWithRelations extends Ticket {
     tag: { id: string; name: string; color: string | null };
   }>;
 }
-import { getOrganizations } from '@/lib/organizations/queries';
-import { getInternalUsers } from '@/lib/users/queries';
-import { TicketList } from '@/components/tickets/ticket-list';
-import { TicketFilters } from '@/components/tickets/ticket-filters';
-import { SavedViews } from '@/components/tickets/saved-views';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Filter, MessageSquarePlus, ShieldCheck, TicketIcon } from 'lucide-react';
+import { getOrganizations } from "@/lib/organizations/queries";
+import { getInternalUsers } from "@/lib/users/queries";
+import { TicketList } from "@/components/tickets/ticket-list";
+import { TicketFilters } from "@/components/tickets/ticket-filters";
+import { SavedViews } from "@/components/tickets/saved-views";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Filter,
+  MessageSquarePlus,
+  ShieldCheck,
+  TicketIcon,
+} from "lucide-react";
 
 export default async function TicketsPage({
   searchParams,
@@ -50,21 +59,22 @@ export default async function TicketsPage({
       ? (params.status as TicketStatus)
       : undefined;
   const priorityValue =
-    params.priority && allowedPriorities.includes(params.priority as TicketPriority)
+    params.priority &&
+    allowedPriorities.includes(params.priority as TicketPriority)
       ? (params.priority as TicketPriority)
       : undefined;
 
   const filters = {
     status: statusValue ? [statusValue] : undefined,
     orgId: params.orgId,
-    publicIntake: params.orgId === 'public',
+    publicIntake: params.orgId === "public",
     priority: priorityValue ? [priorityValue] : undefined,
-    assigneeId: params.assigneeId === 'unassigned' ? null : params.assigneeId,
+    assigneeId: params.assigneeId === "unassigned" ? null : params.assigneeId,
     search: params.search,
-    tagIds: params.tagIds ? params.tagIds.split(',') : undefined,
+    tagIds: params.tagIds ? params.tagIds.split(",") : undefined,
     dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
     dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
-    searchInComments: params.searchInComments === 'true',
+    searchInComments: params.searchInComments === "true",
   };
 
   const [ticketList, organizations, internalUsers] = await Promise.all([
@@ -96,9 +106,13 @@ export default async function TicketsPage({
               <TicketIcon className="h-4 w-4" />
               Service Desk
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight">Ticket Queue</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Ticket Queue
+            </h1>
             <p className="mt-2 max-w-3xl text-sm text-slate-500">
-              Dense operations view for lifecycle, SLA, assignment, public intake, comments, attachments, linking, merge review, and audit context.
+              Dense operations view for lifecycle, SLA, assignment, public
+              intake, comments, attachments, linking, merge review, and audit
+              context.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -162,7 +176,8 @@ export default async function TicketsPage({
             <div>
               <CardTitle className="text-base">All Tickets</CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                {ticketList.length} matching records, including public intake when selected.
+                {ticketList.length} matching records, including public intake
+                when selected.
               </p>
             </div>
           </CardHeader>

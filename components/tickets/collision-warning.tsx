@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Dialog,
@@ -6,9 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle } from "lucide-react";
 
 interface CollisionWarningProps {
   isOpen: boolean;
@@ -41,22 +41,26 @@ export function CollisionWarning({
         <div className="py-4">
           {newComments > 0 && (
             <p className="text-sm text-muted-foreground">
-              <strong>{newComments} new comment{newComments > 1 ? 's' : ''}</strong> {' '}
-              {newComments > 1 ? 'have' : 'has'} been added to this ticket since you started typing.
+              <strong>
+                {newComments} new comment{newComments > 1 ? "s" : ""}
+              </strong>{" "}
+              {newComments > 1 ? "have" : "has"} been added to this ticket since
+              you started typing.
             </p>
           )}
-          
+
           {editorName && (
             <p className="text-sm text-muted-foreground mt-2">
-              <strong>{editorName}</strong> is also currently editing this ticket.
+              <strong>{editorName}</strong> is also currently editing this
+              ticket.
             </p>
           )}
 
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             <p className="font-medium">Warning:</p>
             <p className="mt-1">
-              Your reply might overlap with recent changes. Consider reviewing the 
-              new comments before submitting.
+              Your reply might overlap with recent changes. Consider reviewing
+              the new comments before submitting.
             </p>
           </div>
         </div>

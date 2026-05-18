@@ -1,13 +1,13 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 async function apply() {
   const sql = neon(process.env.DATABASE_URL!);
-  
-  console.log('Creating platform_admins table...');
-  
+
+  console.log("Creating platform_admins table...");
+
   try {
     await sql`
       CREATE TABLE IF NOT EXISTS platform_admins (
@@ -24,20 +24,19 @@ async function apply() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `;
-    console.log('✓ Table created');
-    
+    console.log("✓ Table created");
+
     await sql`CREATE INDEX IF NOT EXISTS idx_platform_admins_email ON platform_admins(email)`;
-    console.log('✓ Email index created');
-    
+    console.log("✓ Email index created");
+
     await sql`CREATE INDEX IF NOT EXISTS idx_platform_admins_active ON platform_admins(is_active)`;
-    console.log('✓ Active index created');
-    
+    console.log("✓ Active index created");
   } catch (e) {
-    console.error('Error:', e);
+    console.error("Error:", e);
     process.exit(1);
   }
-  
-  console.log('\nMigration complete!');
+
+  console.log("\nMigration complete!");
   process.exit(0);
 }
 

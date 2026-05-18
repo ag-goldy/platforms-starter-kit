@@ -1,4 +1,4 @@
-import { withSentryConfig } from '@sentry/nextjs';
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable experimental features if needed
     serverActions: {
-      bodySizeLimit: '10mb', // Increase from default 1MB to 10MB for file uploads
+      bodySizeLimit: "10mb", // Increase from default 1MB to 10MB for file uploads
     },
   },
   // Ensure proper handling of Vercel Analytics and Speed Insights
@@ -33,6 +33,6 @@ const nextConfig: NextConfig = {
 
 export default withSentryConfig(nextConfig, {
   silent: true,
-  org: 'atlas-helpdesk',
-  project: 'atlas-helpdesk',
+  org: "atlas-helpdesk",
+  project: "atlas-helpdesk",
 });

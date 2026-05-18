@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   getScheduledTicketById,
   updateScheduledTicket,
   cancelScheduledTicket,
   deleteScheduledTicket,
-} from '@/lib/scheduled-tickets/queries';
-import { requireInternalRole } from '@/lib/auth/permissions';
+} from "@/lib/scheduled-tickets/queries";
+import { requireInternalRole } from "@/lib/auth/permissions";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     if (!scheduled) {
       return NextResponse.json(
-        { error: 'Scheduled ticket not found' },
-        { status: 404 }
+        { error: "Scheduled ticket not found" },
+        { status: 404 },
       );
     }
 
@@ -33,10 +33,10 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ scheduledTicket: scheduled });
   } catch (error) {
-    console.error('Error fetching scheduled ticket:', error);
+    console.error("Error fetching scheduled ticket:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch scheduled ticket' },
-      { status: 500 }
+      { error: "Failed to fetch scheduled ticket" },
+      { status: 500 },
     );
   }
 }
@@ -45,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -53,17 +53,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (!scheduled) {
       return NextResponse.json(
-        { error: 'Scheduled ticket not found' },
-        { status: 404 }
+        { error: "Scheduled ticket not found" },
+        { status: 404 },
       );
     }
 
     await requireInternalRole();
 
-    if (scheduled.status !== 'pending') {
+    if (scheduled.status !== "pending") {
       return NextResponse.json(
-        { error: 'Can only update pending scheduled tickets' },
-        { status: 400 }
+        { error: "Can only update pending scheduled tickets" },
+        { status: 400 },
       );
     }
 
@@ -72,10 +72,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ scheduledTicket: updated });
   } catch (error) {
-    console.error('Error updating scheduled ticket:', error);
+    console.error("Error updating scheduled ticket:", error);
     return NextResponse.json(
-      { error: 'Failed to update scheduled ticket' },
-      { status: 500 }
+      { error: "Failed to update scheduled ticket" },
+      { status: 500 },
     );
   }
 }
@@ -84,7 +84,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -92,15 +92,15 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     if (!scheduled) {
       return NextResponse.json(
-        { error: 'Scheduled ticket not found' },
-        { status: 404 }
+        { error: "Scheduled ticket not found" },
+        { status: 404 },
       );
     }
 
     await requireInternalRole();
 
     // Cancel if pending, delete otherwise
-    if (scheduled.status === 'pending') {
+    if (scheduled.status === "pending") {
       await cancelScheduledTicket(id, scheduled.orgId);
     } else {
       await deleteScheduledTicket(id, scheduled.orgId);
@@ -108,10 +108,10 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting scheduled ticket:', error);
+    console.error("Error deleting scheduled ticket:", error);
     return NextResponse.json(
-      { error: 'Failed to delete scheduled ticket' },
-      { status: 500 }
+      { error: "Failed to delete scheduled ticket" },
+      { status: 500 },
     );
   }
 }

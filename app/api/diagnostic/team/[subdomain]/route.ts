@@ -1,33 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { organizations, memberships, tickets } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { organizations, memberships, tickets } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ subdomain: string }> }
+  { params }: { params: Promise<{ subdomain: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     // 1. Current User Info
-    const userInfo = session?.user ? {
-      id: session.user.id,
-      name: session.user.name,
-      email: session.user.email,
-    } : null;
+    const userInfo = session?.user
+      ? {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email,
+        }
+      : null;
 
     if (!session?.user) {
-      return NextResponse.json({
-        authenticated: false,
-        user: null,
-        message: 'Not authenticated',
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          authenticated: false,
+          user: null,
+          message: "Not authenticated",
+        },
+        { status: 401 },
+      );
     }
 
     if (!session.user.isInternal) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { subdomain } = await params;
@@ -38,14 +43,17 @@ export async function GET(
     });
 
     if (!org) {
-      return NextResponse.json({
-        authenticated: true,
-        user: userInfo,
-        organization: null,
-        membership: null,
-        tickets: [],
-        message: `Organization with subdomain "${subdomain}" not found`,
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          authenticated: true,
+          user: userInfo,
+          organization: null,
+          membership: null,
+          tickets: [],
+          message: `Organization with subdomain "${subdomain}" not found`,
+        },
+        { status: 404 },
+      );
     }
 
     const orgDetails = {
@@ -61,16 +69,18 @@ export async function GET(
       where: and(
         eq(memberships.userId, session.user.id),
         eq(memberships.orgId, org.id),
-        eq(memberships.isActive, true)
+        eq(memberships.isActive, true),
       ),
     });
 
-    const membershipDetails = membership ? {
-      id: membership.id,
-      role: membership.role,
-      isActive: membership.isActive,
-      createdAt: membership.createdAt,
-    } : null;
+    const membershipDetails = membership
+      ? {
+          id: membership.id,
+          role: membership.role,
+          isActive: membership.isActive,
+          createdAt: membership.createdAt,
+        }
+      : null;
 
     // 4. Tickets for this organization
     interface OrgTicket {
@@ -111,7 +121,7 @@ export async function GET(
     const allUserMemberships = await db.query.memberships.findMany({
       where: and(
         eq(memberships.userId, session.user.id),
-        eq(memberships.isActive, true)
+        eq(memberships.isActive, true),
       ),
       with: {
         organization: {
@@ -133,15 +143,17 @@ export async function GET(
         subdomain: m.organization.subdomain,
         role: m.role,
       })),
-      message: membership 
-        ? `User is a ${membership.role} of ${org.name}` 
+      message: membership
+        ? `User is a ${membership.role} of ${org.name}`
         : `User is NOT a member of ${org.name}`,
     });
-
   } catch (error) {
-    console.error('Diagnostic error:', error);
-    return NextResponse.json({
-      error: 'Diagnostic failed',
-    }, { status: 500 });
+    console.error("Diagnostic error:", error);
+    return NextResponse.json(
+      {
+        error: "Diagnostic failed",
+      },
+      { status: 500 },
+    );
   }
 }

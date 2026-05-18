@@ -1,11 +1,11 @@
-import { notFound } from 'next/navigation';
-import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { auditLogs, auditActionEnum } from '@/db/schema';
-import { and, eq, gte, lte } from 'drizzle-orm';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDateTime } from '@/lib/utils/date';
+import { notFound } from "next/navigation";
+import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { auditLogs, auditActionEnum } from "@/db/schema";
+import { and, eq, gte, lte } from "drizzle-orm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/utils/date";
 
 interface SearchParams {
   action?: string;
@@ -14,21 +14,21 @@ interface SearchParams {
 }
 
 const actionLabels: Record<string, string> = {
-  TICKET_CREATED: 'Ticket created',
-  TICKET_UPDATED: 'Ticket updated',
-  TICKET_STATUS_CHANGED: 'Status changed',
-  TICKET_ASSIGNED: 'Assignee updated',
-  TICKET_PRIORITY_CHANGED: 'Priority changed',
-  TICKET_COMMENT_ADDED: 'Comment added',
-  USER_INVITED: 'User invited',
-  USER_ROLE_CHANGED: 'User role changed',
-  ORG_CREATED: 'Organization created',
-  ORG_UPDATED: 'Organization updated',
-  TICKET_MERGED: 'Ticket merged',
-  TICKET_TAG_ADDED: 'Tag added to ticket',
-  TICKET_TAG_REMOVED: 'Tag removed from ticket',
-  EXPORT_REQUESTED: 'Export requested',
-  MEMBERSHIP_DEACTIVATED: 'Membership deactivated',
+  TICKET_CREATED: "Ticket created",
+  TICKET_UPDATED: "Ticket updated",
+  TICKET_STATUS_CHANGED: "Status changed",
+  TICKET_ASSIGNED: "Assignee updated",
+  TICKET_PRIORITY_CHANGED: "Priority changed",
+  TICKET_COMMENT_ADDED: "Comment added",
+  USER_INVITED: "User invited",
+  USER_ROLE_CHANGED: "User role changed",
+  ORG_CREATED: "Organization created",
+  ORG_UPDATED: "Organization updated",
+  TICKET_MERGED: "Ticket merged",
+  TICKET_TAG_ADDED: "Tag added to ticket",
+  TICKET_TAG_REMOVED: "Tag removed from ticket",
+  EXPORT_REQUESTED: "Export requested",
+  MEMBERSHIP_DEACTIVATED: "Membership deactivated",
 };
 
 export default async function CustomerActivityPage({
@@ -47,12 +47,17 @@ export default async function CustomerActivityPage({
 
   const filters = await searchParams;
 
-  const { user } = await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
+  const { user } = await requireOrgMemberRole(org.id, ["CUSTOMER_ADMIN"]);
 
   const whereClauses = [eq(auditLogs.orgId, org.id)];
 
   if (filters.action) {
-    whereClauses.push(eq(auditLogs.action, filters.action as (typeof auditActionEnum.enumValues)[number]));
+    whereClauses.push(
+      eq(
+        auditLogs.action,
+        filters.action as (typeof auditActionEnum.enumValues)[number],
+      ),
+    );
   }
 
   if (filters.dateFrom) {
@@ -102,10 +107,12 @@ export default async function CustomerActivityPage({
         <CardContent>
           <form className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Action</label>
+              <label className="text-xs font-medium text-gray-600">
+                Action
+              </label>
               <select
                 name="action"
-                defaultValue={filters.action ?? ''}
+                defaultValue={filters.action ?? ""}
                 className="w-full rounded-md border px-2 py-1 text-sm"
               >
                 <option value="">All</option>
@@ -121,7 +128,7 @@ export default async function CustomerActivityPage({
               <input
                 type="date"
                 name="dateFrom"
-                defaultValue={filters.dateFrom ?? ''}
+                defaultValue={filters.dateFrom ?? ""}
                 className="w-full rounded-md border px-2 py-1 text-sm"
               />
             </div>
@@ -130,7 +137,7 @@ export default async function CustomerActivityPage({
               <input
                 type="date"
                 name="dateTo"
-                defaultValue={filters.dateTo ?? ''}
+                defaultValue={filters.dateTo ?? ""}
                 className="w-full rounded-md border px-2 py-1 text-sm"
               />
             </div>
@@ -155,7 +162,10 @@ export default async function CustomerActivityPage({
             <p className="text-sm text-gray-500">No recent activity.</p>
           ) : (
             logs.map((log) => (
-              <div key={log.id} className="space-y-1 rounded-md border bg-white p-3">
+              <div
+                key={log.id}
+                className="space-y-1 rounded-md border bg-white p-3"
+              >
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">
                     {actionLabels[log.action] || log.action}
@@ -165,12 +175,17 @@ export default async function CustomerActivityPage({
                   </span>
                 </div>
                 <p className="text-xs text-gray-600">
-                  {(log.user as { name?: string; email?: string } | undefined)?.name || 
-                   (log.user as { name?: string; email?: string } | undefined)?.email || 'System'}
-                  {user.id === log.userId ? ' (You)' : ''}
+                  {(log.user as { name?: string; email?: string } | undefined)
+                    ?.name ||
+                    (log.user as { name?: string; email?: string } | undefined)
+                      ?.email ||
+                    "System"}
+                  {user.id === log.userId ? " (You)" : ""}
                 </p>
                 {(log.ticket as { key?: string } | undefined)?.key && (
-                  <p className="text-xs text-gray-600">Ticket: {(log.ticket as { key?: string } | undefined)?.key}</p>
+                  <p className="text-xs text-gray-600">
+                    Ticket: {(log.ticket as { key?: string } | undefined)?.key}
+                  </p>
                 )}
                 {log.details && (
                   <p className="text-xs text-gray-500">{log.details}</p>

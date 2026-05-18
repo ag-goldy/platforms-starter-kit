@@ -1,13 +1,13 @@
 /**
  * Ticket Presence Tracking - Real-time user activity on tickets
- * 
+ *
  * Uses Redis Hash with expiry to track who is viewing/editing tickets
  * Keys expire after 120 seconds of inactivity
  */
 
-import { redis } from './client';
+import { redis } from "./client";
 
-export type PresenceAction = 'viewing' | 'editing' | 'typing';
+export type PresenceAction = "viewing" | "editing" | "typing";
 
 export interface UserPresence {
   userId: string;
@@ -16,11 +16,11 @@ export interface UserPresence {
 }
 
 const PRESENCE_TTL_SECONDS = 120;
-const PRESENCE_PREFIX = 'presence:ticket:';
+const PRESENCE_PREFIX = "presence:ticket:";
 
 /**
  * Set user presence for a ticket
- * 
+ *
  * @param ticketId - Ticket ID
  * @param userId - User ID
  * @param action - 'viewing' or 'editing'
@@ -28,7 +28,7 @@ const PRESENCE_PREFIX = 'presence:ticket:';
 export async function setPresence(
   ticketId: string,
   userId: string,
-  action: PresenceAction
+  action: PresenceAction,
 ): Promise<void> {
   const key = `${PRESENCE_PREFIX}${ticketId}`;
   const value = JSON.stringify({ action, since: new Date().toISOString() });
@@ -38,7 +38,10 @@ export async function setPresence(
     // Reset expiry on every update
     await redis.expire(key, PRESENCE_TTL_SECONDS);
   } catch (error) {
-    console.warn(`[Presence] Failed to set presence for ticket ${ticketId}:`, error);
+    console.warn(
+      `[Presence] Failed to set presence for ticket ${ticketId}:`,
+      error,
+    );
   }
 }
 
@@ -46,7 +49,7 @@ export async function setPresence(
  * Get all active presence for a ticket
  * Filters out expired entries (Redis hash fields don't auto-expire,
  * so we check the timestamp and clean up stale entries)
- * 
+ *
  * @param ticketId - Ticket ID
  * @returns Array of active user presences
  */
@@ -66,7 +69,10 @@ export async function getPresence(ticketId: string): Promise<UserPresence[]> {
 
     for (const [userId, valueStr] of Object.entries(allPresence)) {
       try {
-        const value = JSON.parse(valueStr) as { action: PresenceAction; since: string };
+        const value = JSON.parse(valueStr) as {
+          action: PresenceAction;
+          since: string;
+        };
         const since = new Date(value.since).getTime();
 
         // Check if still active (within TTL)
@@ -87,14 +93,19 @@ export async function getPresence(ticketId: string): Promise<UserPresence[]> {
 
     // Clean up stale entries (fire and forget)
     if (staleUsers.length > 0) {
-      Promise.all(staleUsers.map(userId => redis.hdel(key, userId))).catch(() => {
-        // Ignore cleanup errors
-      });
+      Promise.all(staleUsers.map((userId) => redis.hdel(key, userId))).catch(
+        () => {
+          // Ignore cleanup errors
+        },
+      );
     }
 
     return active;
   } catch (error) {
-    console.warn(`[Presence] Failed to get presence for ticket ${ticketId}:`, error);
+    console.warn(
+      `[Presence] Failed to get presence for ticket ${ticketId}:`,
+      error,
+    );
     return [];
   }
 }
@@ -102,28 +113,34 @@ export async function getPresence(ticketId: string): Promise<UserPresence[]> {
 /**
  * Remove user presence for a ticket
  * Call this when user navigates away or closes the ticket
- * 
+ *
  * @param ticketId - Ticket ID
  * @param userId - User ID
  */
-export async function removePresence(ticketId: string, userId: string): Promise<void> {
+export async function removePresence(
+  ticketId: string,
+  userId: string,
+): Promise<void> {
   const key = `${PRESENCE_PREFIX}${ticketId}`;
 
   try {
     await redis.hdel(key, userId);
   } catch (error) {
-    console.warn(`[Presence] Failed to remove presence for ticket ${ticketId}:`, error);
+    console.warn(
+      `[Presence] Failed to remove presence for ticket ${ticketId}:`,
+      error,
+    );
   }
 }
 
 /**
  * Get presence for multiple tickets at once (for dashboard views)
- * 
+ *
  * @param ticketIds - Array of ticket IDs
  * @returns Map of ticketId -> presences
  */
 export async function getPresenceForTickets(
-  ticketIds: string[]
+  ticketIds: string[],
 ): Promise<Map<string, UserPresence[]>> {
   const result = new Map<string, UserPresence[]>();
 
@@ -132,7 +149,7 @@ export async function getPresenceForTickets(
     ticketIds.map(async (ticketId) => {
       const presence = await getPresence(ticketId);
       result.set(ticketId, presence);
-    })
+    }),
   );
 
   return result;
@@ -140,23 +157,23 @@ export async function getPresenceForTickets(
 
 /**
  * Check if anyone is editing a ticket (for conflict prevention)
- * 
+ *
  * @param ticketId - Ticket ID
  * @param excludeUserId - User to exclude (the current user)
  * @returns User ID of editor if someone else is editing, null otherwise
  */
 export async function getEditor(
   ticketId: string,
-  excludeUserId?: string
+  excludeUserId?: string,
 ): Promise<string | null> {
   const presences = await getPresence(ticketId);
-  
+
   for (const presence of presences) {
-    if (presence.action === 'editing' && presence.userId !== excludeUserId) {
+    if (presence.action === "editing" && presence.userId !== excludeUserId) {
       return presence.userId;
     }
   }
-  
+
   return null;
 }
 
@@ -167,7 +184,7 @@ export async function getEditor(
  */
 export function subscribeToPresence(
   ticketId: string,
-  callback: (presences: UserPresence[]) => void
+  callback: (presences: UserPresence[]) => void,
 ): () => void {
   // Poll every 10 seconds for updates
   const interval = setInterval(async () => {

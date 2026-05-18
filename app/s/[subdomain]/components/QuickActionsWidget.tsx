@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 import {
   Plus,
   BookOpen,
@@ -9,49 +9,49 @@ import {
   HelpCircle,
   ExternalLink,
   Zap,
-} from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+} from "lucide-react";
+import { useCustomerPortal } from "@/components/customer/CustomerPortalContext";
 
 interface QuickActionsWidgetProps {
   subdomain: string;
   org: { id: string };
 }
 
-export function QuickActionsWidget({ /* subdomain, org */ }: QuickActionsWidgetProps) {
+export function QuickActionsWidget({} /* subdomain, org */ : QuickActionsWidgetProps) {
   const { openSlideOver } = useCustomerPortal();
 
   const actions = [
     {
-      id: 'new-ticket',
-      label: 'New Ticket',
-      description: 'Create a support request',
+      id: "new-ticket",
+      label: "New Ticket",
+      description: "Create a support request",
       icon: Plus,
-      color: 'bg-brand-500',
-      onClick: () => openSlideOver('ticket', { mode: 'create' }),
+      color: "bg-brand-500",
+      onClick: () => openSlideOver("ticket", { mode: "create" }),
     },
     {
-      id: 'browse-kb',
-      label: 'Browse KB',
-      description: 'Find answers quickly',
+      id: "browse-kb",
+      label: "Browse KB",
+      description: "Find answers quickly",
       icon: BookOpen,
-      color: 'bg-blue-500',
-      onClick: () => openSlideOver('kb'),
+      color: "bg-blue-500",
+      onClick: () => openSlideOver("kb"),
     },
     {
-      id: 'team',
-      label: 'Team',
-      description: 'Manage members',
+      id: "team",
+      label: "Team",
+      description: "Manage members",
       icon: Users,
-      color: 'bg-purple-500',
-      onClick: () => openSlideOver('team'),
+      color: "bg-purple-500",
+      onClick: () => openSlideOver("team"),
     },
     {
-      id: 'docs',
-      label: 'Documentation',
-      description: 'Platform guides',
+      id: "docs",
+      label: "Documentation",
+      description: "Platform guides",
       icon: FileText,
-      color: 'bg-emerald-500',
-      onClick: () => window.open('/docs', '_blank'),
+      color: "bg-emerald-500",
+      onClick: () => window.open("/docs", "_blank"),
       external: true,
     },
   ];
@@ -84,9 +84,13 @@ export function QuickActionsWidget({ /* subdomain, org */ }: QuickActionsWidgetP
               <div className="text-center">
                 <p className="font-medium text-xs text-stone-900 flex items-center gap-1">
                   {action.label}
-                  {action.external && <ExternalLink className="w-3 h-3 text-stone-400" />}
+                  {action.external && (
+                    <ExternalLink className="w-3 h-3 text-stone-400" />
+                  )}
                 </p>
-                <p className="text-[10px] text-stone-500">{action.description}</p>
+                <p className="text-[10px] text-stone-500">
+                  {action.description}
+                </p>
               </div>
             </motion.button>
           ))}
@@ -104,7 +108,7 @@ export function QuickActionsWidget({ /* subdomain, org */ }: QuickActionsWidgetP
                 Our support team is available 24/7
               </p>
               <button
-                onClick={() => openSlideOver('ticket', { mode: 'create' })}
+                onClick={() => openSlideOver("ticket", { mode: "create" })}
                 className="mt-2 text-xs text-brand-600 hover:text-brand-700 font-medium"
               >
                 Contact Support →

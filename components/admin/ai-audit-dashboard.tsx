@@ -1,17 +1,48 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useToast } from '@/components/ui/toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Eye, AlertTriangle, Filter, Shield, Users, Globe } from 'lucide-react';
-import { getAIAuditLogsAction, getAIAuditLogDetailAction, type AIAuditFilters } from '@/app/app/actions/ai-audit';
-import type { AIAuditLog } from '@/db/schema';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Loader2,
+  Eye,
+  AlertTriangle,
+  Filter,
+  Shield,
+  Users,
+  Globe,
+} from "lucide-react";
+import {
+  getAIAuditLogsAction,
+  getAIAuditLogDetailAction,
+  type AIAuditFilters,
+} from "@/app/app/actions/ai-audit";
+import type { AIAuditLog } from "@/db/schema";
 
 interface AuditLog extends AIAuditLog {
   org?: { name: string } | null;
@@ -25,9 +56,9 @@ const interfaceIcons: Record<string, React.ReactNode> = {
 };
 
 const interfaceColors: Record<string, string> = {
-  public: 'bg-gray-100 text-gray-800',
-  customer: 'bg-blue-100 text-blue-800',
-  admin: 'bg-purple-100 text-purple-800',
+  public: "bg-gray-100 text-gray-800",
+  customer: "bg-blue-100 text-blue-800",
+  admin: "bg-purple-100 text-purple-800",
 };
 
 export function AIAuditDashboard() {
@@ -43,7 +74,7 @@ export function AIAuditDashboard() {
       const data = await getAIAuditLogsAction(filters, 50);
       setLogs(data as AuditLog[]);
     } catch {
-      error('Failed to load audit logs');
+      error("Failed to load audit logs");
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +82,7 @@ export function AIAuditDashboard() {
 
   useEffect(() => {
     loadLogs();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const viewDetail = async (logId: string) => {
@@ -59,7 +90,7 @@ export function AIAuditDashboard() {
       const log = await getAIAuditLogDetailAction(logId);
       setSelectedLog(log as AuditLog);
     } catch {
-      error('Failed to load log detail');
+      error("Failed to load log detail");
     }
   };
 
@@ -69,8 +100,16 @@ export function AIAuditDashboard() {
         {/* Filters */}
         <div className="flex flex-wrap gap-4 mb-6">
           <Select
-            value={filters.interface || 'all'}
-            onValueChange={(v) => setFilters({ ...filters, interface: v === 'all' ? undefined : v as 'public' | 'customer' | 'admin' })}
+            value={filters.interface || "all"}
+            onValueChange={(v) =>
+              setFilters({
+                ...filters,
+                interface:
+                  v === "all"
+                    ? undefined
+                    : (v as "public" | "customer" | "admin"),
+              })
+            }
           >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Interface" />
@@ -84,11 +123,19 @@ export function AIAuditDashboard() {
           </Select>
 
           <Select
-            value={filters.piiDetected === true ? 'yes' : filters.piiDetected === false ? 'no' : 'all'}
-            onValueChange={(v) => setFilters({ 
-              ...filters, 
-              piiDetected: v === 'all' ? undefined : v === 'yes' 
-            })}
+            value={
+              filters.piiDetected === true
+                ? "yes"
+                : filters.piiDetected === false
+                  ? "no"
+                  : "all"
+            }
+            onValueChange={(v) =>
+              setFilters({
+                ...filters,
+                piiDetected: v === "all" ? undefined : v === "yes",
+              })
+            }
           >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="PII Detected" />
@@ -101,7 +148,11 @@ export function AIAuditDashboard() {
           </Select>
 
           <Button variant="outline" onClick={loadLogs} disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Refresh"
+            )}
           </Button>
         </div>
 
@@ -128,7 +179,10 @@ export function AIAuditDashboard() {
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-gray-500"
+                  >
                     No audit logs found
                   </TableCell>
                 </TableRow>
@@ -154,25 +208,36 @@ export function AIAuditDashboard() {
                           <span className="text-gray-500">Anonymous</span>
                         )}
                         {log.org && (
-                          <div className="text-xs text-gray-500">{log.org.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {log.org.name}
+                          </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="max-w-[300px] truncate" title={log.userQuery}>
+                      <div
+                        className="max-w-[300px] truncate"
+                        title={log.userQuery}
+                      >
                         {log.userQuery}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {log.piiDetected && (
-                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                          <Badge
+                            variant="outline"
+                            className="text-amber-600 border-amber-300"
+                          >
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             PII
                           </Badge>
                         )}
                         {log.wasFiltered && (
-                          <Badge variant="outline" className="text-red-600 border-red-300">
+                          <Badge
+                            variant="outline"
+                            className="text-red-600 border-red-300"
+                          >
                             <Filter className="h-3 w-3 mr-1" />
                             Filtered
                           </Badge>
@@ -180,7 +245,7 @@ export function AIAuditDashboard() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {log.responseTimeMs ? `${log.responseTimeMs}ms` : '-'}
+                      {log.responseTimeMs ? `${log.responseTimeMs}ms` : "-"}
                     </TableCell>
                     <TableCell>
                       <Dialog>
@@ -201,27 +266,44 @@ export function AIAuditDashboard() {
                             <div className="space-y-4 pt-4">
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
-                                  <span className="text-gray-500">ID:</span> {selectedLog.id.slice(0, 8)}...
+                                  <span className="text-gray-500">ID:</span>{" "}
+                                  {selectedLog.id.slice(0, 8)}...
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">Time:</span> {new Date(selectedLog.createdAt).toLocaleString()}
+                                  <span className="text-gray-500">Time:</span>{" "}
+                                  {new Date(
+                                    selectedLog.createdAt,
+                                  ).toLocaleString()}
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">Interface:</span>{' '}
-                                  <Badge className={interfaceColors[selectedLog.interface]}>
+                                  <span className="text-gray-500">
+                                    Interface:
+                                  </span>{" "}
+                                  <Badge
+                                    className={
+                                      interfaceColors[selectedLog.interface]
+                                    }
+                                  >
                                     {selectedLog.interface}
                                   </Badge>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">User:</span>{' '}
-                                  {selectedLog.user?.name || selectedLog.user?.email || 'Anonymous'}
+                                  <span className="text-gray-500">User:</span>{" "}
+                                  {selectedLog.user?.name ||
+                                    selectedLog.user?.email ||
+                                    "Anonymous"}
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">Organization:</span>{' '}
-                                  {selectedLog.org?.name || 'N/A'}
+                                  <span className="text-gray-500">
+                                    Organization:
+                                  </span>{" "}
+                                  {selectedLog.org?.name || "N/A"}
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">IP Address:</span> {selectedLog.ipAddress || 'N/A'}
+                                  <span className="text-gray-500">
+                                    IP Address:
+                                  </span>{" "}
+                                  {selectedLog.ipAddress || "N/A"}
                                 </div>
                               </div>
 
@@ -242,29 +324,66 @@ export function AIAuditDashboard() {
                               <div className="space-y-2">
                                 <h4 className="font-medium">Security Info</h4>
                                 <div className="text-sm space-y-1">
-                                  <p><span className="text-gray-500">PII Detected:</span> {selectedLog.piiDetected ? 'Yes' : 'No'}</p>
-                                  {selectedLog.piiTypes && selectedLog.piiTypes.length > 0 && (
-                                    <p><span className="text-gray-500">PII Types:</span> {(selectedLog.piiTypes as string[]).join(', ')}</p>
-                                  )}
-                                  <p><span className="text-gray-500">Was Filtered:</span> {selectedLog.wasFiltered ? 'Yes' : 'No'}</p>
-                                  <p><span className="text-gray-500">System Prompt Hash:</span> <code className="text-xs">{selectedLog.systemPromptHash.slice(0, 16)}...</code></p>
+                                  <p>
+                                    <span className="text-gray-500">
+                                      PII Detected:
+                                    </span>{" "}
+                                    {selectedLog.piiDetected ? "Yes" : "No"}
+                                  </p>
+                                  {selectedLog.piiTypes &&
+                                    selectedLog.piiTypes.length > 0 && (
+                                      <p>
+                                        <span className="text-gray-500">
+                                          PII Types:
+                                        </span>{" "}
+                                        {(
+                                          selectedLog.piiTypes as string[]
+                                        ).join(", ")}
+                                      </p>
+                                    )}
+                                  <p>
+                                    <span className="text-gray-500">
+                                      Was Filtered:
+                                    </span>{" "}
+                                    {selectedLog.wasFiltered ? "Yes" : "No"}
+                                  </p>
+                                  <p>
+                                    <span className="text-gray-500">
+                                      System Prompt Hash:
+                                    </span>{" "}
+                                    <code className="text-xs">
+                                      {selectedLog.systemPromptHash.slice(
+                                        0,
+                                        16,
+                                      )}
+                                      ...
+                                    </code>
+                                  </p>
                                 </div>
                               </div>
 
-                              {selectedLog.sourcesUsed && (selectedLog.sourcesUsed as string[]).length > 0 && (
-                                <div className="space-y-2">
-                                  <h4 className="font-medium">Data Sources Used</h4>
-                                  <div className="flex gap-2 flex-wrap">
-                                    {(selectedLog.sourcesUsed as string[]).map((source) => (
-                                      <Badge key={source} variant="outline">{source}</Badge>
-                                    ))}
+                              {selectedLog.sourcesUsed &&
+                                (selectedLog.sourcesUsed as string[]).length >
+                                  0 && (
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium">
+                                      Data Sources Used
+                                    </h4>
+                                    <div className="flex gap-2 flex-wrap">
+                                      {(
+                                        selectedLog.sourcesUsed as string[]
+                                      ).map((source) => (
+                                        <Badge key={source} variant="outline">
+                                          {source}
+                                        </Badge>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
                               <div className="text-xs text-gray-500 pt-4 border-t">
-                                Model: {selectedLog.modelUsed || 'Unknown'} | 
-                                Tokens: {selectedLog.tokensUsed || 'Unknown'} | 
+                                Model: {selectedLog.modelUsed || "Unknown"} |
+                                Tokens: {selectedLog.tokensUsed || "Unknown"} |
                                 Response Time: {selectedLog.responseTimeMs}ms
                               </div>
                             </div>

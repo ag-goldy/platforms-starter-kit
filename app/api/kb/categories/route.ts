@@ -1,17 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { kbCategories, organizations, kbArticles } from '@/db/schema';
-import { eq, and, asc, isNull } from 'drizzle-orm';
-import { auth } from '@/auth';
-import { requireInternalRole, requireOrgMemberRole, requireOrgRole } from '@/lib/auth/permissions';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { kbCategories, organizations, kbArticles } from "@/db/schema";
+import { eq, and, asc, isNull } from "drizzle-orm";
+import { auth } from "@/auth";
+import {
+  requireInternalRole,
+  requireOrgMemberRole,
+  requireOrgRole,
+} from "@/lib/auth/permissions";
 
 // GET /api/kb/categories - List categories
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const orgSlug = searchParams.get('org');
-    const orgId = searchParams.get('orgId');
-    const includeInternal = searchParams.get('includeInternal') === 'true';
+    const orgSlug = searchParams.get("org");
+    const orgId = searchParams.get("orgId");
+    const includeInternal = searchParams.get("includeInternal") === "true";
     const needsAuth = includeInternal || !!orgId;
 
     let organizationId: string | undefined;
@@ -23,8 +27,8 @@ export async function GET(request: NextRequest) {
       });
       if (!org) {
         return NextResponse.json(
-          { error: 'Organization not found' },
-          { status: 404 }
+          { error: "Organization not found" },
+          { status: 404 },
         );
       }
       organizationId = org.id;
@@ -35,13 +39,13 @@ export async function GET(request: NextRequest) {
     if (needsAuth) {
       const session = await auth();
       if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
       if (organizationId) {
         if (includeInternal) {
           try {
-            await requireOrgMemberRole(organizationId, ['CUSTOMER_ADMIN']);
+            await requireOrgMemberRole(organizationId, ["CUSTOMER_ADMIN"]);
           } catch {
             await requireInternalRole();
           }
@@ -75,21 +79,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('[KB Categories API] Query conditions:', conditions ? 'has conditions' : 'no conditions');
-    
+    console.log(
+      "[KB Categories API] Query conditions:",
+      conditions ? "has conditions" : "no conditions",
+    );
+
     const categories = await db.query.kbCategories.findMany({
       where: conditions,
       orderBy: [asc(kbCategories.sortOrder), asc(kbCategories.name)],
     });
 
-    console.log('[KB Categories API] Found categories:', categories.length);
+    console.log("[KB Categories API] Found categories:", categories.length);
 
     return NextResponse.json({ categories });
   } catch (error) {
-    console.error('Failed to fetch categories:', error);
+    console.error("Failed to fetch categories:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch categories' },
-      { status: 500 }
+      { error: "Failed to fetch categories" },
+      { status: 500 },
     );
   }
 }
@@ -99,22 +106,26 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    const { name, description, parentId, orgId, isPublic = true, sortOrder = 0 } = body;
+    const {
+      name,
+      description,
+      parentId,
+      orgId,
+      isPublic = true,
+      sortOrder = 0,
+    } = body;
 
     if (!name) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     if (orgId) {
       try {
-        await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+        await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
       } catch {
         await requireInternalRole();
       }
@@ -125,33 +136,27 @@ export async function POST(request: NextRequest) {
     // Generate slug from name
     const slug = name
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
       .slice(0, 100);
 
     // Check for duplicate slug
     let existing;
     if (orgId) {
       existing = await db.query.kbCategories.findFirst({
-        where: and(
-          eq(kbCategories.slug, slug),
-          eq(kbCategories.orgId, orgId)
-        ),
+        where: and(eq(kbCategories.slug, slug), eq(kbCategories.orgId, orgId)),
       });
     } else {
       // Global category - check for duplicate in global scope
       existing = await db.query.kbCategories.findFirst({
-        where: and(
-          eq(kbCategories.slug, slug),
-          isNull(kbCategories.orgId)
-        ),
+        where: and(eq(kbCategories.slug, slug), isNull(kbCategories.orgId)),
       });
     }
 
     if (existing) {
       return NextResponse.json(
-        { error: 'A category with this name already exists' },
-        { status: 409 }
+        { error: "A category with this name already exists" },
+        { status: 409 },
       );
     }
 
@@ -170,10 +175,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {
-    console.error('Failed to create category:', error);
+    console.error("Failed to create category:", error);
     return NextResponse.json(
-      { error: 'Failed to create category' },
-      { status: 500 }
+      { error: "Failed to create category" },
+      { status: 500 },
     );
   }
 }
@@ -183,7 +188,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -206,7 +211,10 @@ export async function PUT(request: NextRequest) {
     };
 
     if (!id) {
-      return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Category ID is required" },
+        { status: 400 },
+      );
     }
 
     const existing = await db.query.kbCategories.findFirst({
@@ -214,12 +222,15 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 },
+      );
     }
 
     if (existing.orgId) {
       try {
-        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+        await requireOrgMemberRole(existing.orgId, ["CUSTOMER_ADMIN"]);
       } catch {
         await requireInternalRole();
       }
@@ -227,50 +238,58 @@ export async function PUT(request: NextRequest) {
       await requireInternalRole();
     }
 
-    const resolvedName = typeof name === 'string' ? name.trim() : undefined;
+    const resolvedName = typeof name === "string" ? name.trim() : undefined;
     if (resolvedName !== undefined && !resolvedName) {
-      return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Name cannot be empty" },
+        { status: 400 },
+      );
     }
 
     const resolvedSlug =
-      typeof slugInput === 'string' && slugInput.trim()
+      typeof slugInput === "string" && slugInput.trim()
         ? slugInput
             .trim()
             .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
             .slice(0, 100)
         : resolvedName
           ? resolvedName
               .toLowerCase()
-              .replace(/[^a-z0-9\s-]/g, '')
-              .replace(/\s+/g, '-')
+              .replace(/[^a-z0-9\s-]/g, "")
+              .replace(/\s+/g, "-")
               .slice(0, 100)
           : undefined;
 
     const resolvedParentId =
       parentId === undefined
         ? undefined
-        : parentId && parentId !== 'none'
+        : parentId && parentId !== "none"
           ? parentId
           : null;
 
     if (resolvedParentId !== undefined && resolvedParentId === id) {
-      return NextResponse.json({ error: 'Category cannot be its own parent' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Category cannot be its own parent" },
+        { status: 400 },
+      );
     }
 
     if (resolvedSlug) {
       const duplicate = await db.query.kbCategories.findFirst({
         where: and(
           eq(kbCategories.slug, resolvedSlug),
-          existing.orgId ? eq(kbCategories.orgId, existing.orgId) : isNull(kbCategories.orgId)
+          existing.orgId
+            ? eq(kbCategories.orgId, existing.orgId)
+            : isNull(kbCategories.orgId),
         ),
       });
 
       if (duplicate && duplicate.id !== id) {
         return NextResponse.json(
-          { error: 'A category with this slug already exists' },
-          { status: 409 }
+          { error: "A category with this slug already exists" },
+          { status: 409 },
         );
       }
     }
@@ -281,10 +300,13 @@ export async function PUT(request: NextRequest) {
 
     if (resolvedName !== undefined) updateValues.name = resolvedName;
     if (resolvedSlug !== undefined) updateValues.slug = resolvedSlug;
-    if (description !== undefined) updateValues.description = description || null;
-    if (resolvedParentId !== undefined) updateValues.parentId = resolvedParentId;
-    if (typeof isPublic === 'boolean') updateValues.isPublic = isPublic;
-    if (typeof sortOrder === 'number' && Number.isFinite(sortOrder)) updateValues.sortOrder = sortOrder;
+    if (description !== undefined)
+      updateValues.description = description || null;
+    if (resolvedParentId !== undefined)
+      updateValues.parentId = resolvedParentId;
+    if (typeof isPublic === "boolean") updateValues.isPublic = isPublic;
+    if (typeof sortOrder === "number" && Number.isFinite(sortOrder))
+      updateValues.sortOrder = sortOrder;
 
     const [updated] = await db
       .update(kbCategories)
@@ -294,10 +316,10 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ category: updated });
   } catch (error) {
-    console.error('Failed to update category:', error);
+    console.error("Failed to update category:", error);
     return NextResponse.json(
-      { error: 'Failed to update category' },
-      { status: 500 }
+      { error: "Failed to update category" },
+      { status: 500 },
     );
   }
 }
@@ -307,16 +329,16 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('id');
+    const categoryId = searchParams.get("id");
 
     if (!categoryId) {
       return NextResponse.json(
-        { error: 'Category ID is required' },
-        { status: 400 }
+        { error: "Category ID is required" },
+        { status: 400 },
       );
     }
 
@@ -325,12 +347,15 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 },
+      );
     }
 
     if (existing.orgId) {
       try {
-        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+        await requireOrgMemberRole(existing.orgId, ["CUSTOMER_ADMIN"]);
       } catch {
         await requireInternalRole();
       }
@@ -346,8 +371,11 @@ export async function DELETE(request: NextRequest) {
 
     if (articles.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete category with articles. Move or delete articles first.' },
-        { status: 400 }
+        {
+          error:
+            "Cannot delete category with articles. Move or delete articles first.",
+        },
+        { status: 400 },
       );
     }
 
@@ -359,8 +387,11 @@ export async function DELETE(request: NextRequest) {
 
     if (subcategories.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete category with subcategories. Move or delete subcategories first.' },
-        { status: 400 }
+        {
+          error:
+            "Cannot delete category with subcategories. Move or delete subcategories first.",
+        },
+        { status: 400 },
       );
     }
 
@@ -368,10 +399,10 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete category:', error);
+    console.error("Failed to delete category:", error);
     return NextResponse.json(
-      { error: 'Failed to delete category' },
-      { status: 500 }
+      { error: "Failed to delete category" },
+      { status: 500 },
     );
   }
 }

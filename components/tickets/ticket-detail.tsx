@@ -1,48 +1,48 @@
-'use client';
+"use client";
 
-import { useRef, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MentionInput } from '@/components/mentions/mention-input';
-import { Label } from '@/components/ui/label';
+import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MentionInput } from "@/components/mentions/mention-input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   updateTicketStatusAction,
   assignTicketAction,
   updateTicketPriorityAction,
   addTicketCommentAction,
   addTicketAttachmentAction,
-} from '@/app/app/actions/tickets';
-import { getTemplatesAction } from '@/app/app/actions/templates';
-import { Ticket, Attachment, Asset, Area, Site } from '@/db/schema';
-import { Separator } from '@/components/ui/separator';
-import { AttachmentList } from '@/components/tickets/attachment-list';
-import { MergeTicketDialog } from './merge-ticket-dialog';
-import { TicketTags } from './ticket-tags';
-import { formatDateTime } from '@/lib/utils/date';
-import { useToast } from '@/components/ui/toast';
-import { formatErrorMessage } from '@/lib/utils/errors';
-import { FormError } from '@/components/ui/form-error';
-import { TicketShortcuts } from './ticket-shortcuts';
-import { SLAIndicator } from './sla-indicator';
-import { TicketUpdateNotification } from './ticket-update-notification';
-import { CannedResponsePicker } from './canned-response-picker';
-import { TicketLinks } from './ticket-links';
-import { LinkedAssets } from '@/components/tickets/linked-assets';
-import { TicketWatchers } from './ticket-watchers';
-import { TicketAIInsight } from './ticket-ai-insight';
-import { TimeTracking } from './time-tracking';
-import { Subtasks } from './subtasks';
-import { TicketDependencies } from './ticket-dependencies';
-import type { SLAMetrics } from '@/lib/tickets/sla';
+} from "@/app/app/actions/tickets";
+import { getTemplatesAction } from "@/app/app/actions/templates";
+import { Ticket, Attachment, Asset, Area, Site } from "@/db/schema";
+import { Separator } from "@/components/ui/separator";
+import { AttachmentList } from "@/components/tickets/attachment-list";
+import { MergeTicketDialog } from "./merge-ticket-dialog";
+import { TicketTags } from "./ticket-tags";
+import { formatDateTime } from "@/lib/utils/date";
+import { useToast } from "@/components/ui/toast";
+import { formatErrorMessage } from "@/lib/utils/errors";
+import { FormError } from "@/components/ui/form-error";
+import { TicketShortcuts } from "./ticket-shortcuts";
+import { SLAIndicator } from "./sla-indicator";
+import { TicketUpdateNotification } from "./ticket-update-notification";
+import { CannedResponsePicker } from "./canned-response-picker";
+import { TicketLinks } from "./ticket-links";
+import { LinkedAssets } from "@/components/tickets/linked-assets";
+import { TicketWatchers } from "./ticket-watchers";
+import { TicketAIInsight } from "./ticket-ai-insight";
+import { TimeTracking } from "./time-tracking";
+import { Subtasks } from "./subtasks";
+import { TicketDependencies } from "./ticket-dependencies";
+import type { SLAMetrics } from "@/lib/tickets/sla";
 import {
   getTimeEntriesAction,
   addTimeEntryAction,
@@ -50,19 +50,19 @@ import {
   startTimerAction,
   stopTimerAction,
   getActiveTimerAction,
-} from '@/app/app/actions/time-tracking';
+} from "@/app/app/actions/time-tracking";
 import {
   getSubtasksAction,
   addSubtaskAction,
   updateSubtaskAction,
   deleteSubtaskAction,
-} from '@/app/app/actions/subtasks';
+} from "@/app/app/actions/subtasks";
 import {
   getTicketDependenciesAction,
   addDependencyAction,
   removeDependencyAction,
   getAvailableTicketsForDependency,
-} from '@/app/app/actions/dependencies';
+} from "@/app/app/actions/dependencies";
 
 interface TicketDetailProps {
   ticket: Ticket & {
@@ -97,79 +97,93 @@ type TicketComment = {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'NEW':
-      return 'bg-blue-100 text-blue-800';
-    case 'OPEN':
-      return 'bg-green-100 text-green-800';
-    case 'IN_PROGRESS':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'RESOLVED':
-      return 'bg-gray-100 text-gray-800';
-    case 'CLOSED':
-      return 'bg-gray-200 text-gray-900';
+    case "NEW":
+      return "bg-blue-100 text-blue-800";
+    case "OPEN":
+      return "bg-green-100 text-green-800";
+    case "IN_PROGRESS":
+      return "bg-yellow-100 text-yellow-800";
+    case "RESOLVED":
+      return "bg-gray-100 text-gray-800";
+    case "CLOSED":
+      return "bg-gray-200 text-gray-900";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'P1':
-      return 'bg-red-100 text-red-800';
-    case 'P2':
-      return 'bg-orange-100 text-orange-800';
-    case 'P3':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'P4':
-      return 'bg-gray-100 text-gray-800';
+    case "P1":
+      return "bg-red-100 text-red-800";
+    case "P2":
+      return "bg-orange-100 text-orange-800";
+    case "P3":
+      return "bg-yellow-100 text-yellow-800";
+    case "P4":
+      return "bg-gray-100 text-gray-800";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
-export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAssets }: TicketDetailProps) {
+export function TicketDetail({
+  ticket,
+  internalUsers,
+  slaMetrics,
+  availableAssets,
+}: TicketDetailProps) {
   const router = useRouter();
   const { success, error } = useToast();
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<Array<{ id: string; name: string; content: string }>>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [templates, setTemplates] = useState<
+    Array<{ id: string; name: string; content: string }>
+  >([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Time tracking state
-  const [timeEntries, setTimeEntries] = useState<Array<{
+  const [timeEntries, setTimeEntries] = useState<
+    Array<{
+      id: string;
+      startedAt: Date;
+      endedAt?: Date;
+      durationMinutes?: number;
+      description?: string;
+      isBillable: boolean;
+      hourlyRate?: number;
+      user: { id: string; name: string };
+    }>
+  >([]);
+  const [activeTimer, setActiveTimer] = useState<{
     id: string;
     startedAt: Date;
-    endedAt?: Date;
-    durationMinutes?: number;
-    description?: string;
-    isBillable: boolean;
-    hourlyRate?: number;
-    user: { id: string; name: string };
-  }>>([]);
-  const [activeTimer, setActiveTimer] = useState<{ id: string; startedAt: Date } | null>(null);
+  } | null>(null);
 
   // Subtasks state
-  const [subtasks, setSubtasks] = useState<Array<{
-    id: string;
-    title: string;
-    description?: string;
-    status: 'todo' | 'in_progress' | 'done';
-    assignee?: { id: string; name: string } | null;
-    dueDate?: Date;
-    sortOrder: number;
-  }>>([]);
+  const [subtasks, setSubtasks] = useState<
+    Array<{
+      id: string;
+      title: string;
+      description?: string;
+      status: "todo" | "in_progress" | "done";
+      assignee?: { id: string; name: string } | null;
+      dueDate?: Date;
+      sortOrder: number;
+    }>
+  >([]);
 
   // Dependencies state
   interface Dependency {
     id: string;
     ticketId: string;
     dependsOnTicketId: string;
-    dependencyType: 'blocks' | 'blocked_by' | 'relates_to';
+    dependencyType: "blocks" | "blocked_by" | "relates_to";
     ticket: {
       id: string;
       key: string;
@@ -185,8 +199,17 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
     blockedByReverse: Dependency[];
     blocksReverse: Dependency[];
     relatedReverse: Dependency[];
-  }>({ blocks: [], blockedBy: [], relatesTo: [], blockedByReverse: [], blocksReverse: [], relatedReverse: [] });
-  const [availableTickets, setAvailableTickets] = useState<Array<{ id: string; key: string; subject: string; status: string }>>([]);
+  }>({
+    blocks: [],
+    blockedBy: [],
+    relatesTo: [],
+    blockedByReverse: [],
+    blocksReverse: [],
+    relatedReverse: [],
+  });
+  const [availableTickets, setAvailableTickets] = useState<
+    Array<{ id: string; key: string; subject: string; status: string }>
+  >([]);
 
   // Load data on mount
   useEffect(() => {
@@ -194,23 +217,30 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       try {
         // Load time entries
         const entries = await getTimeEntriesAction(ticket.id);
-        setTimeEntries(entries.map(e => ({
-          ...e,
-          user: e.user || { id: '', name: 'Unknown' },
-        })));
+        setTimeEntries(
+          entries.map((e) => ({
+            ...e,
+            user: e.user || { id: "", name: "Unknown" },
+          })),
+        );
 
         // Check for active timer
         const timer = await getActiveTimerAction(ticket.id);
         if (timer) {
-          setActiveTimer({ id: timer.id, startedAt: new Date(timer.startedAt) });
+          setActiveTimer({
+            id: timer.id,
+            startedAt: new Date(timer.startedAt),
+          });
         }
 
         // Load subtasks
         const tasks = await getSubtasksAction(ticket.id);
-        setSubtasks(tasks.map(t => ({
-          ...t,
-          assignee: t.assignee || null,
-        })));
+        setSubtasks(
+          tasks.map((t) => ({
+            ...t,
+            assignee: t.assignee || null,
+          })),
+        );
 
         // Load dependencies
         const deps = await getTicketDependenciesAction(ticket.id);
@@ -218,11 +248,14 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
 
         // Load available tickets for dependency linking
         if (ticket.orgId) {
-          const tickets = await getAvailableTicketsForDependency(ticket.id, ticket.orgId);
+          const tickets = await getAvailableTicketsForDependency(
+            ticket.id,
+            ticket.orgId,
+          );
           setAvailableTickets(tickets);
         }
       } catch (err) {
-        console.error('Failed to load ticket data:', err);
+        console.error("Failed to load ticket data:", err);
       }
     }
     loadData();
@@ -234,7 +267,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
         const loadedTemplates = await getTemplatesAction();
         setTemplates(loadedTemplates);
       } catch (error) {
-        console.error('Failed to load templates:', error);
+        console.error("Failed to load templates:", error);
       }
     }
     loadTemplates();
@@ -247,8 +280,17 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       // Replace placeholders with actual values
       let content = template.content;
       content = content.replace(/\{\{ticket\.subject\}\}/g, ticket.subject);
-      content = content.replace(/\{\{requester\.name\}\}/g, ticket.requester?.name || ticket.requester?.email || ticket.requesterEmail || 'Customer');
-      content = content.replace(/\{\{requester\.email\}\}/g, ticket.requester?.email || ticket.requesterEmail || '');
+      content = content.replace(
+        /\{\{requester\.name\}\}/g,
+        ticket.requester?.name ||
+          ticket.requester?.email ||
+          ticket.requesterEmail ||
+          "Customer",
+      );
+      content = content.replace(
+        /\{\{requester\.email\}\}/g,
+        ticket.requester?.email || ticket.requesterEmail || "",
+      );
       setComment(content);
     }
   };
@@ -264,7 +306,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
   }
 
   async function handleAssigneeChange(assigneeId: string) {
-    const value = assigneeId === 'unassigned' ? null : assigneeId;
+    const value = assigneeId === "unassigned" ? null : assigneeId;
     await assignTicketAction(ticket.id, value);
     router.refresh();
   }
@@ -274,9 +316,9 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
     setIsSubmitting(true);
     try {
       await addTicketCommentAction(ticket.id, comment, isInternal);
-      setComment('');
+      setComment("");
       setIsInternal(false);
-      success('Comment added successfully');
+      success("Comment added successfully");
       router.refresh();
     } catch (err) {
       const errorMessage = formatErrorMessage(err);
@@ -286,11 +328,13 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
     }
   }
 
-  async function handleAttachmentUpload(event: React.FormEvent<HTMLFormElement>) {
+  async function handleAttachmentUpload(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
     const input = fileInputRef.current;
     if (!input || !input.files || input.files.length === 0) {
-      setAttachmentError('Please choose a file to upload.');
+      setAttachmentError("Please choose a file to upload.");
       return;
     }
 
@@ -299,13 +343,13 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
 
     try {
       const formData = new FormData();
-      formData.append('ticketId', ticket.id);
+      formData.append("ticketId", ticket.id);
       Array.from(input.files).forEach((file) => {
-        formData.append('attachments', file);
+        formData.append("attachments", file);
       });
       await addTicketAttachmentAction(formData);
-      input.value = '';
-      success('Attachment uploaded successfully');
+      input.value = "";
+      success("Attachment uploaded successfully");
       router.refresh();
     } catch (err) {
       const errorMessage = formatErrorMessage(err);
@@ -317,19 +361,26 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
   }
 
   // Time tracking handlers
-  const handleAddTimeEntry = async (data: { durationMinutes: number; description: string; isBillable: boolean }) => {
+  const handleAddTimeEntry = async (data: {
+    durationMinutes: number;
+    description: string;
+    isBillable: boolean;
+  }) => {
     const entry = await addTimeEntryAction(ticket.id, data);
-    setTimeEntries(prev => [{
-      ...entry,
-      user: { id: entry.userId, name: 'You' },
-      startedAt: new Date(entry.startedAt),
-      endedAt: entry.endedAt ? new Date(entry.endedAt) : undefined,
-    }, ...prev]);
+    setTimeEntries((prev) => [
+      {
+        ...entry,
+        user: { id: entry.userId, name: "You" },
+        startedAt: new Date(entry.startedAt),
+        endedAt: entry.endedAt ? new Date(entry.endedAt) : undefined,
+      },
+      ...prev,
+    ]);
   };
 
   const handleDeleteTimeEntry = async (entryId: string) => {
     await deleteTimeEntryAction(ticket.id, entryId);
-    setTimeEntries(prev => prev.filter(e => e.id !== entryId));
+    setTimeEntries((prev) => prev.filter((e) => e.id !== entryId));
   };
 
   const handleStartTimer = async () => {
@@ -343,31 +394,53 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
     setActiveTimer(null);
     // Refresh time entries
     const entries = await getTimeEntriesAction(ticket.id);
-    setTimeEntries(entries.map(e => ({
-      ...e,
-      user: e.user || { id: '', name: 'Unknown' },
-    })));
+    setTimeEntries(
+      entries.map((e) => ({
+        ...e,
+        user: e.user || { id: "", name: "Unknown" },
+      })),
+    );
   };
 
   // Subtask handlers
-  const handleAddSubtask = async (data: { title: string; description?: string; assigneeId?: string; dueDate?: Date }) => {
+  const handleAddSubtask = async (data: {
+    title: string;
+    description?: string;
+    assigneeId?: string;
+    dueDate?: Date;
+  }) => {
     const subtask = await addSubtaskAction(ticket.id, data);
-    setSubtasks(prev => [...prev, { ...subtask, assignee: null }]);
+    setSubtasks((prev) => [...prev, { ...subtask, assignee: null }]);
   };
 
-  const handleUpdateSubtask = async (id: string, updates: Partial<typeof subtasks[0]>) => {
+  const handleUpdateSubtask = async (
+    id: string,
+    updates: Partial<(typeof subtasks)[0]>,
+  ) => {
     const subtask = await updateSubtaskAction(ticket.id, id, updates);
-    setSubtasks(prev => prev.map(s => s.id === id ? { ...s, ...subtask, assignee: updates.assignee || s.assignee } : s));
+    setSubtasks((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? { ...s, ...subtask, assignee: updates.assignee || s.assignee }
+          : s,
+      ),
+    );
   };
 
   const handleDeleteSubtask = async (id: string) => {
     await deleteSubtaskAction(ticket.id, id);
-    setSubtasks(prev => prev.filter(s => s.id !== id));
+    setSubtasks((prev) => prev.filter((s) => s.id !== id));
   };
 
   // Dependency handlers
-  const handleAddDependency = async (dependsOnTicketId: string, type: 'blocks' | 'blocked_by' | 'relates_to') => {
-    await addDependencyAction(ticket.id, { dependsOnTicketId, dependencyType: type });
+  const handleAddDependency = async (
+    dependsOnTicketId: string,
+    type: "blocks" | "blocked_by" | "relates_to",
+  ) => {
+    await addDependencyAction(ticket.id, {
+      dependsOnTicketId,
+      dependencyType: type,
+    });
     const deps = await getTicketDependenciesAction(ticket.id);
     setDependencies(deps);
   };
@@ -378,16 +451,28 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
     setDependencies(deps);
   };
 
-  const publicComments = ticket.comments.filter((c: { isInternal: boolean }) => !c.isInternal);
-  const internalComments = ticket.comments.filter((c: { isInternal: boolean }) => c.isInternal);
+  const publicComments = ticket.comments.filter(
+    (c: { isInternal: boolean }) => !c.isInternal,
+  );
+  const internalComments = ticket.comments.filter(
+    (c: { isInternal: boolean }) => c.isInternal,
+  );
   const linkedAssets = (ticket.ticketAssets || [])
     .map((link) => {
       const asset = link.asset;
       if (!asset) return null;
-      const fullAsset = availableAssets.find((candidate) => candidate.id === asset.id);
+      const fullAsset = availableAssets.find(
+        (candidate) => candidate.id === asset.id,
+      );
       return { asset: fullAsset || asset };
     })
-    .filter((link): link is { asset: Asset & { site?: Site | null; area?: Area | null } } => !!link);
+    .filter(
+      (
+        link,
+      ): link is {
+        asset: Asset & { site?: Site | null; area?: Area | null };
+      } => !!link,
+    );
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -399,7 +484,9 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{ticket.key}</h1>
-          <p className="mt-1 text-gray-600">{ticket.organization?.name || 'Public Ticket'}</p>
+          <p className="mt-1 text-gray-600">
+            {ticket.organization?.name || "Public Ticket"}
+          </p>
           {ticket.mergedIntoId && (
             <p className="mt-1 text-sm text-orange-600">
               This ticket has been merged into another ticket.
@@ -408,12 +495,18 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
         </div>
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2">
           <div className="flex flex-wrap gap-2">
-            <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
-            <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
+            <Badge className={getStatusColor(ticket.status)}>
+              {ticket.status}
+            </Badge>
+            <Badge className={getPriorityColor(ticket.priority)}>
+              {ticket.priority}
+            </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <TicketWatchers ticketId={ticket.id} />
-            {slaMetrics && <SLAIndicator metrics={slaMetrics} showDetails={true} />}
+            {slaMetrics && (
+              <SLAIndicator metrics={slaMetrics} showDetails={true} />
+            )}
             {!ticket.mergedIntoId && (
               <Button
                 variant="outline"
@@ -428,7 +521,9 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
               variant="ghost"
               size="sm"
               onClick={() => {
-                const win = window as Window & { __openShortcutsHelp?: () => void };
+                const win = window as Window & {
+                  __openShortcutsHelp?: () => void;
+                };
                 if (win.__openShortcutsHelp) {
                   win.__openShortcutsHelp();
                 }
@@ -459,10 +554,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
               <Label htmlFor="status" className="text-xs text-gray-500">
                 Status
               </Label>
-              <Select
-                value={ticket.status}
-                onValueChange={handleStatusChange}
-              >
+              <Select value={ticket.status} onValueChange={handleStatusChange}>
                 <SelectTrigger id="status" className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -470,7 +562,9 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
                   <SelectItem value="NEW">New</SelectItem>
                   <SelectItem value="OPEN">Open</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="WAITING_ON_CUSTOMER">Waiting on Customer</SelectItem>
+                  <SelectItem value="WAITING_ON_CUSTOMER">
+                    Waiting on Customer
+                  </SelectItem>
                   <SelectItem value="RESOLVED">Resolved</SelectItem>
                   <SelectItem value="CLOSED">Closed</SelectItem>
                 </SelectContent>
@@ -502,7 +596,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
                 Assignee
               </Label>
               <Select
-                value={ticket.assigneeId || 'unassigned'}
+                value={ticket.assigneeId || "unassigned"}
                 onValueChange={handleAssigneeChange}
               >
                 <SelectTrigger id="assignee" className="mt-1">
@@ -522,8 +616,8 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
 
           <div className="text-sm text-gray-600">
             <p>
-              <strong>Requester:</strong>{' '}
-              {ticket.requester?.name || ticket.requester?.email || 'Unknown'}
+              <strong>Requester:</strong>{" "}
+              {ticket.requester?.name || ticket.requester?.email || "Unknown"}
             </p>
             {ticket.requestType && (
               <p>
@@ -542,7 +636,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
             )}
             {ticket.assignee && (
               <p>
-                <strong>Assigned to:</strong>{' '}
+                <strong>Assigned to:</strong>{" "}
                 {ticket.assignee.name || ticket.assignee.email}
               </p>
             )}
@@ -570,7 +664,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       <TimeTracking
         ticketId={ticket.id}
         entries={timeEntries}
-        currentUserId={/* TODO: get from session */ 'current-user'}
+        currentUserId={/* TODO: get from session */ "current-user"}
         onAddEntry={handleAddTimeEntry}
         onDeleteEntry={handleDeleteTimeEntry}
         onStartTimer={handleStartTimer}
@@ -582,19 +676,27 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
       <Subtasks
         ticketId={ticket.id}
         subtasks={subtasks}
-        currentUserId={/* TODO: get from session */ 'current-user'}
-        users={internalUsers.map(u => ({ id: u.id, name: u.name || u.email }))}
+        currentUserId={/* TODO: get from session */ "current-user"}
+        users={internalUsers.map((u) => ({
+          id: u.id,
+          name: u.name || u.email,
+        }))}
         onAdd={handleAddSubtask}
         onUpdate={handleUpdateSubtask}
         onDelete={handleDeleteSubtask}
-        onReorder={async () => { /* TODO: implement */ }}
+        onReorder={async () => {
+          /* TODO: implement */
+        }}
       />
 
       {/* Dependencies */}
       <TicketDependencies
         ticketId={ticket.id}
         dependencies={dependencies.blocks}
-        blockedBy={[...dependencies.blockedBy, ...dependencies.blockedByReverse]}
+        blockedBy={[
+          ...dependencies.blockedBy,
+          ...dependencies.blockedByReverse,
+        ]}
         related={[...dependencies.relatesTo, ...dependencies.relatedReverse]}
         availableTickets={availableTickets}
         onAdd={handleAddDependency}
@@ -608,22 +710,34 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
           <CardTitle>Timeline</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {publicComments.map((comment: { id: string; content: string; isInternal: boolean; createdAt: Date; user?: { name: string | null; email: string } | null; authorEmail?: string | null }) => (
-            <div key={comment.id} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <strong className="text-sm">
-                    {comment.user?.name || comment.user?.email || comment.authorEmail || 'Unknown'}
-                  </strong>
-                  <span className="text-xs text-gray-500">
-                    {formatDateTime(comment.createdAt)}
-                  </span>
+          {publicComments.map(
+            (comment: {
+              id: string;
+              content: string;
+              isInternal: boolean;
+              createdAt: Date;
+              user?: { name: string | null; email: string } | null;
+              authorEmail?: string | null;
+            }) => (
+              <div key={comment.id} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-sm">
+                      {comment.user?.name ||
+                        comment.user?.email ||
+                        comment.authorEmail ||
+                        "Unknown"}
+                    </strong>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(comment.createdAt)}
+                    </span>
+                  </div>
                 </div>
+                <p className="whitespace-pre-wrap text-sm">{comment.content}</p>
+                <Separator />
               </div>
-              <p className="whitespace-pre-wrap text-sm">{comment.content}</p>
-              <Separator />
-            </div>
-          ))}
+            ),
+          )}
 
           {publicComments.length === 0 && (
             <p className="text-sm text-gray-500">No public comments yet.</p>
@@ -639,7 +753,10 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
                   className="w-48"
                 />
                 {templates.length > 0 && (
-                  <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+                  <Select
+                    value={selectedTemplate}
+                    onValueChange={handleTemplateSelect}
+                  >
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Use template..." />
                     </SelectTrigger>
@@ -676,29 +793,47 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
                 onClick={handleAddComment}
                 disabled={!comment.trim() || isSubmitting}
               >
-                {isSubmitting ? 'Adding...' : 'Add Comment'}
+                {isSubmitting ? "Adding..." : "Add Comment"}
               </Button>
             </div>
           </div>
 
           {internalComments.length > 0 && (
             <div className="space-y-4 border-t pt-4">
-              <h3 className="font-semibold text-sm text-gray-700">Internal Notes</h3>
-              {internalComments.map((comment: { id: string; content: string; isInternal: boolean; createdAt: Date; user?: { name: string | null; email: string } | null; authorEmail?: string | null }) => (
-                <div key={comment.id} className="space-y-2 rounded-md bg-gray-50 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <strong className="text-sm">
-                        {comment.user?.name || comment.user?.email || 'Unknown'}
-                      </strong>
-                      <span className="text-xs text-gray-500">
-                        {formatDateTime(comment.createdAt)}
-                      </span>
+              <h3 className="font-semibold text-sm text-gray-700">
+                Internal Notes
+              </h3>
+              {internalComments.map(
+                (comment: {
+                  id: string;
+                  content: string;
+                  isInternal: boolean;
+                  createdAt: Date;
+                  user?: { name: string | null; email: string } | null;
+                  authorEmail?: string | null;
+                }) => (
+                  <div
+                    key={comment.id}
+                    className="space-y-2 rounded-md bg-gray-50 p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm">
+                          {comment.user?.name ||
+                            comment.user?.email ||
+                            "Unknown"}
+                        </strong>
+                        <span className="text-xs text-gray-500">
+                          {formatDateTime(comment.createdAt)}
+                        </span>
+                      </div>
                     </div>
+                    <p className="whitespace-pre-wrap text-sm">
+                      {comment.content}
+                    </p>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm">{comment.content}</p>
-                </div>
-              ))}
+                ),
+              )}
             </div>
           )}
         </CardContent>
@@ -729,7 +864,7 @@ export function TicketDetail({ ticket, internalUsers, slaMetrics, availableAsset
             <FormError error={attachmentError} />
 
             <Button type="submit" disabled={isUploading}>
-              {isUploading ? 'Uploading...' : 'Upload Attachment'}
+              {isUploading ? "Uploading..." : "Upload Attachment"}
             </Button>
           </form>
         </CardContent>

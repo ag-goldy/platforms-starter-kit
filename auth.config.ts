@@ -1,8 +1,10 @@
-import type { NextAuthConfig } from 'next-auth';
+import type { NextAuthConfig } from "next-auth";
 
 // Use consistent cookie name - no __Secure- prefix for localhost dev
-const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-const cookiePrefix = isProduction ? '__Secure-' : '';
+const isProduction =
+  process.env.NODE_ENV === "production" ||
+  process.env.VERCEL_ENV === "production";
+const cookiePrefix = isProduction ? "__Secure-" : "";
 
 // Session max age: 30 days for better UX
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -24,14 +26,16 @@ const getSecret = (): string | string[] | undefined => {
   const secrets = rawSecrets
     .flatMap((value) =>
       value
-        .split(',')
+        .split(",")
         .map((s) => s.trim())
-        .filter(Boolean)
+        .filter(Boolean),
     )
     .filter((value, index, arr) => arr.indexOf(value) === index);
 
   if (secrets.length === 0 && isProduction) {
-    console.error('[Auth] ERROR: AUTH_SECRET or NEXTAUTH_SECRET must be set in production!');
+    console.error(
+      "[Auth] ERROR: AUTH_SECRET or NEXTAUTH_SECRET must be set in production!",
+    );
   }
   if (secrets.length === 0) return undefined;
   return secrets.length === 1 ? secrets[0] : secrets;
@@ -39,17 +43,17 @@ const getSecret = (): string | string[] | undefined => {
 
 export const authConfig = {
   pages: {
-    signIn: '/login',
-    verifyRequest: '/verify-email',
-    error: '/login',
+    signIn: "/login",
+    verifyRequest: "/verify-email",
+    error: "/login",
   },
   // Explicitly set secret - must be consistent across all environments
   secret: getSecret(),
   // Set the base URL for CSRF checks
-  basePath: '/api/auth',
+  basePath: "/api/auth",
   // CSRF check is handled by trustHost
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: SESSION_MAX_AGE,
   },
   jwt: {
@@ -62,16 +66,18 @@ export const authConfig = {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.isInternal = (user as { isInternal?: boolean }).isInternal ?? false;
-        token.isPlatformAdmin = (user as { isPlatformAdmin?: boolean }).isPlatformAdmin ?? false;
+        token.isInternal =
+          (user as { isInternal?: boolean }).isInternal ?? false;
+        token.isPlatformAdmin =
+          (user as { isPlatformAdmin?: boolean }).isPlatformAdmin ?? false;
         token.role = (user as { role?: string }).role;
       }
-      
+
       // Handle session updates
-      if (trigger === 'update' && session) {
+      if (trigger === "update" && session) {
         token.name = session.name;
       }
-      
+
       return token;
     },
     async session({ session, token }) {
@@ -94,8 +100,8 @@ export const authConfig = {
       name: `${cookiePrefix}authjs.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
+        sameSite: "lax",
+        path: "/",
         secure: isProduction,
         maxAge: SESSION_MAX_AGE,
       },
@@ -104,8 +110,8 @@ export const authConfig = {
       name: `${cookiePrefix}authjs.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
+        sameSite: "lax",
+        path: "/",
         secure: isProduction,
         maxAge: SESSION_MAX_AGE,
       },
@@ -114,8 +120,8 @@ export const authConfig = {
       name: `${cookiePrefix}authjs.callback-url`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
+        sameSite: "lax",
+        path: "/",
         secure: isProduction,
         maxAge: SESSION_MAX_AGE,
       },

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import React from "react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface LoadingWrapperProps {
   children: React.ReactNode;
@@ -13,12 +13,12 @@ interface LoadingWrapperProps {
   minHeight?: string;
 }
 
-export function LoadingWrapper({ 
-  children, 
-  isLoading, 
-  error, 
+export function LoadingWrapper({
+  children,
+  isLoading,
+  error,
   onRetry,
-  minHeight = '400px'
+  minHeight = "400px",
 }: LoadingWrapperProps) {
   if (error) {
     return (
@@ -29,11 +29,13 @@ export function LoadingWrapper({
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-red-900 text-lg mb-1">Something went wrong</h3>
+              <h3 className="font-semibold text-red-900 text-lg mb-1">
+                Something went wrong
+              </h3>
               <p className="text-red-700 text-sm max-w-md">{error}</p>
             </div>
             {onRetry && (
-              <Button 
+              <Button
                 onClick={onRetry}
                 variant="outline"
                 className="border-red-200 text-red-700 hover:bg-red-100"

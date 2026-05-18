@@ -1,11 +1,11 @@
-import { db } from '@/db';
-import { emailOutbox } from '@/db/schema';
-import { emailService } from '@/lib/email';
-import { desc, eq } from 'drizzle-orm';
-import { enqueueJob } from '@/lib/jobs';
-import type { SendEmailJob } from '@/lib/jobs/types';
+import { db } from "@/db";
+import { emailOutbox } from "@/db/schema";
+import { emailService } from "@/lib/email";
+import { desc, eq } from "drizzle-orm";
+import { enqueueJob } from "@/lib/jobs";
+import type { SendEmailJob } from "@/lib/jobs/types";
 
-export type OutboxStatus = 'PENDING' | 'SENT' | 'FAILED';
+export type OutboxStatus = "PENDING" | "SENT" | "FAILED";
 
 export type OutboxSendResult = {
   status: OutboxStatus;
@@ -28,7 +28,7 @@ export async function queueEmail(params: {
       subject: params.subject,
       html: params.html,
       text: params.text ?? null,
-      status: 'PENDING',
+      status: "PENDING",
       attempts: 0,
     })
     .returning();
@@ -50,32 +50,32 @@ export async function deliverOutbox(record: typeof emailOutbox.$inferSelect) {
     await db
       .update(emailOutbox)
       .set({
-        status: 'SENT',
+        status: "SENT",
         sentAt: new Date(),
         attempts,
         lastError: null,
       })
       .where(eq(emailOutbox.id, record.id));
 
-    return { status: 'SENT' as const, outboxId: record.id };
+    return { status: "SENT" as const, outboxId: record.id };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
     await db
       .update(emailOutbox)
       .set({
-        status: 'FAILED',
+        status: "FAILED",
         attempts,
         lastError: message,
       })
       .where(eq(emailOutbox.id, record.id));
 
-    console.error('[Email] Delivery failed', {
+    console.error("[Email] Delivery failed", {
       outboxId: record.id,
       error: message,
     });
 
-    return { status: 'FAILED' as const, error: message, outboxId: record.id };
+    return { status: "FAILED" as const, error: message, outboxId: record.id };
   }
 }
 
@@ -95,9 +95,12 @@ export async function sendWithOutbox(params: {
   const record = await queueEmail(params);
 
   // In development or if Redis is not configured, deliver immediately
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  const alwaysImmediate = params.type === 'password_reset';
-  const useJobs = !alwaysImmediate && process.env.USE_EMAIL_JOBS !== 'false' && !isDevelopment;
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const alwaysImmediate = params.type === "password_reset";
+  const useJobs =
+    !alwaysImmediate &&
+    process.env.USE_EMAIL_JOBS !== "false" &&
+    !isDevelopment;
 
   if (!useJobs) {
     // Deliver immediately (development mode or jobs disabled)
@@ -106,17 +109,18 @@ export async function sendWithOutbox(params: {
 
   // Enqueue background job (production)
   try {
-    const job: Omit<SendEmailJob, 'id' | 'status' | 'createdAt' | 'attempts'> = {
-      type: 'SEND_EMAIL',
-      maxAttempts: 3,
-      data: {
-        type: params.type,
-        to: params.to,
-        subject: params.subject,
-        html: params.html,
-        text: params.text ?? undefined,
-      },
-    };
+    const job: Omit<SendEmailJob, "id" | "status" | "createdAt" | "attempts"> =
+      {
+        type: "SEND_EMAIL",
+        maxAttempts: 3,
+        data: {
+          type: params.type,
+          to: params.to,
+          subject: params.subject,
+          html: params.html,
+          text: params.text ?? undefined,
+        },
+      };
 
     await enqueueJob({
       type: job.type,
@@ -126,19 +130,22 @@ export async function sendWithOutbox(params: {
 
     // Return immediately (job will be processed by worker)
     return {
-      status: 'PENDING',
+      status: "PENDING",
       outboxId: record.id,
     };
   } catch (error) {
     // If job enqueue fails, fall back to immediate delivery
-    console.error('[Email] Failed to enqueue job, delivering immediately:', error);
+    console.error(
+      "[Email] Failed to enqueue job, delivering immediately:",
+      error,
+    );
     return deliverOutbox(record);
   }
 }
 
 export async function listFailedOutbox(limit = 20) {
   return db.query.emailOutbox.findMany({
-    where: eq(emailOutbox.status, 'FAILED'),
+    where: eq(emailOutbox.status, "FAILED"),
     orderBy: [desc(emailOutbox.createdAt)],
     limit,
   });

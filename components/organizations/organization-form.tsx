@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import Link from 'next/link';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
 
 interface OrganizationFormProps {
   action: (formData: FormData) => Promise<void>;
@@ -17,11 +17,14 @@ interface OrganizationFormProps {
   };
 }
 
-export function OrganizationForm({ action, initialData }: OrganizationFormProps) {
-  const [name, setName] = useState(initialData?.name || '');
-  const [customerId, setCustomerId] = useState(initialData?.customerId || '');
-  const [slug, setSlug] = useState(initialData?.slug || '');
-  const [subdomain, setSubdomain] = useState(initialData?.subdomain || '');
+export function OrganizationForm({
+  action,
+  initialData,
+}: OrganizationFormProps) {
+  const [name, setName] = useState(initialData?.name || "");
+  const [customerId, setCustomerId] = useState(initialData?.customerId || "");
+  const [slug, setSlug] = useState(initialData?.slug || "");
+  const [subdomain, setSubdomain] = useState(initialData?.subdomain || "");
 
   // Auto-generate slug from name
   const handleNameChange = (value: string) => {
@@ -29,8 +32,8 @@ export function OrganizationForm({ action, initialData }: OrganizationFormProps)
     if (!slug) {
       const autoSlug = value
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
       setSlug(autoSlug);
       setSubdomain(autoSlug);
     }
@@ -74,7 +77,11 @@ export function OrganizationForm({ action, initialData }: OrganizationFormProps)
               id="customerId"
               name="customerId"
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              onChange={(e) =>
+                setCustomerId(
+                  e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+                )
+              }
               placeholder="ACME"
               pattern="[A-Z0-9]+"
             />
@@ -95,7 +102,8 @@ export function OrganizationForm({ action, initialData }: OrganizationFormProps)
               pattern="[a-z0-9-]+"
             />
             <p className="text-xs text-gray-500">
-              Customer portal will be accessible at: {subdomain || 'subdomain'}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'}
+              Customer portal will be accessible at: {subdomain || "subdomain"}.
+              {process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000"}
             </p>
           </div>
 
@@ -112,4 +120,3 @@ export function OrganizationForm({ action, initialData }: OrganizationFormProps)
     </Card>
   );
 }
-

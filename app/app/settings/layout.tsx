@@ -1,22 +1,19 @@
-import { NavLink } from '@/components/ui/nav-link';
-import { cn } from '@/lib/utils';
-import { 
-  Monitor, Shield,
-  ChevronRight
-} from 'lucide-react';
+import { NavLink } from "@/components/ui/nav-link";
+import { cn } from "@/lib/utils";
+import { Monitor, Shield, ChevronRight } from "lucide-react";
 
 const settingsNav = [
-  { 
-    href: '/app/settings/security', 
-    label: 'Security',
-    description: 'Password & 2FA',
-    icon: Shield 
+  {
+    href: "/app/settings/security",
+    label: "Security",
+    description: "Password & 2FA",
+    icon: Shield,
   },
-  { 
-    href: '/app/settings/sessions', 
-    label: 'Sessions',
-    description: 'Active devices',
-    icon: Monitor 
+  {
+    href: "/app/settings/sessions",
+    label: "Sessions",
+    description: "Active devices",
+    icon: Monitor,
   },
 ];
 
@@ -45,22 +42,20 @@ export default function SettingsLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          {children}
-        </main>
+        <main className="flex-1 min-w-0">{children}</main>
       </div>
     </div>
   );
 }
 
-function NavItem({ 
-  href, 
-  label, 
+function NavItem({
+  href,
+  label,
   description,
-  icon: Icon 
-}: { 
-  href: string; 
-  label: string; 
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
 }) {
@@ -68,8 +63,8 @@ function NavItem({
     <NavLink
       href={href}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors group',
-        'hover:bg-accent hover:text-accent-foreground'
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors group",
+        "hover:bg-accent hover:text-accent-foreground",
       )}
     >
       <Icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />

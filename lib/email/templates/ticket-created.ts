@@ -1,4 +1,4 @@
-import { escapeHtml, renderBaseTemplate } from './utils';
+import { escapeHtml, renderBaseTemplate } from "./utils";
 
 export function renderTicketCreatedEmail(options: {
   ticketKey: string;
@@ -9,18 +9,20 @@ export function renderTicketCreatedEmail(options: {
 }) {
   const { ticketKey, subject, magicLink, senderEmail, createdAt } = options;
   const title = `Ticket Created: ${ticketKey}`;
-  
+
   // Get base URL from magic link
-  const baseUrl = magicLink.split('/ticket/')[0];
-  const currentDate = createdAt || new Date().toLocaleString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  
+  const baseUrl = magicLink.split("/ticket/")[0];
+  const currentDate =
+    createdAt ||
+    new Date().toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -47,12 +49,16 @@ export function renderTicketCreatedEmail(options: {
           <td style="padding: 5px 0; color: #6b7280; font-size: 14px;">Submitted:</td>
           <td style="padding: 5px 0; color: #111827; font-size: 14px;">${currentDate}</td>
         </tr>
-        ${senderEmail ? `
+        ${
+          senderEmail
+            ? `
         <tr>
           <td style="padding: 5px 0; color: #6b7280; font-size: 14px;">Email:</td>
           <td style="padding: 5px 0; color: #111827; font-size: 14px;">${escapeHtml(senderEmail)}</td>
         </tr>
-        ` : ''}
+        `
+            : ""
+        }
       </table>
     </div>
     
@@ -90,7 +96,7 @@ Ticket ID: ${ticketKey}
 Subject: ${subject}
 Status: NEW
 Submitted: ${currentDate}
-${senderEmail ? `Email: ${senderEmail}\n` : ''}
+${senderEmail ? `Email: ${senderEmail}\n` : ""}
 
 VIEW TICKET
 ===========
@@ -115,7 +121,7 @@ This link is valid for 30 days.
   return {
     subject: title,
     html: renderBaseTemplate({
-      title: 'Support Ticket Confirmation',
+      title: "Support Ticket Confirmation",
       preheader: `Ticket ${ticketKey} has been created`,
       bodyHtml,
     }),

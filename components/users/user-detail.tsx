@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   removeUserFromOrgAction,
   updateUserRoleAction,
-} from '@/app/app/actions/users';
-import { useToast } from '@/components/ui/toast';
-import { ChangePasswordDialog } from './change-password-dialog';
-import { UpdateRoleDialog } from './update-role-dialog';
-import type { CustomerRole, UserRole } from '@/lib/auth/roles';
+} from "@/app/app/actions/users";
+import { useToast } from "@/components/ui/toast";
+import { ChangePasswordDialog } from "./change-password-dialog";
+import { UpdateRoleDialog } from "./update-role-dialog";
+import type { CustomerRole, UserRole } from "@/lib/auth/roles";
 
 interface UserDetailProps {
   user: {
@@ -51,21 +51,29 @@ export function UserDetail({ user }: UserDetailProps) {
     currentRole: CustomerRole;
   } | null>(null);
   const { success, error } = useToast();
-  const customerRoleSet = new Set<CustomerRole>(['CUSTOMER_ADMIN', 'REQUESTER', 'VIEWER']);
+  const customerRoleSet = new Set<CustomerRole>([
+    "CUSTOMER_ADMIN",
+    "REQUESTER",
+    "VIEWER",
+  ]);
   const isCustomerRole = (role: UserRole): role is CustomerRole =>
     customerRoleSet.has(role as CustomerRole);
 
   const handleRemoveFromOrg = async (membershipId: string, orgId: string) => {
-    if (!confirm('Are you sure you want to remove this user from the organization?')) {
+    if (
+      !confirm(
+        "Are you sure you want to remove this user from the organization?",
+      )
+    ) {
       return;
     }
 
     try {
       await removeUserFromOrgAction(user.id, orgId);
       setMemberships(memberships.filter((m) => m.id !== membershipId));
-      success('User removed from organization');
+      success("User removed from organization");
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Failed to remove user');
+      error(err instanceof Error ? err.message : "Failed to remove user");
     }
   };
 
@@ -78,13 +86,13 @@ export function UserDetail({ user }: UserDetailProps) {
       });
       setMemberships(
         memberships.map((m) =>
-          m.organization.id === orgId ? { ...m, role: newRole } : m
-        )
+          m.organization.id === orgId ? { ...m, role: newRole } : m,
+        ),
       );
       setShowRoleDialog(null);
-      success('User role updated');
+      success("User role updated");
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Failed to update role');
+      error(err instanceof Error ? err.message : "Failed to update role");
     }
   };
 
@@ -115,13 +123,17 @@ export function UserDetail({ user }: UserDetailProps) {
             <div className="grid grid-cols-2 gap-4">
               {user.jobTitle && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Job Title</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Job Title
+                  </label>
                   <p className="text-gray-900">{user.jobTitle}</p>
                 </div>
               )}
               {user.department && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Department</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Department
+                  </label>
                   <p className="text-gray-900">{user.department}</p>
                 </div>
               )}
@@ -158,7 +170,9 @@ export function UserDetail({ user }: UserDetailProps) {
         </CardHeader>
         <CardContent>
           {memberships.length === 0 ? (
-            <p className="text-sm text-gray-500">User is not a member of any organization</p>
+            <p className="text-sm text-gray-500">
+              User is not a member of any organization
+            </p>
           ) : (
             <div className="space-y-4">
               {memberships.map((membership) => (
@@ -167,7 +181,9 @@ export function UserDetail({ user }: UserDetailProps) {
                   className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
                 >
                   <div>
-                    <div className="font-medium">{membership.organization.name}</div>
+                    <div className="font-medium">
+                      {membership.organization.name}
+                    </div>
                     <div className="text-sm text-gray-600">
                       {membership.organization.subdomain}
                     </div>
@@ -195,7 +211,10 @@ export function UserDetail({ user }: UserDetailProps) {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        handleRemoveFromOrg(membership.id, membership.organization.id)
+                        handleRemoveFromOrg(
+                          membership.id,
+                          membership.organization.id,
+                        )
                       }
                       className="text-red-600 hover:text-red-700"
                     >
@@ -226,7 +245,7 @@ export function UserDetail({ user }: UserDetailProps) {
           onClose={() => setShowPasswordDialog(false)}
           onSuccess={() => {
             setShowPasswordDialog(false);
-            success('Password changed successfully');
+            success("Password changed successfully");
           }}
         />
       )}
@@ -236,7 +255,9 @@ export function UserDetail({ user }: UserDetailProps) {
           orgId={showRoleDialog.orgId}
           currentRole={showRoleDialog.currentRole}
           onClose={() => setShowRoleDialog(null)}
-          onUpdate={(newRole) => handleRoleUpdate(showRoleDialog.orgId, newRole)}
+          onUpdate={(newRole) =>
+            handleRoleUpdate(showRoleDialog.orgId, newRole)
+          }
         />
       )}
     </div>

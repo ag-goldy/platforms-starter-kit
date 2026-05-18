@@ -1,15 +1,23 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { tickets, ticketComments, ticketMerges, ticketTagAssignments } from '@/db/schema';
-import { requireInternalRole, canViewTicket } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { eq, and } from 'drizzle-orm';
-import { assertTicketMutable } from '@/lib/tickets/lifecycle';
+import { db } from "@/db";
+import {
+  tickets,
+  ticketComments,
+  ticketMerges,
+  ticketTagAssignments,
+} from "@/db/schema";
+import { requireInternalRole, canViewTicket } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { eq, and } from "drizzle-orm";
+import { assertTicketMutable } from "@/lib/tickets/lifecycle";
 
-export async function mergeTicketsAction(sourceTicketId: string, targetTicketId: string) {
+export async function mergeTicketsAction(
+  sourceTicketId: string,
+  targetTicketId: string,
+) {
   const { user } = await requireInternalRole();
-  
+
   // Verify both tickets exist and user can view them
   const [sourceTicket, targetTicket] = await Promise.all([
     canViewTicket(sourceTicketId),
@@ -17,29 +25,31 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
   ]);
 
   if (!sourceTicket.ticket || !targetTicket.ticket) {
-    throw new Error('One or both tickets not found');
+    throw new Error("One or both tickets not found");
   }
   assertTicketMutable(sourceTicket.ticket);
   assertTicketMutable(targetTicket.ticket);
 
   // Prevent merging a ticket into itself
   if (sourceTicketId === targetTicketId) {
-    throw new Error('Cannot merge a ticket into itself');
+    throw new Error("Cannot merge a ticket into itself");
   }
 
   // Prevent merging if source is already merged
   if (sourceTicket.ticket.mergedIntoId) {
-    throw new Error('Source ticket is already merged into another ticket');
+    throw new Error("Source ticket is already merged into another ticket");
   }
 
   // Prevent merging if target is already merged
   if (targetTicket.ticket.mergedIntoId) {
-    throw new Error('Target ticket is already merged into another ticket');
+    throw new Error("Target ticket is already merged into another ticket");
   }
 
   // Prevent merging tickets from different organizations
-  if ((sourceTicket.ticket.orgId ?? null) !== (targetTicket.ticket.orgId ?? null)) {
-    throw new Error('Cannot merge tickets from different organizations');
+  if (
+    (sourceTicket.ticket.orgId ?? null) !== (targetTicket.ticket.orgId ?? null)
+  ) {
+    throw new Error("Cannot merge tickets from different organizations");
   }
 
   return await db.transaction(async (tx) => {
@@ -59,7 +69,7 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
       const existing = await tx.query.ticketTagAssignments.findFirst({
         where: and(
           eq(ticketTagAssignments.ticketId, targetTicketId),
-          eq(ticketTagAssignments.tagId, tagAssignment.tagId)
+          eq(ticketTagAssignments.tagId, tagAssignment.tagId),
         ),
       });
 
@@ -96,7 +106,11 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
     // Mark source ticket as merged
     await tx
       .update(tickets)
-      .set({ status: 'MERGED', mergedIntoId: targetTicketId, updatedAt: new Date() })
+      .set({
+        status: "MERGED",
+        mergedIntoId: targetTicketId,
+        updatedAt: new Date(),
+      })
       .where(eq(tickets.id, sourceTicketId));
 
     // Record the merge
@@ -111,7 +125,7 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
       userId: user.id,
       orgId: sourceTicket.ticket.orgId ?? undefined,
       ticketId: targetTicketId,
-      action: 'TICKET_MERGED',
+      action: "TICKET_MERGED",
       details: {
         sourceTicketId,
         sourceTicketKey: sourceTicket.ticket.key,
@@ -123,7 +137,7 @@ export async function mergeTicketsAction(sourceTicketId: string, targetTicketId:
       userId: user.id,
       orgId: sourceTicket.ticket.orgId ?? undefined,
       ticketId: sourceTicketId,
-      action: 'TICKET_MERGED',
+      action: "TICKET_MERGED",
       details: {
         targetTicketId,
         targetTicketKey: targetTicket.ticket.key,
@@ -141,7 +155,7 @@ export async function getMergeableTicketsAction(ticketId: string) {
   if (!ticket?.orgId) {
     return [];
   }
-  
+
   const allTickets = await db.query.tickets.findMany({
     where: eq(tickets.orgId, ticket.orgId),
     columns: {
@@ -157,7 +171,7 @@ export async function getMergeableTicketsAction(ticketId: string) {
 
   // Filter out tickets that are already merged and the current ticket
   const mergeableTickets = allTickets.filter(
-    (t) => !t.mergedIntoId && t.id !== ticketId
+    (t) => !t.mergedIntoId && t.id !== ticketId,
   );
 
   // Filter out the current ticket

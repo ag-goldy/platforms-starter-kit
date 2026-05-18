@@ -1,19 +1,19 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { tickets, organizations } from '@/db/schema';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { getOrgSLATargets } from '@/lib/tickets/sla';
-import { createTicketToken } from '@/lib/tickets/magic-links';
-import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
-import { eq } from 'drizzle-orm';
-import { redirect } from 'next/navigation';
-import { sendWithOutbox } from '@/lib/email/outbox';
-import { supportBaseUrl } from '@/lib/utils';
-import { headers } from 'next/headers';
-import { renderTicketCreatedEmail } from '@/lib/email/templates/ticket-created';
-import { redis } from '@/lib/redis';
-import crypto from 'crypto';
+import { db } from "@/db";
+import { tickets, organizations } from "@/db/schema";
+import { generateTicketKey } from "@/lib/tickets/keys";
+import { getOrgSLATargets } from "@/lib/tickets/sla";
+import { createTicketToken } from "@/lib/tickets/magic-links";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { sendWithOutbox } from "@/lib/email/outbox";
+import { supportBaseUrl } from "@/lib/utils";
+import { headers } from "next/headers";
+import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
+import { redis } from "@/lib/redis";
+import crypto from "crypto";
 
 const SPAM_LINK_LIMIT = 3;
 const SPAM_WINDOW_SECONDS = 60 * 60;
@@ -36,9 +36,9 @@ async function applyAbuseChecks(params: {
   const { ip, email, subject, description } = params;
   const normalized = `${subject}\n${description}`.trim().toLowerCase();
   const fingerprint = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(normalized)
-    .digest('hex');
+    .digest("hex");
 
   try {
     const attemptKey = `support:attempts:${ip}:${email}`;
@@ -50,7 +50,7 @@ async function applyAbuseChecks(params: {
     if (attempts > SLOWDOWN_FREE_ATTEMPTS) {
       const delay = Math.min(
         SLOWDOWN_MAX_MS,
-        (attempts - SLOWDOWN_FREE_ATTEMPTS) * SLOWDOWN_STEP_MS
+        (attempts - SLOWDOWN_FREE_ATTEMPTS) * SLOWDOWN_STEP_MS,
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -58,35 +58,35 @@ async function applyAbuseChecks(params: {
     const duplicateKey = `support:duplicate:${email}:${fingerprint}`;
     const seen = await redis.get<number>(duplicateKey);
     if (seen) {
-      return { allowed: false, reason: 'duplicate' };
+      return { allowed: false, reason: "duplicate" };
     }
     await redis.set(duplicateKey, 1);
     await redis.expire(duplicateKey, SPAM_WINDOW_SECONDS);
   } catch (error) {
-    console.warn('[Abuse] Failed to record spam heuristics:', error);
+    console.warn("[Abuse] Failed to record spam heuristics:", error);
   }
 
   const linkCount = countLinks(description);
   if (linkCount > SPAM_LINK_LIMIT) {
-    return { allowed: false, reason: 'links' };
+    return { allowed: false, reason: "links" };
   }
 
   return { allowed: true, reason: null };
 }
 
 export async function createPublicTicketAction(formData: FormData) {
-  const email = formData.get('email') as string;
-  const subject = formData.get('subject') as string;
-  const description = formData.get('description') as string;
+  const email = formData.get("email") as string;
+  const subject = formData.get("subject") as string;
+  const description = formData.get("description") as string;
 
   if (!email || !subject || !description) {
-    redirect('/support?error=missing_fields');
+    redirect("/support?error=missing_fields");
   }
 
   // Rate limiting: 5 tickets per IP per hour, 3 per email per hour
   const headersList = await headers();
   const ip = getClientIP(headersList);
-  
+
   const ipLimit = await checkRateLimit({
     identifier: `ip:${ip}`,
     limit: 5,
@@ -94,7 +94,7 @@ export async function createPublicTicketAction(formData: FormData) {
   });
 
   if (!ipLimit.allowed) {
-    redirect('/support?error=rate_limit');
+    redirect("/support?error=rate_limit");
   }
 
   const emailLimit = await checkRateLimit({
@@ -104,27 +104,27 @@ export async function createPublicTicketAction(formData: FormData) {
   });
 
   if (!emailLimit.allowed) {
-    redirect('/support?error=rate_limit');
+    redirect("/support?error=rate_limit");
   }
 
   // Find or create unassigned intake org
   let intakeOrg = await db.query.organizations.findFirst({
-    where: eq(organizations.slug, 'unassigned-intake'),
+    where: eq(organizations.slug, "unassigned-intake"),
   });
 
   if (!intakeOrg) {
     [intakeOrg] = await db
       .insert(organizations)
       .values({
-        name: 'Unassigned Intake',
-        slug: 'unassigned-intake',
-        subdomain: 'intake',
+        name: "Unassigned Intake",
+        slug: "unassigned-intake",
+        subdomain: "intake",
       })
       .returning();
   }
 
   if (!intakeOrg.allowPublicIntake) {
-    redirect('/support?error=intake_disabled');
+    redirect("/support?error=intake_disabled");
   }
 
   const abuseCheck = await applyAbuseChecks({
@@ -135,11 +135,11 @@ export async function createPublicTicketAction(formData: FormData) {
   });
 
   if (!abuseCheck.allowed) {
-    redirect('/support?error=spam_detected');
+    redirect("/support?error=spam_detected");
   }
 
   const ticketKey = await generateTicketKey(intakeOrg.id);
-  const slaTargets = await getOrgSLATargets(intakeOrg.id, 'P3');
+  const slaTargets = await getOrgSLATargets(intakeOrg.id, "P3");
 
   // Create the ticket
   const [ticket] = await db
@@ -150,9 +150,9 @@ export async function createPublicTicketAction(formData: FormData) {
       subject,
       description,
       requesterEmail: email,
-      status: 'NEW',
-      priority: 'P3',
-      category: 'INCIDENT',
+      status: "NEW",
+      priority: "P3",
+      category: "INCIDENT",
       slaResponseTargetHours: slaTargets.responseHours,
       slaResolutionTargetHours: slaTargets.resolutionHours,
     })
@@ -162,7 +162,7 @@ export async function createPublicTicketAction(formData: FormData) {
   const token = await createTicketToken({
     ticketId: ticket.id,
     email,
-    purpose: 'VIEW',
+    purpose: "VIEW",
     createdIp: ip,
     lastSentAt: new Date(),
   });
@@ -175,13 +175,16 @@ export async function createPublicTicketAction(formData: FormData) {
     magicLink,
   });
   const sendResult = await sendWithOutbox({
-    type: 'ticket_created',
+    type: "ticket_created",
     to: email,
     subject: emailContent.subject,
     html: emailContent.html,
     text: emailContent.text,
   });
 
-  const emailStatus = sendResult.status === 'FAILED' ? '&emailStatus=failed' : '';
-  redirect(`/support/success?ticket=${ticketKey}&email=${encodeURIComponent(email)}${emailStatus}`);
+  const emailStatus =
+    sendResult.status === "FAILED" ? "&emailStatus=failed" : "";
+  redirect(
+    `/support/success?ticket=${ticketKey}&email=${encodeURIComponent(email)}${emailStatus}`,
+  );
 }

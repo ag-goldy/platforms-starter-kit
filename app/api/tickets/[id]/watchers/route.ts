@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { ticketWatchers, users, platformAdmins } from '@/db/schema';
-import { canViewTicket, AuthorizationError } from '@/lib/auth/permissions';
-import { eq, and, isNull, isNotNull } from 'drizzle-orm';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { ticketWatchers, users, platformAdmins } from "@/db/schema";
+import { canViewTicket, AuthorizationError } from "@/lib/auth/permissions";
+import { eq, and, isNull, isNotNull } from "drizzle-orm";
 
 // GET /api/tickets/[id]/watchers - Get all watchers for a ticket
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -31,10 +31,9 @@ export async function GET(
       })
       .from(ticketWatchers)
       .innerJoin(users, eq(ticketWatchers.userId, users.id))
-      .where(and(
-        eq(ticketWatchers.ticketId, id),
-        isNotNull(ticketWatchers.userId)
-      ));
+      .where(
+        and(eq(ticketWatchers.ticketId, id), isNotNull(ticketWatchers.userId)),
+      );
 
     // Get platform admin watchers
     const adminWatchers = await db
@@ -45,24 +44,26 @@ export async function GET(
         createdAt: ticketWatchers.createdAt,
       })
       .from(ticketWatchers)
-      .innerJoin(platformAdmins, eq(ticketWatchers.platformAdminId, platformAdmins.id))
-      .where(and(
-        eq(ticketWatchers.ticketId, id),
-        isNotNull(ticketWatchers.platformAdminId)
-      ));
+      .innerJoin(
+        platformAdmins,
+        eq(ticketWatchers.platformAdminId, platformAdmins.id),
+      )
+      .where(
+        and(
+          eq(ticketWatchers.ticketId, id),
+          isNotNull(ticketWatchers.platformAdminId),
+        ),
+      );
 
     return NextResponse.json({ watchers: [...userWatchers, ...adminWatchers] });
   } catch (error) {
-    console.error('[Watchers API] Error fetching watchers:', error);
+    console.error("[Watchers API] Error fetching watchers:", error);
     if (error instanceof AuthorizationError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     return NextResponse.json(
-      { error: 'Failed to fetch watchers' },
-      { status: 500 }
+      { error: "Failed to fetch watchers" },
+      { status: 500 },
     );
   }
 }
@@ -70,12 +71,12 @@ export async function GET(
 // POST /api/tickets/[id]/watchers - Toggle current user as watcher
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -90,13 +91,13 @@ export async function POST(
       ? await db.query.ticketWatchers.findFirst({
           where: and(
             eq(ticketWatchers.ticketId, id),
-            eq(ticketWatchers.platformAdminId, userId)
+            eq(ticketWatchers.platformAdminId, userId),
           ),
         })
       : await db.query.ticketWatchers.findFirst({
           where: and(
             eq(ticketWatchers.ticketId, id),
-            eq(ticketWatchers.userId, userId)
+            eq(ticketWatchers.userId, userId),
           ),
         });
 
@@ -108,8 +109,8 @@ export async function POST(
           .where(
             and(
               eq(ticketWatchers.ticketId, id),
-              eq(ticketWatchers.platformAdminId, userId)
-            )
+              eq(ticketWatchers.platformAdminId, userId),
+            ),
           );
       } else {
         await db
@@ -117,8 +118,8 @@ export async function POST(
           .where(
             and(
               eq(ticketWatchers.ticketId, id),
-              eq(ticketWatchers.userId, userId)
-            )
+              eq(ticketWatchers.userId, userId),
+            ),
           );
       }
 
@@ -140,10 +141,10 @@ export async function POST(
       return NextResponse.json({ watching: true });
     }
   } catch (error) {
-    console.error('[Watchers API] Error toggling watcher:', error);
+    console.error("[Watchers API] Error toggling watcher:", error);
     return NextResponse.json(
-      { error: 'Failed to update watcher status' },
-      { status: 500 }
+      { error: "Failed to update watcher status" },
+      { status: 500 },
     );
   }
 }

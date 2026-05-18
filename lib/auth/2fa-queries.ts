@@ -2,10 +2,10 @@
  * 2FA database queries
  */
 
-import { db } from '@/db';
-import { users, platformAdmins } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { encryptSecret, decryptSecret } from './2fa';
+import { db } from "@/db";
+import { users, platformAdmins } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { encryptSecret, decryptSecret } from "./2fa";
 
 export interface User2FAStatus {
   enabled: boolean;
@@ -53,7 +53,7 @@ export async function getUser2FAStatus(userId: string): Promise<User2FAStatus> {
     };
   }
 
-  throw new Error('User not found');
+  throw new Error("User not found");
 }
 
 /**
@@ -62,7 +62,7 @@ export async function getUser2FAStatus(userId: string): Promise<User2FAStatus> {
 export async function save2FASecret(
   userId: string,
   secret: string,
-  backupCodes: string[]
+  backupCodes: string[],
 ): Promise<void> {
   const encryptedSecret = encryptSecret(secret);
   const backupCodesJson = JSON.stringify(backupCodes);
@@ -104,7 +104,7 @@ export async function save2FASecret(
     return;
   }
 
-  throw new Error('User not found');
+  throw new Error("User not found");
 }
 
 /**
@@ -145,7 +145,7 @@ export async function enable2FA(userId: string): Promise<void> {
     return;
   }
 
-  throw new Error('User not found');
+  throw new Error("User not found");
 }
 
 /**
@@ -189,7 +189,7 @@ export async function disable2FA(userId: string): Promise<void> {
     return;
   }
 
-  throw new Error('User not found');
+  throw new Error("User not found");
 }
 
 /**
@@ -258,7 +258,10 @@ export async function getUserBackupCodes(userId: string): Promise<string[]> {
  * Update backup codes
  * Note: Only tenant users have backup codes, platform admins don't
  */
-export async function updateBackupCodes(userId: string, backupCodes: string[]): Promise<void> {
+export async function updateBackupCodes(
+  userId: string,
+  backupCodes: string[],
+): Promise<void> {
   const backupCodesJson = JSON.stringify(backupCodes);
 
   await db
@@ -273,10 +276,12 @@ export async function updateBackupCodes(userId: string, backupCodes: string[]): 
 /**
  * Remove a used backup code
  */
-export async function removeBackupCode(userId: string, usedCodeHash: string): Promise<void> {
+export async function removeBackupCode(
+  userId: string,
+  usedCodeHash: string,
+): Promise<void> {
   const codes = await getUserBackupCodes(userId);
   const updatedCodes = codes.filter((code) => code !== usedCodeHash);
 
   await updateBackupCodes(userId, updatedCodes);
 }
-

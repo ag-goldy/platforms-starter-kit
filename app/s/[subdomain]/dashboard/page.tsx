@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation";
 
 export default async function CustomerPortalDashboardRoute({
   params,
@@ -8,4 +8,3 @@ export default async function CustomerPortalDashboardRoute({
   const { subdomain } = await params;
   redirect(`/s/${subdomain}`);
 }
-

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { applyRetentionPoliciesToAllOrgs } from '@/lib/compliance/retention';
-import { getCorrelationId } from '@/lib/monitoring/correlation';
-import { verifyCronAuth } from '@/lib/auth/cron';
+import { NextRequest, NextResponse } from "next/server";
+import { applyRetentionPoliciesToAllOrgs } from "@/lib/compliance/retention";
+import { getCorrelationId } from "@/lib/monitoring/correlation";
+import { verifyCronAuth } from "@/lib/auth/cron";
 
 /**
  * POST /api/cron/retention
@@ -19,26 +19,32 @@ export async function POST(request: NextRequest) {
   try {
     const correlationId = await getCorrelationId();
     const results = await applyRetentionPoliciesToAllOrgs();
-    
+
     const summary = {
       totalOrgs: Object.keys(results).length,
-      totalAnonymized: Object.values(results).reduce((sum, r) => sum + r.anonymized, 0),
-      totalDeleted: Object.values(results).reduce((sum, r) => sum + r.deleted, 0),
+      totalAnonymized: Object.values(results).reduce(
+        (sum, r) => sum + r.anonymized,
+        0,
+      ),
+      totalDeleted: Object.values(results).reduce(
+        (sum, r) => sum + r.deleted,
+        0,
+      ),
       byOrg: results,
     };
 
     return NextResponse.json({
       success: true,
-      message: 'Retention policies applied',
+      message: "Retention policies applied",
       summary,
       correlationId,
     });
   } catch (error) {
     const correlationId = await getCorrelationId();
-    console.error('Error applying retention policies:', error);
+    console.error("Error applying retention policies:", error);
     return NextResponse.json(
-      { error: 'Failed to apply retention policies', correlationId },
-      { status: 500 }
+      { error: "Failed to apply retention policies", correlationId },
+      { status: 500 },
     );
   }
 }
@@ -49,4 +55,3 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   return POST(request);
 }
-

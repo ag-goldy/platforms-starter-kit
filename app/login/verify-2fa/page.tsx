@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useActionState, useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { completeLoginAfter2FA } from '../actions';
+import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { completeLoginAfter2FA } from "../actions";
 
 interface TwoFAState {
   success: boolean;
@@ -20,32 +26,39 @@ export default function Verify2FAPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [useBackupCode, setUseBackupCode] = useState(false);
-  
-  const userId = searchParams.get('userId');
-  const urlError = searchParams.get('error');
+
+  const userId = searchParams.get("userId");
+  const urlError = searchParams.get("error");
 
   // Redirect if no userId
   useEffect(() => {
     if (!userId) {
-      router.push('/login?error=Invalid verification request');
+      router.push("/login?error=Invalid verification request");
     }
   }, [userId, router]);
 
-  async function handle2FASubmit(prevState: TwoFAState, formData: FormData): Promise<TwoFAState> {
+  async function handle2FASubmit(
+    prevState: TwoFAState,
+    formData: FormData,
+  ): Promise<TwoFAState> {
     if (!userId) {
-      return { success: false, error: 'Invalid verification request' };
+      return { success: false, error: "Invalid verification request" };
     }
 
-    const token = (formData.get('token') as string)?.trim() || '';
-    const backupCode = (formData.get('backupCode') as string)?.trim().toUpperCase() || '';
+    const token = (formData.get("token") as string)?.trim() || "";
+    const backupCode =
+      (formData.get("backupCode") as string)?.trim().toUpperCase() || "";
 
     // Validation
     if (!useBackupCode && token.length !== 6) {
-      return { success: false, error: 'Please enter a 6-digit verification code' };
+      return {
+        success: false,
+        error: "Please enter a 6-digit verification code",
+      };
     }
 
     if (useBackupCode && backupCode.length < 8) {
-      return { success: false, error: 'Please enter a valid backup code' };
+      return { success: false, error: "Please enter a valid backup code" };
     }
 
     try {
@@ -53,26 +66,32 @@ export default function Verify2FAPage() {
         userId,
         token,
         useBackupCode ? backupCode : undefined,
-        '/app' // Always redirect to dashboard
+        "/app", // Always redirect to dashboard
       );
-      
+
       // If we get here without redirect, something went wrong
-      return { success: false, error: 'Failed to complete login' };
+      return { success: false, error: "Failed to complete login" };
     } catch (error) {
       // Check if it's a redirect
-      if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+      if (error instanceof Error && error.message === "NEXT_REDIRECT") {
         throw error;
       }
-      
-      console.error('[2FA] Error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An error occurred. Please try again.' 
+
+      console.error("[2FA] Error:", error);
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "An error occurred. Please try again.",
       };
     }
   }
 
-  const [state, formAction, isPending] = useActionState(handle2FASubmit, initialState);
+  const [state, formAction, isPending] = useActionState(
+    handle2FASubmit,
+    initialState,
+  );
   const errorMessage = state?.error || urlError;
 
   if (!userId) {
@@ -93,9 +112,9 @@ export default function Verify2FAPage() {
         <CardHeader>
           <CardTitle>Two-Factor Authentication</CardTitle>
           <CardDescription>
-            {useBackupCode 
-              ? 'Enter one of your backup codes' 
-              : 'Enter the 6-digit code from your authenticator app'}
+            {useBackupCode
+              ? "Enter one of your backup codes"
+              : "Enter the 6-digit code from your authenticator app"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,7 +123,7 @@ export default function Verify2FAPage() {
               {decodeURIComponent(errorMessage)}
             </div>
           )}
-          
+
           <form action={formAction} className="space-y-4">
             {!useBackupCode ? (
               <div className="space-y-2">
@@ -146,7 +165,7 @@ export default function Verify2FAPage() {
                 </p>
               </div>
             )}
-            
+
             <div className="flex items-center justify-between">
               <button
                 type="button"
@@ -154,15 +173,18 @@ export default function Verify2FAPage() {
                 className="text-sm text-blue-600 hover:underline"
                 disabled={isPending}
               >
-                {useBackupCode ? 'Use authenticator code' : 'Use backup code'}
+                {useBackupCode ? "Use authenticator code" : "Use backup code"}
               </button>
-              <Link href="/login" className="text-sm text-gray-600 hover:underline">
+              <Link
+                href="/login"
+                className="text-sm text-gray-600 hover:underline"
+              >
                 Cancel
               </Link>
             </div>
-            
+
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? 'Verifying...' : 'Verify'}
+              {isPending ? "Verifying..." : "Verify"}
             </Button>
           </form>
         </CardContent>

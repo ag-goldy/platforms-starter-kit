@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { bearerTokenMatches } from '@/lib/security/secrets';
+import { NextRequest, NextResponse } from "next/server";
+import { bearerTokenMatches } from "@/lib/security/secrets";
 
 /**
  * verifyCronAuth — shared fail-closed cron authentication.
@@ -22,16 +22,18 @@ export function verifyCronAuth(request: NextRequest): NextResponse | null {
   // Fail-closed: if the secret is not configured, reject all cron requests.
   // This prevents an unconfigured deployment from executing cron jobs as if they were authenticated.
   if (!cronSecret) {
-    console.error('[SECURITY] CRON_SECRET is not configured — rejecting all cron requests');
+    console.error(
+      "[SECURITY] CRON_SECRET is not configured — rejecting all cron requests",
+    );
     return NextResponse.json(
-      { error: 'Cron endpoint not configured' },
-      { status: 503 }
+      { error: "Cron endpoint not configured" },
+      { status: 503 },
     );
   }
 
-  const authHeader = request.headers.get('authorization');
+  const authHeader = request.headers.get("authorization");
   if (!bearerTokenMatches(authHeader, cronSecret)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   return null; // authorized

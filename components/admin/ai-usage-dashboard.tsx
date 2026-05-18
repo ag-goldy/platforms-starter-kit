@@ -1,9 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useToast } from '@/components/ui/toast';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
+import { Loader2, AlertTriangle } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -16,7 +22,7 @@ import {
   Pie,
   Cell,
   Legend,
-} from 'recharts';
+} from "recharts";
 
 interface AIUsageDashboardProps {
   orgId: string;
@@ -26,12 +32,15 @@ interface UsageStats {
   totalQueries: number;
   totalTokens: number;
   totalCost: number;
-  byInterface: Record<string, { queries: number; tokens: number; cost: number }>;
+  byInterface: Record<
+    string,
+    { queries: number; tokens: number; cost: number }
+  >;
   byModel: Record<string, { queries: number; tokens: number; cost: number }>;
   daily: Array<{ date: string; queries: number; tokens: number; cost: number }>;
 }
 
-const COLORS = ['#0f172a', '#334155', '#64748b', '#94a3b8'];
+const COLORS = ["#0f172a", "#334155", "#64748b", "#94a3b8"];
 
 export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
   const [stats, setStats] = useState<UsageStats | null>(null);
@@ -45,12 +54,16 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
 
   async function fetchStats() {
     try {
-      const response = await fetch(`/api/admin/ai-usage?orgId=${orgId}&days=${days}`);
-      if (!response.ok) throw new Error('Failed to fetch usage stats');
+      const response = await fetch(
+        `/api/admin/ai-usage?orgId=${orgId}&days=${days}`,
+      );
+      if (!response.ok) throw new Error("Failed to fetch usage stats");
       const data = await response.json();
       setStats(data);
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to load usage stats');
+      showError(
+        err instanceof Error ? err.message : "Failed to load usage stats",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -72,13 +85,15 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
     );
   }
 
-  const interfaceData = Object.entries(stats.byInterface).map(([name, data]) => ({
-    name: name.charAt(0).toUpperCase() + name.slice(1),
-    ...data,
-  }));
+  const interfaceData = Object.entries(stats.byInterface).map(
+    ([name, data]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      ...data,
+    }),
+  );
 
   const modelData = Object.entries(stats.byModel).map(([name, data]) => ({
-    name: name.split('/').pop() || name,
+    name: name.split("/").pop() || name,
     ...data,
   }));
 
@@ -89,25 +104,34 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
     <div className="space-y-6">
       {/* Warning Banner */}
       {(isWarning || isOverLimit) && (
-        <div className={`p-4 rounded-lg flex items-start gap-3 ${
-          isOverLimit ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'
-        }`}>
-          <AlertTriangle className={`w-5 h-5 mt-0.5 ${
-            isOverLimit ? 'text-red-600' : 'text-amber-600'
-          }`} />
+        <div
+          className={`p-4 rounded-lg flex items-start gap-3 ${
+            isOverLimit
+              ? "bg-red-50 border border-red-200"
+              : "bg-amber-50 border border-amber-200"
+          }`}
+        >
+          <AlertTriangle
+            className={`w-5 h-5 mt-0.5 ${
+              isOverLimit ? "text-red-600" : "text-amber-600"
+            }`}
+          />
           <div>
-            <p className={`font-medium ${
-              isOverLimit ? 'text-red-900' : 'text-amber-900'
-            }`}>
-              {isOverLimit ? 'Usage Limit Exceeded' : 'Approaching Usage Limit'}
+            <p
+              className={`font-medium ${
+                isOverLimit ? "text-red-900" : "text-amber-900"
+              }`}
+            >
+              {isOverLimit ? "Usage Limit Exceeded" : "Approaching Usage Limit"}
             </p>
-            <p className={`text-sm mt-1 ${
-              isOverLimit ? 'text-red-700' : 'text-amber-700'
-            }`}>
-              {isOverLimit 
+            <p
+              className={`text-sm mt-1 ${
+                isOverLimit ? "text-red-700" : "text-amber-700"
+              }`}
+            >
+              {isOverLimit
                 ? `You've used ${stats.totalQueries} queries this month. AI functionality is temporarily disabled.`
-                : `You've used ${stats.totalQueries} of 1000 monthly queries (${Math.round((stats.totalQueries / 1000) * 100)}%). Consider upgrading your plan.`
-              }
+                : `You've used ${stats.totalQueries} of 1000 monthly queries (${Math.round((stats.totalQueries / 1000) * 100)}%). Consider upgrading your plan.`}
             </p>
           </div>
         </div>
@@ -118,26 +142,35 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Queries</CardDescription>
-            <CardTitle className="text-2xl">{stats.totalQueries.toLocaleString()}</CardTitle>
+            <CardTitle className="text-2xl">
+              {stats.totalQueries.toLocaleString()}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Tokens</CardDescription>
-            <CardTitle className="text-2xl">{(stats.totalTokens / 1000).toFixed(1)}K</CardTitle>
+            <CardTitle className="text-2xl">
+              {(stats.totalTokens / 1000).toFixed(1)}K
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Estimated Cost</CardDescription>
-            <CardTitle className="text-2xl">${stats.totalCost.toFixed(4)}</CardTitle>
+            <CardTitle className="text-2xl">
+              ${stats.totalCost.toFixed(4)}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Avg Cost/Query</CardDescription>
             <CardTitle className="text-2xl">
-              ${stats.totalQueries > 0 ? (stats.totalCost / stats.totalQueries).toFixed(4) : '0.0000'}
+              $
+              {stats.totalQueries > 0
+                ? (stats.totalCost / stats.totalQueries).toFixed(4)
+                : "0.0000"}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -153,16 +186,31 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stats.daily}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
-                tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              <XAxis
+                dataKey="date"
+                tickFormatter={(val) =>
+                  new Date(val).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }
               />
               <YAxis yAxisId="left" />
               <YAxis yAxisId="right" orientation="right" />
               <Tooltip />
               <Legend />
-              <Bar yAxisId="left" dataKey="queries" name="Queries" fill="#0f172a" />
-              <Bar yAxisId="right" dataKey="tokens" name="Tokens" fill="#64748b" />
+              <Bar
+                yAxisId="left"
+                dataKey="queries"
+                name="Queries"
+                fill="#0f172a"
+              />
+              <Bar
+                yAxisId="right"
+                dataKey="tokens"
+                name="Tokens"
+                fill="#64748b"
+              />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -187,7 +235,10 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
                   label
                 >
                   {interfaceData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -211,10 +262,15 @@ export function AIUsageDashboard({ orgId }: AIUsageDashboardProps) {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                 >
                   {modelData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip formatter={(val: number) => `$${val.toFixed(4)}`} />

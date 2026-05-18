@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
   Ticket,
@@ -10,10 +10,10 @@ import {
   Plus,
   MessageSquare,
   Activity,
-} from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
-import type { Organization } from '@/db/schema';
-import { useRouter, useSearchParams } from 'next/navigation';
+} from "lucide-react";
+import { useCustomerPortal } from "@/components/customer/CustomerPortalContext";
+import type { Organization } from "@/db/schema";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface MobileNavProps {
   subdomain: string;
@@ -25,34 +25,34 @@ export function MobileNav({ subdomain, org: _org }: MobileNavProps) {
   const { openSlideOver } = useCustomerPortal();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentView = searchParams.get('view') || 'dashboard';
+  const currentView = searchParams.get("view") || "dashboard";
 
   const navItems = [
-    { id: 'dashboard', label: 'Home', icon: Home },
-    { id: 'tickets', label: 'Tickets', icon: Ticket },
-    { id: 'kb', label: 'KB', icon: BookOpen },
-    { id: 'team', label: 'Team', icon: Users },
+    { id: "dashboard", label: "Home", icon: Home },
+    { id: "tickets", label: "Tickets", icon: Ticket },
+    { id: "kb", label: "KB", icon: BookOpen },
+    { id: "team", label: "Team", icon: Users },
   ];
 
   const fabActions = [
     {
-      id: 'ticket',
-      label: 'New Ticket',
+      id: "ticket",
+      label: "New Ticket",
       icon: MessageSquare,
-      color: 'bg-brand-500',
+      color: "bg-brand-500",
       onClick: () => {
-        openSlideOver('ticket', { mode: 'create' });
+        openSlideOver("ticket", { mode: "create" });
         setIsFabOpen(false);
       },
     },
     {
-      id: 'status',
-      label: 'Status',
+      id: "status",
+      label: "Status",
       icon: Activity,
-      color: 'bg-emerald-500',
+      color: "bg-emerald-500",
       onClick: () => {
-        const currentView = searchParams.get('view') || 'dashboard';
-        if (currentView !== 'status') {
+        const currentView = searchParams.get("view") || "dashboard";
+        if (currentView !== "status") {
           router.push(`/s/${subdomain}?view=status`);
         }
         setIsFabOpen(false);
@@ -61,11 +61,11 @@ export function MobileNav({ subdomain, org: _org }: MobileNavProps) {
   ];
 
   const handleNavClick = (itemId: string) => {
-    if (itemId === 'team') {
-      openSlideOver('team');
+    if (itemId === "team") {
+      openSlideOver("team");
     } else {
       // Guard against navigating to same view
-      const currentView = searchParams.get('view') || 'dashboard';
+      const currentView = searchParams.get("view") || "dashboard";
       if (currentView !== itemId) {
         router.push(`/s/${subdomain}?view=${itemId}`);
       }
@@ -82,9 +82,7 @@ export function MobileNav({ subdomain, org: _org }: MobileNavProps) {
               key={item.id}
               onClick={() => handleNavClick(item.id)}
               className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors ${
-                currentView === item.id
-                  ? 'text-brand-600'
-                  : 'text-stone-500'
+                currentView === item.id ? "text-brand-600" : "text-stone-500"
               }`}
             >
               <item.icon className="w-5 h-5" />
@@ -96,7 +94,7 @@ export function MobileNav({ subdomain, org: _org }: MobileNavProps) {
           <button
             onClick={() => setIsFabOpen(!isFabOpen)}
             className={`flex flex-col items-center justify-center w-12 h-12 rounded-full shadow-lg transition-all ${
-              isFabOpen ? 'bg-stone-800 rotate-45' : 'bg-brand-500'
+              isFabOpen ? "bg-stone-800 rotate-45" : "bg-brand-500"
             }`}
           >
             <Plus className="w-6 h-6 text-white" />

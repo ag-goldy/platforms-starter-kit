@@ -1,10 +1,10 @@
-import crypto from 'crypto';
-import { constantTimeEquals, getRequiredSecret } from '@/lib/security/secrets';
+import crypto from "crypto";
+import { constantTimeEquals, getRequiredSecret } from "@/lib/security/secrets";
 
 const EXPORT_SIGNED_URL_EXPIRY_SECONDS = 24 * 60 * 60; // 24 hours
 
 function getExportSignedUrlSecret(): string {
-  return getRequiredSecret('EXPORT_SIGNED_URL_SECRET');
+  return getRequiredSecret("EXPORT_SIGNED_URL_SECRET");
 }
 
 export interface ExportSignedUrlParams {
@@ -26,11 +26,11 @@ export function generateExportSignedUrl(params: ExportSignedUrlParams): string {
   };
 
   const payloadString = JSON.stringify(payload);
-  const payloadBase64 = Buffer.from(payloadString).toString('base64url');
+  const payloadBase64 = Buffer.from(payloadString).toString("base64url");
 
-  const hmac = crypto.createHmac('sha256', getExportSignedUrlSecret());
+  const hmac = crypto.createHmac("sha256", getExportSignedUrlSecret());
   hmac.update(payloadString);
-  const signature = hmac.digest('base64url');
+  const signature = hmac.digest("base64url");
 
   return `${payloadBase64}.${signature}`;
 }
@@ -42,20 +42,22 @@ export interface ExportSignedUrlData {
 }
 
 export function validateExportSignedUrl(
-  signedUrl: string
+  signedUrl: string,
 ): ExportSignedUrlData | null {
   try {
-    const [payloadBase64, signature] = signedUrl.split('.');
+    const [payloadBase64, signature] = signedUrl.split(".");
     if (!payloadBase64 || !signature) {
       return null;
     }
 
-    const payloadString = Buffer.from(payloadBase64, 'base64url').toString('utf-8');
+    const payloadString = Buffer.from(payloadBase64, "base64url").toString(
+      "utf-8",
+    );
     const payload = JSON.parse(payloadString) as ExportSignedUrlData;
 
-    const hmac = crypto.createHmac('sha256', getExportSignedUrlSecret());
+    const hmac = crypto.createHmac("sha256", getExportSignedUrlSecret());
     hmac.update(payloadString);
-    const expectedSignature = hmac.digest('base64url');
+    const expectedSignature = hmac.digest("base64url");
 
     if (!constantTimeEquals(signature, expectedSignature)) {
       return null;
@@ -74,7 +76,7 @@ export function validateExportSignedUrl(
 
 export function generateSignedExportUrl(
   baseUrl: string,
-  params: ExportSignedUrlParams
+  params: ExportSignedUrlParams,
 ): string {
   const token = generateExportSignedUrl(params);
   return `${baseUrl}/api/exports/${params.exportRequestId}?token=${token}`;

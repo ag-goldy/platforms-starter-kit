@@ -1,12 +1,12 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 async function create() {
   const sql = neon(process.env.DATABASE_URL!);
-  
-  console.log('Creating time_entries table...\n');
+
+  console.log("Creating time_entries table...\n");
 
   try {
     await sql`
@@ -31,20 +31,19 @@ async function create() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `;
-    console.log('✓ time_entries table created');
-    
+    console.log("✓ time_entries table created");
+
     // Create indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_time_entries_ticket_id ON time_entries(ticket_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_time_entries_org_id ON time_entries(org_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id)`;
-    console.log('✓ Indexes created');
-    
+    console.log("✓ Indexes created");
   } catch (e) {
-    console.error('Error creating time_entries:', e);
+    console.error("Error creating time_entries:", e);
     process.exit(1);
   }
-  
-  console.log('\n✅ time_entries table created successfully!');
+
+  console.log("\n✅ time_entries table created successfully!");
   process.exit(0);
 }
 

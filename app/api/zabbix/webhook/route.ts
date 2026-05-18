@@ -1,20 +1,23 @@
 /**
  * Zabbix Webhook Receiver
- * 
+ *
  * Receives webhooks from the VPS relay and updates service status immediately.
  * This provides near real-time updates when Zabbix triggers change.
- * 
+ *
  * Webhook Flow:
  * Zabbix (status change) → VPS Relay → This Endpoint → Database Update
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { services } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { updateServiceMonitoring, addMonitoringHistory } from '@/lib/zabbix/queries';
-import { revalidatePath } from 'next/cache';
-import { constantTimeEquals } from '@/lib/security/secrets';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { services } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import {
+  updateServiceMonitoring,
+  addMonitoringHistory,
+} from "@/lib/zabbix/queries";
+import { revalidatePath } from "next/cache";
+import { constantTimeEquals } from "@/lib/security/secrets";
 
 interface ZabbixWebhookPayload {
   host?: string;
@@ -36,32 +39,38 @@ const RATE_LIMIT_WINDOW = 1000; // 1 second
 function isRateLimited(key: string): boolean {
   const now = Date.now();
   const lastRequest = rateLimiter.get(key);
-  
+
   if (lastRequest && now - lastRequest < RATE_LIMIT_WINDOW) {
     return true;
   }
-  
+
   rateLimiter.set(key, now);
   return false;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const webhookSecret = process.env.ZABBIX_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET;
+    const webhookSecret =
+      process.env.ZABBIX_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error('[SECURITY] ZABBIX_WEBHOOK_SECRET is not configured - rejecting Zabbix webhook');
-      return NextResponse.json({ error: 'Zabbix webhook not configured' }, { status: 503 });
+      console.error(
+        "[SECURITY] ZABBIX_WEBHOOK_SECRET is not configured - rejecting Zabbix webhook",
+      );
+      return NextResponse.json(
+        { error: "Zabbix webhook not configured" },
+        { status: 503 },
+      );
     }
 
-    const receivedSecret = request.headers.get('x-webhook-secret');
+    const receivedSecret = request.headers.get("x-webhook-secret");
     if (!constantTimeEquals(receivedSecret, webhookSecret)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Parse payload
     const payload: ZabbixWebhookPayload = await request.json();
-    
-    console.log('[Zabbix Webhook] Received:', {
+
+    console.log("[Zabbix Webhook] Received:", {
       host: payload.host,
       trigger: payload.trigger,
       status: payload.status,
@@ -71,52 +80,55 @@ export async function POST(request: NextRequest) {
     // Find service by Zabbix host ID or host name
     const service = await db.query.services.findFirst({
       where: and(
-        payload.hostId 
+        payload.hostId
           ? eq(services.zabbixHostId, payload.hostId)
-          : eq(services.zabbixHostName, payload.host || '')
+          : eq(services.zabbixHostName, payload.host || ""),
       ),
     });
 
     if (!service) {
-      console.warn('[Zabbix Webhook] No service found for host:', payload.host || payload.hostId);
-      return NextResponse.json({ 
-        received: true, 
-        processed: false, 
-        reason: 'Service not found' 
+      console.warn(
+        "[Zabbix Webhook] No service found for host:",
+        payload.host || payload.hostId,
+      );
+      return NextResponse.json({
+        received: true,
+        processed: false,
+        reason: "Service not found",
       });
     }
 
     // Rate limit per service
     if (isRateLimited(service.id)) {
-      return NextResponse.json({ 
-        received: true, 
-        processed: false, 
-        reason: 'Rate limited' 
+      return NextResponse.json({
+        received: true,
+        processed: false,
+        reason: "Rate limited",
       });
     }
 
     // Determine status from payload
-    let monitoringStatus = service.monitoringStatus || 'UNKNOWN';
-    
-    if (payload.status === 'PROBLEM' || payload.value === '1') {
+    let monitoringStatus = service.monitoringStatus || "UNKNOWN";
+
+    if (payload.status === "PROBLEM" || payload.value === "1") {
       // Map severity to status
       switch (payload.severity) {
-        case '5': // Disaster
-        case '4': // High
-          monitoringStatus = 'CRITICAL';
+        case "5": // Disaster
+        case "4": // High
+          monitoringStatus = "CRITICAL";
           break;
-        case '3': // Average
-          monitoringStatus = 'DEGRADED';
+        case "3": // Average
+          monitoringStatus = "DEGRADED";
           break;
-        case '2': // Warning
-        case '1': // Information
-          monitoringStatus = 'MINOR_ISSUES';
+        case "2": // Warning
+        case "1": // Information
+          monitoringStatus = "MINOR_ISSUES";
           break;
         default:
-          monitoringStatus = 'DEGRADED';
+          monitoringStatus = "DEGRADED";
       }
-    } else if (payload.status === 'OK' || payload.value === '0') {
-      monitoringStatus = 'OPERATIONAL';
+    } else if (payload.status === "OK" || payload.value === "0") {
+      monitoringStatus = "OPERATIONAL";
     }
 
     // Update service immediately
@@ -129,7 +141,7 @@ export async function POST(request: NextRequest) {
     await addMonitoringHistory(service.id, {
       status: monitoringStatus,
       details: {
-        source: 'webhook',
+        source: "webhook",
         trigger: payload.trigger,
         severity: payload.severity,
         eventId: payload.eventId,
@@ -138,10 +150,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Revalidate the services page to show updated data
-    revalidatePath('/s/[subdomain]/services');
-    revalidatePath('/app/services');
+    revalidatePath("/s/[subdomain]/services");
+    revalidatePath("/app/services");
 
-    console.log('[Zabbix Webhook] Updated service:', {
+    console.log("[Zabbix Webhook] Updated service:", {
       serviceId: service.id,
       serviceName: service.name,
       newStatus: monitoringStatus,
@@ -153,12 +165,14 @@ export async function POST(request: NextRequest) {
       serviceId: service.id,
       status: monitoringStatus,
     });
-
   } catch (error) {
-    console.error('[Zabbix Webhook] Error:', error);
+    console.error("[Zabbix Webhook] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Webhook processing failed' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Webhook processing failed",
+      },
+      { status: 500 },
     );
   }
 }
@@ -168,8 +182,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   return NextResponse.json({
-    status: 'ok',
-    service: 'zabbix-webhook-receiver',
+    status: "ok",
+    service: "zabbix-webhook-receiver",
     timestamp: new Date().toISOString(),
   });
 }

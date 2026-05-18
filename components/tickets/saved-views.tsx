@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Globe2, Inbox, UserX, Clock, AlertCircle } from 'lucide-react';
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Globe2, Inbox, UserX, Clock, AlertCircle } from "lucide-react";
 
 interface SavedViewsProps {
   currentUserId: string;
@@ -10,40 +10,40 @@ interface SavedViewsProps {
 
 export function SavedViews({ currentUserId }: SavedViewsProps) {
   const router = useRouter();
-  
+
   const views = [
     {
-      name: 'Public Intake',
+      name: "Public Intake",
       icon: Globe2,
-      href: '/app/tickets?orgId=public',
-      description: 'Tickets submitted without an organization',
+      href: "/app/tickets?orgId=public",
+      description: "Tickets submitted without an organization",
     },
     {
-      name: 'My Open',
+      name: "My Open",
       icon: Inbox,
-      href: '/app/tickets?status=OPEN&assigneeId=' + currentUserId,
-      description: 'Tickets assigned to me that are open',
+      href: "/app/tickets?status=OPEN&assigneeId=" + currentUserId,
+      description: "Tickets assigned to me that are open",
     },
     {
-      name: 'Unassigned',
+      name: "Unassigned",
       icon: UserX,
-      href: '/app/tickets?status=OPEN&assigneeId=unassigned',
-      description: 'Open tickets with no assignee',
+      href: "/app/tickets?status=OPEN&assigneeId=unassigned",
+      description: "Open tickets with no assignee",
     },
     {
-      name: 'Waiting',
+      name: "Waiting",
       icon: Clock,
-      href: '/app/tickets?status=WAITING_ON_CUSTOMER',
-      description: 'Tickets waiting on customer response',
+      href: "/app/tickets?status=WAITING_ON_CUSTOMER",
+      description: "Tickets waiting on customer response",
     },
     {
-      name: 'P1/P2',
+      name: "P1/P2",
       icon: AlertCircle,
-      href: '/app/tickets?priority=P1',
-      description: 'High priority tickets (P1 and P2)',
+      href: "/app/tickets?priority=P1",
+      description: "High priority tickets (P1 and P2)",
     },
   ];
-  
+
   return (
     <div className="flex flex-wrap gap-2">
       {views.map((view) => {

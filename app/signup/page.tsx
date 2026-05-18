@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { signUp } from '@/lib/auth-client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signUp } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SignupPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -28,10 +28,10 @@ export default function SignupPage() {
     });
 
     if (signUpError) {
-      setError(signUpError.message || 'Failed to sign up');
+      setError(signUpError.message || "Failed to sign up");
       setLoading(false);
     } else {
-      router.push('/login');
+      router.push("/login");
     }
   };
 
@@ -39,7 +39,9 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
         <div className="text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Create your account</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+            Create your account
+          </h2>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -62,7 +64,7 @@ export default function SignupPage() {
                 className="mt-1"
               />
             </div>
-            
+
             <div>
               <Label htmlFor="email">Email address</Label>
               <Input
@@ -92,14 +94,17 @@ export default function SignupPage() {
 
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <Link href="/login" className="font-medium text-orange-600 hover:text-orange-500">
+              <Link
+                href="/login"
+                className="font-medium text-orange-600 hover:text-orange-500"
+              >
                 Already have an account? Sign in
               </Link>
             </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating account...' : 'Sign up'}
+            {loading ? "Creating account..." : "Sign up"}
           </Button>
         </form>
       </div>

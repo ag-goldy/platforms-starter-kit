@@ -1,10 +1,10 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { organizations, services } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { and, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { db } from "@/db";
+import { organizations, services } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 interface BusinessHours {
   timezone: string;
@@ -34,7 +34,7 @@ export async function createServiceAction(data: {
     columns: { id: true },
   });
   if (!org) {
-    return { error: 'Organization not found' };
+    return { error: "Organization not found" };
   }
   const [service] = await db
     .insert(services)
@@ -46,26 +46,29 @@ export async function createServiceAction(data: {
       isUnderContract: !!data.isUnderContract,
     })
     .returning();
-  revalidatePath(`/app/organizations/${data.orgId}/services`, 'page');
+  revalidatePath(`/app/organizations/${data.orgId}/services`, "page");
   return { service };
 }
 
-export async function updateServiceAction(serviceId: string, data: {
-  name?: string;
-  slug?: string;
-  description?: string | null;
-  status?: 'ACTIVE' | 'DEGRADED' | 'OFFLINE';
-  isUnderContract?: boolean;
-  businessHours?: unknown;
-  slaResponseHoursP1?: number | null;
-  slaResponseHoursP2?: number | null;
-  slaResponseHoursP3?: number | null;
-  slaResponseHoursP4?: number | null;
-  slaResolutionHoursP1?: number | null;
-  slaResolutionHoursP2?: number | null;
-  slaResolutionHoursP3?: number | null;
-  slaResolutionHoursP4?: number | null;
-}) {
+export async function updateServiceAction(
+  serviceId: string,
+  data: {
+    name?: string;
+    slug?: string;
+    description?: string | null;
+    status?: "ACTIVE" | "DEGRADED" | "OFFLINE";
+    isUnderContract?: boolean;
+    businessHours?: unknown;
+    slaResponseHoursP1?: number | null;
+    slaResponseHoursP2?: number | null;
+    slaResponseHoursP3?: number | null;
+    slaResponseHoursP4?: number | null;
+    slaResolutionHoursP1?: number | null;
+    slaResolutionHoursP2?: number | null;
+    slaResolutionHoursP3?: number | null;
+    slaResolutionHoursP4?: number | null;
+  },
+) {
   await requireInternalRole();
   await db
     .update(services)
@@ -92,7 +95,9 @@ export async function updateServiceAction(serviceId: string, data: {
 
 export async function deleteServiceAction(serviceId: string, orgId: string) {
   await requireInternalRole();
-  await db.delete(services).where(and(eq(services.id, serviceId), eq(services.orgId, orgId)));
-  revalidatePath(`/app/organizations/${orgId}/services`, 'page');
+  await db
+    .delete(services)
+    .where(and(eq(services.id, serviceId), eq(services.orgId, orgId)));
+  revalidatePath(`/app/organizations/${orgId}/services`, "page");
   return { success: true };
 }

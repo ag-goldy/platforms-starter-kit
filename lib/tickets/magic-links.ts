@@ -1,10 +1,10 @@
-import { db } from '@/db';
-import { ticketTokens, type NewTicketToken } from '@/db/schema';
-import { and, eq, gt, isNull } from 'drizzle-orm';
-import crypto from 'crypto';
-import { redis } from '@/lib/redis';
+import { db } from "@/db";
+import { ticketTokens, type NewTicketToken } from "@/db/schema";
+import { and, eq, gt, isNull } from "drizzle-orm";
+import crypto from "crypto";
+import { redis } from "@/lib/redis";
 
-type TicketTokenPurpose = 'VIEW' | 'REPLY';
+type TicketTokenPurpose = "VIEW" | "REPLY";
 
 const DEFAULT_EXPIRY_DAYS = 30;
 const TOKEN_BYTES = 32;
@@ -13,7 +13,7 @@ const TOKEN_FAILURE_TTL_SECONDS = 60 * 60 * 24 * 2;
 function getTokenPepper() {
   const pepper = process.env.TOKEN_PEPPER;
   if (!pepper) {
-    throw new Error('TOKEN_PEPPER environment variable is not set');
+    throw new Error("TOKEN_PEPPER environment variable is not set");
   }
   return pepper;
 }
@@ -22,14 +22,14 @@ function getTokenPepper() {
  * Generate a secure random token for magic link access
  */
 export function generateToken(): string {
-  return crypto.randomBytes(TOKEN_BYTES).toString('base64url');
+  return crypto.randomBytes(TOKEN_BYTES).toString("base64url");
 }
 
 function hashToken(token: string): string {
   return crypto
-    .createHmac('sha256', getTokenPepper())
+    .createHmac("sha256", getTokenPepper())
     .update(token)
-    .digest('hex');
+    .digest("hex");
 }
 
 async function trackTokenFailure(reason: string) {
@@ -40,7 +40,7 @@ async function trackTokenFailure(reason: string) {
       await redis.expire(key, TOKEN_FAILURE_TTL_SECONDS);
     }
   } catch (error) {
-    console.warn('[Security] Failed to track token failure', error);
+    console.warn("[Security] Failed to track token failure", error);
   }
 }
 
@@ -59,7 +59,9 @@ export async function createTicketToken(params: {
   const token = generateToken();
   const tokenHash = hashToken(token);
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + (params.expiresInDays ?? DEFAULT_EXPIRY_DAYS));
+  expiresAt.setDate(
+    expiresAt.getDate() + (params.expiresInDays ?? DEFAULT_EXPIRY_DAYS),
+  );
 
   await db.insert(ticketTokens).values({
     tokenHash,
@@ -90,7 +92,7 @@ export async function consumeTicketToken(params: {
         eq(ticketTokens.tokenHash, tokenHash),
         eq(ticketTokens.purpose, params.purpose),
         isNull(ticketTokens.usedAt),
-        gt(ticketTokens.expiresAt, new Date())
+        gt(ticketTokens.expiresAt, new Date()),
       ),
     });
 
@@ -110,7 +112,7 @@ export async function consumeTicketToken(params: {
   });
 
   if (!result) {
-    await trackTokenFailure('invalid');
+    await trackTokenFailure("invalid");
   }
 
   return result;

@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, ArrowLeft, Plus, Trash2, Pencil } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/components/ui/toast';
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 type Org = { id: string; subdomain: string; name: string; slug: string };
 type Category = {
@@ -42,23 +42,25 @@ export default function PortalKBCategoriesAdminPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [newCategory, setNewCategory] = useState({
-    name: '',
-    description: '',
-    parentId: 'none',
+    name: "",
+    description: "",
+    parentId: "none",
     sortOrder: 0,
   });
 
   const [editCategory, setEditCategory] = useState({
-    name: '',
-    description: '',
-    parentId: 'none',
+    name: "",
+    description: "",
+    parentId: "none",
     sortOrder: 0,
   });
 
-  const isAdmin = role === 'CUSTOMER_ADMIN';
+  const isAdmin = role === "CUSTOMER_ADMIN";
 
   const loadCategories = useCallback(async (orgId: string) => {
-    const res = await fetch(`/api/kb/categories?orgId=${orgId}&includeInternal=true`);
+    const res = await fetch(
+      `/api/kb/categories?orgId=${orgId}&includeInternal=true`,
+    );
     if (!res.ok) {
       setCategories([]);
       return;
@@ -72,7 +74,7 @@ export default function PortalKBCategoriesAdminPage() {
       setLoading(true);
       try {
         const orgRes = await fetch(`/api/org/${subdomain}`);
-        if (!orgRes.ok) throw new Error('Org not found');
+        if (!orgRes.ok) throw new Error("Org not found");
         const orgData = (await orgRes.json()) as Org;
         setOrg(orgData);
 
@@ -101,29 +103,37 @@ export default function PortalKBCategoriesAdminPage() {
     if (!org) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/kb/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/kb/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgId: org.id,
           name: newCategory.name,
           description: newCategory.description || null,
-          parentId: newCategory.parentId === 'none' ? null : newCategory.parentId,
+          parentId:
+            newCategory.parentId === "none" ? null : newCategory.parentId,
           isPublic: true,
-          sortOrder: Number.isFinite(newCategory.sortOrder) ? newCategory.sortOrder : 0,
+          sortOrder: Number.isFinite(newCategory.sortOrder)
+            ? newCategory.sortOrder
+            : 0,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to create category');
+        throw new Error(data.error || "Failed to create category");
       }
 
-      success('Category created');
-      setNewCategory({ name: '', description: '', parentId: 'none', sortOrder: 0 });
+      success("Category created");
+      setNewCategory({
+        name: "",
+        description: "",
+        parentId: "none",
+        sortOrder: 0,
+      });
       await loadCategories(org.id);
     } catch (e2) {
-      showError(e2 instanceof Error ? e2.message : 'Failed to create category');
+      showError(e2 instanceof Error ? e2.message : "Failed to create category");
     } finally {
       setSaving(false);
     }
@@ -133,8 +143,8 @@ export default function PortalKBCategoriesAdminPage() {
     setEditingId(category.id);
     setEditCategory({
       name: category.name,
-      description: category.description || '',
-      parentId: category.parentId || 'none',
+      description: category.description || "",
+      parentId: category.parentId || "none",
       sortOrder: category.sortOrder || 0,
     });
   }
@@ -143,28 +153,31 @@ export default function PortalKBCategoriesAdminPage() {
     if (!org) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/kb/categories', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/kb/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: categoryId,
           name: editCategory.name,
           description: editCategory.description || null,
-          parentId: editCategory.parentId === 'none' ? null : editCategory.parentId,
-          sortOrder: Number.isFinite(editCategory.sortOrder) ? editCategory.sortOrder : 0,
+          parentId:
+            editCategory.parentId === "none" ? null : editCategory.parentId,
+          sortOrder: Number.isFinite(editCategory.sortOrder)
+            ? editCategory.sortOrder
+            : 0,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to update category');
+        throw new Error(data.error || "Failed to update category");
       }
 
-      success('Category updated');
+      success("Category updated");
       setEditingId(null);
       await loadCategories(org.id);
     } catch (e2) {
-      showError(e2 instanceof Error ? e2.message : 'Failed to update category');
+      showError(e2 instanceof Error ? e2.message : "Failed to update category");
     } finally {
       setSaving(false);
     }
@@ -175,16 +188,16 @@ export default function PortalKBCategoriesAdminPage() {
     setDeletingId(categoryId);
     try {
       const res = await fetch(`/api/kb/categories?id=${categoryId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to delete category');
+        throw new Error(data.error || "Failed to delete category");
       }
-      success('Category deleted');
+      success("Category deleted");
       await loadCategories(org.id);
     } catch (e2) {
-      showError(e2 instanceof Error ? e2.message : 'Failed to delete category');
+      showError(e2 instanceof Error ? e2.message : "Failed to delete category");
     } finally {
       setDeletingId(null);
     }
@@ -204,7 +217,9 @@ export default function PortalKBCategoriesAdminPage() {
         <CardHeader>
           <CardTitle>KB Categories</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-stone-600">Admin access required.</CardContent>
+        <CardContent className="text-sm text-stone-600">
+          Admin access required.
+        </CardContent>
       </Card>
     );
   }
@@ -233,14 +248,21 @@ export default function PortalKBCategoriesAdminPage() {
               <Label>Name</Label>
               <Input
                 value={newCategory.name}
-                onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                onChange={(e) =>
+                  setNewCategory({ ...newCategory, name: e.target.value })
+                }
               />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
                 value={newCategory.description}
-                onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    description: e.target.value,
+                  })
+                }
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,7 +270,9 @@ export default function PortalKBCategoriesAdminPage() {
                 <Label>Parent</Label>
                 <Select
                   value={newCategory.parentId}
-                  onValueChange={(v) => setNewCategory({ ...newCategory, parentId: v })}
+                  onValueChange={(v) =>
+                    setNewCategory({ ...newCategory, parentId: v })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -269,13 +293,20 @@ export default function PortalKBCategoriesAdminPage() {
                   type="number"
                   value={newCategory.sortOrder}
                   onChange={(e) =>
-                    setNewCategory({ ...newCategory, sortOrder: Number(e.target.value) })
+                    setNewCategory({
+                      ...newCategory,
+                      sortOrder: Number(e.target.value),
+                    })
                   }
                 />
               </div>
             </div>
             <Button type="submit" disabled={!canCreate}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
               Create
             </Button>
           </form>
@@ -299,13 +330,22 @@ export default function PortalKBCategoriesAdminPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-medium text-stone-900 truncate">{c.name}</div>
-                      <div className="text-xs text-stone-500 truncate">{c.slug}</div>
+                      <div className="font-medium text-stone-900 truncate">
+                        {c.name}
+                      </div>
+                      <div className="text-xs text-stone-500 truncate">
+                        {c.slug}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {isEditing ? (
-                        <Button onClick={() => handleUpdate(c.id)} disabled={saving}>
-                          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        <Button
+                          onClick={() => handleUpdate(c.id)}
+                          disabled={saving}
+                        >
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : null}
                           Save
                         </Button>
                       ) : (
@@ -335,7 +375,12 @@ export default function PortalKBCategoriesAdminPage() {
                         <Label>Name</Label>
                         <Input
                           value={editCategory.name}
-                          onChange={(e) => setEditCategory({ ...editCategory, name: e.target.value })}
+                          onChange={(e) =>
+                            setEditCategory({
+                              ...editCategory,
+                              name: e.target.value,
+                            })
+                          }
                         />
                       </div>
                       <div className="space-y-2">
@@ -343,7 +388,10 @@ export default function PortalKBCategoriesAdminPage() {
                         <Textarea
                           value={editCategory.description}
                           onChange={(e) =>
-                            setEditCategory({ ...editCategory, description: e.target.value })
+                            setEditCategory({
+                              ...editCategory,
+                              description: e.target.value,
+                            })
                           }
                         />
                       </div>
@@ -352,7 +400,9 @@ export default function PortalKBCategoriesAdminPage() {
                           <Label>Parent</Label>
                           <Select
                             value={editCategory.parentId}
-                            onValueChange={(v) => setEditCategory({ ...editCategory, parentId: v })}
+                            onValueChange={(v) =>
+                              setEditCategory({ ...editCategory, parentId: v })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -394,4 +444,3 @@ export default function PortalKBCategoriesAdminPage() {
     </div>
   );
 }
-

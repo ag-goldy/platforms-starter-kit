@@ -1,21 +1,33 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { tickets, ticketTagAssignments } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { revalidatePath } from 'next/cache';
-import { eq, inArray } from 'drizzle-orm';
-import { z } from 'zod';
-import { transitionTicketStatus } from '@/lib/tickets/lifecycle';
+import { db } from "@/db";
+import { tickets, ticketTagAssignments } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { revalidatePath } from "next/cache";
+import { eq, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { transitionTicketStatus } from "@/lib/tickets/lifecycle";
 
 const ticketIdsSchema = z.array(z.string().uuid()).min(1);
 
-export async function bulkUpdateStatusAction(ticketIds: string[], status: string) {
+export async function bulkUpdateStatusAction(
+  ticketIds: string[],
+  status: string,
+) {
   const { user } = await requireInternalRole();
-  
+
   const validatedIds = ticketIdsSchema.parse(ticketIds);
-  const validatedStatus = z.enum(['NEW', 'OPEN', 'WAITING_ON_CUSTOMER', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).parse(status);
+  const validatedStatus = z
+    .enum([
+      "NEW",
+      "OPEN",
+      "WAITING_ON_CUSTOMER",
+      "IN_PROGRESS",
+      "RESOLVED",
+      "CLOSED",
+    ])
+    .parse(status);
 
   const targetTickets = await db.query.tickets.findMany({
     where: inArray(tickets.id, validatedIds),
@@ -28,23 +40,26 @@ export async function bulkUpdateStatusAction(ticketIds: string[], status: string
     await transitionTicketStatus({
       ticketId: ticket.id,
       orgId: ticket.orgId,
-      actor: { type: 'agent', userId: user.id },
+      actor: { type: "agent", userId: user.id },
       targetStatus: validatedStatus,
-      reason: 'Bulk status update.',
-      source: 'staff',
+      reason: "Bulk status update.",
+      source: "staff",
     });
     updated++;
   }
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { updated, error: null };
 }
 
-export async function bulkUpdatePriorityAction(ticketIds: string[], priority: string) {
+export async function bulkUpdatePriorityAction(
+  ticketIds: string[],
+  priority: string,
+) {
   const { user } = await requireInternalRole();
-  
+
   const validatedIds = ticketIdsSchema.parse(ticketIds);
-  const validatedPriority = z.enum(['P1', 'P2', 'P3', 'P4']).parse(priority);
+  const validatedPriority = z.enum(["P1", "P2", "P3", "P4"]).parse(priority);
 
   const updatedTickets = await db
     .update(tickets)
@@ -58,20 +73,25 @@ export async function bulkUpdatePriorityAction(ticketIds: string[], priority: st
       userId: user.id,
       orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
-      action: 'TICKET_PRIORITY_CHANGED',
+      action: "TICKET_PRIORITY_CHANGED",
       details: { priority: validatedPriority, bulkUpdate: true },
     });
   }
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { updated: updatedTickets.length, error: null };
 }
 
-export async function bulkAssignAction(ticketIds: string[], assigneeId: string | null) {
+export async function bulkAssignAction(
+  ticketIds: string[],
+  assigneeId: string | null,
+) {
   const { user } = await requireInternalRole();
-  
+
   const validatedIds = ticketIdsSchema.parse(ticketIds);
-  const validatedAssigneeId = assigneeId ? z.string().uuid().parse(assigneeId) : null;
+  const validatedAssigneeId = assigneeId
+    ? z.string().uuid().parse(assigneeId)
+    : null;
 
   const updatedTickets = await db
     .update(tickets)
@@ -85,12 +105,12 @@ export async function bulkAssignAction(ticketIds: string[], assigneeId: string |
       userId: user.id,
       orgId: ticket.orgId ?? undefined,
       ticketId: ticket.id,
-      action: 'TICKET_ASSIGNED',
+      action: "TICKET_ASSIGNED",
       details: { assigneeId: validatedAssigneeId, bulkUpdate: true },
     });
   }
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { updated: updatedTickets.length, error: null };
 }
 
@@ -111,7 +131,7 @@ export async function bulkAddTagAction(ticketIds: string[], tagId: string) {
   const existingSet = new Set(
     existingAssignments
       .filter((a) => a.tagId === validatedTagId)
-      .map((a) => a.ticketId)
+      .map((a) => a.ticketId),
   );
 
   const ticketsToTag = validatedIds.filter((id) => !existingSet.has(id));
@@ -138,13 +158,13 @@ export async function bulkAddTagAction(ticketIds: string[], tagId: string) {
         userId: user.id,
         orgId: ticket.orgId ?? undefined,
         ticketId,
-        action: 'TICKET_TAG_ADDED',
+        action: "TICKET_TAG_ADDED",
         details: { tagId: validatedTagId, bulkUpdate: true },
       });
     }
   }
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { updated: ticketsToTag.length, error: null };
 }
 
@@ -163,15 +183,15 @@ export async function bulkCloseAction(ticketIds: string[]) {
     await transitionTicketStatus({
       ticketId: ticket.id,
       orgId: ticket.orgId,
-      actor: { type: 'agent', userId: user.id },
-      targetStatus: 'CLOSED',
-      reason: 'Bulk close action.',
-      source: 'staff',
+      actor: { type: "agent", userId: user.id },
+      targetStatus: "CLOSED",
+      reason: "Bulk close action.",
+      source: "staff",
     });
     updated++;
   }
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { updated, error: null };
 }
 
@@ -184,7 +204,7 @@ export async function bulkRemoveTagAction(ticketIds: string[], tagId: string) {
     .delete(ticketTagAssignments)
     .where(
       inArray(ticketTagAssignments.ticketId, validatedIds) &&
-      eq(ticketTagAssignments.tagId, validatedTagId)
+        eq(ticketTagAssignments.tagId, validatedTagId),
     )
     .returning();
 
@@ -198,12 +218,12 @@ export async function bulkRemoveTagAction(ticketIds: string[], tagId: string) {
         userId: user.id,
         orgId: ticket.orgId ?? undefined,
         ticketId: assignment.ticketId,
-        action: 'TICKET_TAG_REMOVED',
+        action: "TICKET_TAG_REMOVED",
         details: { tagId: validatedTagId, bulkUpdate: true },
       });
     }
   }
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { updated: deletedAssignments.length, error: null };
 }

@@ -1,7 +1,10 @@
-'use client';
+"use client";
 
-import { useTransition, useOptimistic } from 'react';
-import { updateTicketStatus, updateTicketPriority } from '@/app/app/actions/tickets';
+import { useTransition, useOptimistic } from "react";
+import {
+  updateTicketStatus,
+  updateTicketPriority,
+} from "@/app/app/actions/tickets";
 
 export function TicketPropertiesOptimistic({
   ticketId,
@@ -18,9 +21,12 @@ export function TicketPropertiesOptimistic({
 }) {
   const [isPending, startTransition] = useTransition();
   const [optimisticStatus, addOptimisticStatus] = useOptimistic(initialStatus);
-  const [optimisticPriority, addOptimisticPriority] = useOptimistic(initialPriority);
+  const [optimisticPriority, addOptimisticPriority] =
+    useOptimistic(initialPriority);
 
-  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStatusChange = async (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     const newStatus = e.target.value;
     startTransition(async () => {
       addOptimisticStatus(newStatus);
@@ -28,7 +34,9 @@ export function TicketPropertiesOptimistic({
     });
   };
 
-  const handlePriorityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handlePriorityChange = async (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     const newPriority = e.target.value;
     startTransition(async () => {
       addOptimisticPriority(newPriority);
@@ -41,8 +49,8 @@ export function TicketPropertiesOptimistic({
       <div className="flex flex-col gap-1">
         <dt className="text-muted-foreground">Status</dt>
         <dd>
-          <select 
-            value={optimisticStatus} 
+          <select
+            value={optimisticStatus}
             onChange={handleStatusChange}
             className="w-full p-2 border rounded-md"
           >
@@ -55,12 +63,12 @@ export function TicketPropertiesOptimistic({
           </select>
         </dd>
       </div>
-      
+
       <div className="flex flex-col gap-1">
         <dt className="text-muted-foreground">Priority</dt>
         <dd>
-          <select 
-            value={optimisticPriority} 
+          <select
+            value={optimisticPriority}
             onChange={handlePriorityChange}
             className="w-full p-2 border rounded-md"
           >

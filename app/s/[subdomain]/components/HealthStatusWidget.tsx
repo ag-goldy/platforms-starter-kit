@@ -1,17 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 import {
   Activity,
-
   AlertTriangle,
   CheckCircle,
   XCircle,
   Clock,
-
-} from 'lucide-react';
-
+} from "lucide-react";
 
 interface Org {
   id: string;
@@ -25,7 +22,7 @@ interface HealthStatusWidgetProps {
 interface ServiceStatus {
   id: string;
   name: string;
-  status: 'OPERATIONAL' | 'DEGRADED' | 'DOWN';
+  status: "OPERATIONAL" | "DEGRADED" | "DOWN";
   uptime24h: number;
   uptime7d: number;
   lastIncident?: string;
@@ -34,7 +31,7 @@ interface ServiceStatus {
 interface Incident {
   id: string;
   title: string;
-  severity: 'INFO' | 'WARN' | 'CRITICAL';
+  severity: "INFO" | "WARN" | "CRITICAL";
   startedAt: string;
   resolvedAt?: string;
 }
@@ -43,7 +40,7 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
+  const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("24h");
 
   useEffect(() => {
     const fetchStatusData = async () => {
@@ -56,7 +53,7 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
           setIncidents(data.incidents || []);
         }
       } catch (error) {
-        console.error('Failed to fetch status:', error);
+        console.error("Failed to fetch status:", error);
       } finally {
         setLoading(false);
       }
@@ -66,20 +63,22 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
     return () => clearInterval(interval);
   }, [subdomain]);
 
-  const operationalCount = services.filter((s) => s.status === 'OPERATIONAL').length;
-  const degradedCount = services.filter((s) => s.status === 'DEGRADED').length;
-  const downCount = services.filter((s) => s.status === 'DOWN').length;
+  const operationalCount = services.filter(
+    (s) => s.status === "OPERATIONAL",
+  ).length;
+  const degradedCount = services.filter((s) => s.status === "DEGRADED").length;
+  const downCount = services.filter((s) => s.status === "DOWN").length;
 
   const overallStatus =
-    downCount > 0 ? 'critical' : degradedCount > 0 ? 'warning' : 'operational';
+    downCount > 0 ? "critical" : degradedCount > 0 ? "warning" : "operational";
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'OPERATIONAL':
+      case "OPERATIONAL":
         return <CheckCircle className="w-4 h-4 text-emerald-500" />;
-      case 'DEGRADED':
+      case "DEGRADED":
         return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-      case 'DOWN':
+      case "DOWN":
         return <XCircle className="w-4 h-4 text-red-500" />;
       default:
         return <Activity className="w-4 h-4 text-stone-400" />;
@@ -88,18 +87,18 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
 
   const overallStatusConfig = {
     operational: {
-      color: 'bg-emerald-500',
-      text: 'All Systems Operational',
+      color: "bg-emerald-500",
+      text: "All Systems Operational",
       icon: CheckCircle,
     },
     warning: {
-      color: 'bg-amber-500',
-      text: 'Partial Outage',
+      color: "bg-amber-500",
+      text: "Partial Outage",
       icon: AlertTriangle,
     },
     critical: {
-      color: 'bg-red-500',
-      text: 'Major Outage',
+      color: "bg-red-500",
+      text: "Major Outage",
       icon: XCircle,
     },
   };
@@ -115,14 +114,14 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
           <h3 className="font-semibold text-stone-900">Status</h3>
         </div>
         <div className="flex items-center gap-1">
-          {(['24h', '7d', '30d'] as const).map((range) => (
+          {(["24h", "7d", "30d"] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
               className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
                 timeRange === range
-                  ? 'bg-stone-900 text-white'
-                  : 'text-stone-500 hover:bg-stone-100'
+                  ? "bg-stone-900 text-white"
+                  : "text-stone-500 hover:bg-stone-100"
               }`}
             >
               {range}
@@ -146,11 +145,15 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
           <div className="space-y-4">
             {/* Overall Status */}
             <div className="flex items-center gap-3 p-3 rounded-lg bg-stone-50">
-              <div className={`w-10 h-10 rounded-full ${statusConfig.color} flex items-center justify-center`}>
+              <div
+                className={`w-10 h-10 rounded-full ${statusConfig.color} flex items-center justify-center`}
+              >
                 <statusConfig.icon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="font-medium text-sm text-stone-900">{statusConfig.text}</p>
+                <p className="font-medium text-sm text-stone-900">
+                  {statusConfig.text}
+                </p>
                 <p className="text-xs text-stone-500">
                   {operationalCount}/{services.length} services up
                 </p>
@@ -166,14 +169,16 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
                 >
                   <div className="flex items-center gap-2">
                     {getStatusIcon(service.status)}
-                    <span className="text-sm text-stone-700 truncate">{service.name}</span>
+                    <span className="text-sm text-stone-700 truncate">
+                      {service.name}
+                    </span>
                   </div>
                   <span className="text-xs text-stone-500">
-                    {timeRange === '24h'
+                    {timeRange === "24h"
                       ? `${service.uptime24h}%`
-                      : timeRange === '7d'
+                      : timeRange === "7d"
                         ? `${service.uptime7d}%`
-                        : '99.9%'}
+                        : "99.9%"}
                   </span>
                 </div>
               ))}
@@ -182,7 +187,9 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
             {/* Recent Incidents */}
             {incidents.length > 0 && (
               <div className="pt-2 border-t border-stone-100">
-                <p className="text-xs font-medium text-stone-500 mb-2">Recent Incidents</p>
+                <p className="text-xs font-medium text-stone-500 mb-2">
+                  Recent Incidents
+                </p>
                 <div className="space-y-2">
                   {incidents.slice(0, 2).map((incident) => (
                     <div
@@ -196,7 +203,7 @@ export function HealthStatusWidget({ subdomain }: HealthStatusWidgetProps) {
                         </p>
                         <p className="text-[10px] text-stone-500">
                           {new Date(incident.startedAt).toLocaleDateString()}
-                          {incident.resolvedAt && ' • Resolved'}
+                          {incident.resolvedAt && " • Resolved"}
                         </p>
                       </div>
                     </div>

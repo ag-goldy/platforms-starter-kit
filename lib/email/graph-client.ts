@@ -1,11 +1,14 @@
-import { ClientSecretCredential } from '@azure/identity';
-import { Client, AuthProviderCallback } from '@microsoft/microsoft-graph-client';
+import { ClientSecretCredential } from "@azure/identity";
+import {
+  Client,
+  AuthProviderCallback,
+} from "@microsoft/microsoft-graph-client";
 
 // Microsoft Graph Email Configuration
 const TENANT_ID = process.env.MICROSOFT_GRAPH_TENANT_ID;
 const CLIENT_ID = process.env.MICROSOFT_GRAPH_CLIENT_ID;
 const CLIENT_SECRET = process.env.MICROSOFT_GRAPH_CLIENT_SECRET;
-const FROM_EMAIL = process.env.EMAIL_FROM_ADDRESS || 'help@agrnetworks.com';
+const FROM_EMAIL = process.env.EMAIL_FROM_ADDRESS || "help@agrnetworks.com";
 
 // Token cache to avoid fetching new token for every email
 let tokenCache: { token: string; expiresAt: number } | null = null;
@@ -38,20 +41,22 @@ function createAuthProvider(credential: ClientSecretCredential) {
       }
 
       try {
-        const token = await credential.getToken('https://graph.microsoft.com/.default');
-        
+        const token = await credential.getToken(
+          "https://graph.microsoft.com/.default",
+        );
+
         // Cache the token with expiry (usually 1 hour)
         tokenCache = {
           token: token.token,
           expiresAt: token.expiresOnTimestamp || Date.now() + 3600 * 1000,
         };
-        
+
         return token.token;
       } catch (error) {
-        console.error('[Graph Email] Failed to acquire access token:', error);
+        console.error("[Graph Email] Failed to acquire access token:", error);
         throw error;
       }
-    }
+    },
   };
 }
 
@@ -63,29 +68,34 @@ let initializationError: Error | null = null;
  */
 function initializeGraphClient(): Client {
   if (graphClient) return graphClient;
-  
+
   if (initializationError) {
     throw initializationError;
   }
 
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     const error = new Error(
-      'Microsoft Graph credentials not configured. ' +
-      'Please set MICROSOFT_GRAPH_TENANT_ID, MICROSOFT_GRAPH_CLIENT_ID, and MICROSOFT_GRAPH_CLIENT_SECRET'
+      "Microsoft Graph credentials not configured. " +
+        "Please set MICROSOFT_GRAPH_TENANT_ID, MICROSOFT_GRAPH_CLIENT_ID, and MICROSOFT_GRAPH_CLIENT_SECRET",
     );
     initializationError = error;
     throw error;
   }
 
   try {
-    const credential = new ClientSecretCredential(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    const credential = new ClientSecretCredential(
+      TENANT_ID,
+      CLIENT_ID,
+      CLIENT_SECRET,
+    );
     const authProvider = createAuthProvider(credential);
 
     graphClient = Client.init({
       authProvider: (done: AuthProviderCallback) => {
-        authProvider.getAccessToken()
-          .then(token => done(null, token))
-          .catch(err => done(err, null));
+        authProvider
+          .getAccessToken()
+          .then((token) => done(null, token))
+          .catch((err) => done(err, null));
       },
     });
 
@@ -108,25 +118,30 @@ function getGraphClient(): Client {
  */
 function buildEmailMessage(options: SendEmailOptions): unknown {
   const toRecipients = Array.isArray(options.to) ? options.to : [options.to];
-  const ccRecipients = options.cc 
-    ? (Array.isArray(options.cc) ? options.cc : [options.cc]) 
+  const ccRecipients = options.cc
+    ? Array.isArray(options.cc)
+      ? options.cc
+      : [options.cc]
     : [];
-  const bccRecipients = options.bcc 
-    ? (Array.isArray(options.bcc) ? options.bcc : [options.bcc]) 
+  const bccRecipients = options.bcc
+    ? Array.isArray(options.bcc)
+      ? options.bcc
+      : [options.bcc]
     : [];
 
   // Build email body (prefer HTML)
-  const body: { contentType: string; content: string } = options.html 
-    ? { contentType: 'HTML', content: options.html }
-    : { contentType: 'text', content: options.text || '' };
+  const body: { contentType: string; content: string } = options.html
+    ? { contentType: "HTML", content: options.html }
+    : { contentType: "text", content: options.text || "" };
 
   // Build attachments if any
-  const attachments = options.attachments?.map(att => ({
-    '@odata.type': '#microsoft.graph.fileAttachment',
-    name: att.filename,
-    contentType: att.contentType,
-    contentBytes: att.content.toString('base64'),
-  })) || [];
+  const attachments =
+    options.attachments?.map((att) => ({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: att.filename,
+      contentType: att.contentType,
+      contentBytes: att.content.toString("base64"),
+    })) || [];
 
   return {
     message: {
@@ -137,18 +152,22 @@ function buildEmailMessage(options: SendEmailOptions): unknown {
           address: FROM_EMAIL,
         },
       },
-      toRecipients: toRecipients.map(email => ({
+      toRecipients: toRecipients.map((email) => ({
         emailAddress: { address: email },
       })),
-      ccRecipients: ccRecipients.map(email => ({
+      ccRecipients: ccRecipients.map((email) => ({
         emailAddress: { address: email },
       })),
-      bccRecipients: bccRecipients.map(email => ({
+      bccRecipients: bccRecipients.map((email) => ({
         emailAddress: { address: email },
       })),
-      replyTo: options.replyTo ? [{
-        emailAddress: { address: options.replyTo },
-      }] : undefined,
+      replyTo: options.replyTo
+        ? [
+            {
+              emailAddress: { address: options.replyTo },
+            },
+          ]
+        : undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
     },
     saveToSentItems: true,
@@ -158,7 +177,9 @@ function buildEmailMessage(options: SendEmailOptions): unknown {
 /**
  * Send email via Microsoft Graph with retry logic
  */
-export async function sendEmailViaGraph(options: SendEmailOptions): Promise<void> {
+export async function sendEmailViaGraph(
+  options: SendEmailOptions,
+): Promise<void> {
   const client = getGraphClient();
   const emailPayload = buildEmailMessage(options);
   const toRecipients = Array.isArray(options.to) ? options.to : [options.to];
@@ -170,38 +191,50 @@ export async function sendEmailViaGraph(options: SendEmailOptions): Promise<void
     try {
       // Send email using Microsoft Graph
       await client.api(`/users/${FROM_EMAIL}/sendMail`).post(emailPayload);
-      
-      console.log(`[Graph Email] ✅ Sent to ${toRecipients.join(', ')}: "${options.subject}"`);
+
+      console.log(
+        `[Graph Email] ✅ Sent to ${toRecipients.join(", ")}: "${options.subject}"`,
+      );
       return; // Success - exit retry loop
-      
     } catch (error: unknown) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       // Check if it's a rate limit error (429)
-      const graphError = error as { statusCode?: number; headers?: { get?: (name: string) => string } };
+      const graphError = error as {
+        statusCode?: number;
+        headers?: { get?: (name: string) => string };
+      };
       if (graphError.statusCode === 429) {
-        const retryAfter = Number(graphError.headers?.get?.('Retry-After') || 5);
-        console.warn(`[Graph Email] Rate limited. Waiting ${retryAfter}s before retry ${attempt}/${maxRetries}`);
+        const retryAfter = Number(
+          graphError.headers?.get?.("Retry-After") || 5,
+        );
+        console.warn(
+          `[Graph Email] Rate limited. Waiting ${retryAfter}s before retry ${attempt}/${maxRetries}`,
+        );
         await sleep(retryAfter * 1000);
         continue;
       }
-      
+
       // Check if it's an authentication error - clear token cache and retry
       if (graphError.statusCode === 401) {
-        console.warn(`[Graph Email] Auth error on attempt ${attempt}, clearing token cache`);
+        console.warn(
+          `[Graph Email] Auth error on attempt ${attempt}, clearing token cache`,
+        );
         tokenCache = null;
         await sleep(1000 * attempt); // Exponential backoff
         continue;
       }
-      
+
       // For other errors, retry with backoff
       if (attempt < maxRetries) {
         const delay = 1000 * attempt; // 1s, 2s, 3s
-        console.warn(`[Graph Email] Attempt ${attempt} failed, retrying in ${delay}ms...`);
+        console.warn(
+          `[Graph Email] Attempt ${attempt} failed, retrying in ${delay}ms...`,
+        );
         await sleep(delay);
         continue;
       }
-      
+
       // All retries exhausted
       break;
     }
@@ -215,12 +248,12 @@ export async function sendEmailViaGraph(options: SendEmailOptions): Promise<void
     error: lastError?.message,
     statusCode: errorWithStatus?.statusCode,
   });
-  
-  throw lastError || new Error('Failed to send email after retries');
+
+  throw lastError || new Error("Failed to send email after retries");
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -228,14 +261,14 @@ function sleep(ms: number): Promise<void> {
  */
 export async function sendEmailBatch(
   emails: SendEmailOptions[],
-  batchSize: number = 3
+  batchSize: number = 3,
 ): Promise<{ sent: number; failed: number; errors: Error[] }> {
   const results = { sent: 0, failed: 0, errors: [] as Error[] };
-  
+
   // Process in batches to avoid rate limits
   for (let i = 0; i < emails.length; i += batchSize) {
     const batch = emails.slice(i, i + batchSize);
-    
+
     await Promise.all(
       batch.map(async (email) => {
         try {
@@ -245,15 +278,15 @@ export async function sendEmailBatch(
           results.failed++;
           results.errors.push(error as Error);
         }
-      })
+      }),
     );
-    
+
     // Small delay between batches
     if (i + batchSize < emails.length) {
       await sleep(500);
     }
   }
-  
+
   return results;
 }
 
@@ -277,7 +310,7 @@ export async function testGraphConfiguration(): Promise<{
   error?: string;
 }> {
   if (!isGraphEmailConfigured()) {
-    return { configured: false, connected: false, error: 'Not configured' };
+    return { configured: false, connected: false, error: "Not configured" };
   }
 
   try {
@@ -289,7 +322,7 @@ export async function testGraphConfiguration(): Promise<{
     return {
       configured: true,
       connected: false,
-      error: error instanceof Error ? error.message : 'Connection failed',
+      error: error instanceof Error ? error.message : "Connection failed",
     };
   }
 }

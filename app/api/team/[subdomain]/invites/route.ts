@@ -1,25 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { organizations, memberships, userInvitations, users } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { randomBytes } from 'crypto';
-import { rateLimit } from '@/lib/rate-limit';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import {
+  organizations,
+  memberships,
+  userInvitations,
+  users,
+} from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { rateLimit } from "@/lib/rate-limit";
 
 // POST /api/team/[subdomain]/invites - Create a new invitation
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ subdomain: string }> }
+  { params }: { params: Promise<{ subdomain: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 10 invites per hour per user — prevents bulk spam invitations
-    const rl = await rateLimit(`invites:post:${session.user.id}`, { maxRequests: 10, windowSeconds: 3600 });
-    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    const rl = await rateLimit(`invites:post:${session.user.id}`, {
+      maxRequests: 10,
+      windowSeconds: 3600,
+    });
+    if (!rl.allowed)
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        { status: 429 },
+      );
 
     const { subdomain } = await params;
     const body = await request.json();
@@ -27,8 +39,8 @@ export async function POST(
 
     if (!email || !role) {
       return NextResponse.json(
-        { error: 'Email and role are required' },
-        { status: 400 }
+        { error: "Email and role are required" },
+        { status: 400 },
       );
     }
 
@@ -38,7 +50,10 @@ export async function POST(
     });
 
     if (!org) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 },
+      );
     }
 
     // Check if user is admin
@@ -46,12 +61,15 @@ export async function POST(
       where: and(
         eq(memberships.userId, session.user.id),
         eq(memberships.orgId, org.id),
-        eq(memberships.isActive, true)
+        eq(memberships.isActive, true),
       ),
     });
 
-    if (!membership || (membership.role !== 'CUSTOMER_ADMIN' && membership.role !== 'ADMIN')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (
+      !membership ||
+      (membership.role !== "CUSTOMER_ADMIN" && membership.role !== "ADMIN")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Check if user already exists
@@ -64,14 +82,14 @@ export async function POST(
       const existingMembership = await db.query.memberships.findFirst({
         where: and(
           eq(memberships.userId, existingUser.id),
-          eq(memberships.orgId, org.id)
+          eq(memberships.orgId, org.id),
         ),
       });
 
       if (existingMembership) {
         return NextResponse.json(
-          { error: 'User is already a member of this organization' },
-          { status: 409 }
+          { error: "User is already a member of this organization" },
+          { status: 409 },
         );
       }
     }
@@ -81,19 +99,19 @@ export async function POST(
       where: and(
         eq(userInvitations.email, email.toLowerCase()),
         eq(userInvitations.orgId, org.id),
-        eq(userInvitations.acceptedAt, null)
+        eq(userInvitations.acceptedAt, null),
       ),
     });
 
     if (existingInvite) {
       return NextResponse.json(
-        { error: 'An invitation is already pending for this email' },
-        { status: 409 }
+        { error: "An invitation is already pending for this email" },
+        { status: 409 },
       );
     }
 
     // Generate invitation token
-    const token = randomBytes(32).toString('hex');
+    const token = randomBytes(32).toString("hex");
 
     // Create invitation
     const [invitation] = await db
@@ -111,18 +129,21 @@ export async function POST(
     // TODO: Send email notification
     // await sendInvitationEmail(email, org.name, token);
 
-    return NextResponse.json({
-      id: invitation.id,
-      email: invitation.email,
-      role: invitation.role,
-      invitedAt: invitation.invitedAt,
-      invitedBy: session.user.name || session.user.email,
-    }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating invitation:', error);
     return NextResponse.json(
-      { error: 'Failed to create invitation' },
-      { status: 500 }
+      {
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        invitedAt: invitation.invitedAt,
+        invitedBy: session.user.name || session.user.email,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("Error creating invitation:", error);
+    return NextResponse.json(
+      { error: "Failed to create invitation" },
+      { status: 500 },
     );
   }
 }

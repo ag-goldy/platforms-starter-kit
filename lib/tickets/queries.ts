@@ -1,13 +1,25 @@
-import { db } from '@/db';
+import { db } from "@/db";
 import {
   tickets,
   ticketComments,
   ticketTagAssignments,
   ticketPriorityEnum,
   ticketStatusEnum,
-} from '@/db/schema';
-import { eq, and, desc, asc, or, like, isNull, inArray, sql, gte, lte } from 'drizzle-orm';
-import { withOrgScope } from '@/lib/db/with-org-scope';
+} from "@/db/schema";
+import {
+  eq,
+  and,
+  desc,
+  asc,
+  or,
+  like,
+  isNull,
+  inArray,
+  sql,
+  gte,
+  lte,
+} from "drizzle-orm";
+import { withOrgScope } from "@/lib/db/with-org-scope";
 
 export type TicketStatus = (typeof ticketStatusEnum.enumValues)[number];
 export type TicketPriority = (typeof ticketPriorityEnum.enumValues)[number];
@@ -31,16 +43,16 @@ export interface TicketFilters {
 
 /**
  * Get tickets with optional org filtering
- * 
+ *
  * For customer users: orgId is required (enforced by withOrgScope)
  * For internal users: orgId is optional (can see all tickets)
- * 
+ *
  * @param filters - Filter criteria including optional orgId
  * @returns Array of tickets matching the filters
  */
 export async function getTickets(filters: TicketFilters = {}) {
   // If orgId is provided, use withOrgScope to enforce tenant isolation
-  if (filters.orgId && filters.orgId !== 'public') {
+  if (filters.orgId && filters.orgId !== "public") {
     return withOrgScope(filters.orgId, async (orgId) => {
       return getTicketsInternal({ ...filters, orgId });
     });
@@ -59,7 +71,7 @@ async function getTicketsInternal(filters: TicketFilters) {
   const conditions = [];
 
   if (filters.orgId) {
-    if (filters.orgId === 'public') {
+    if (filters.orgId === "public") {
       conditions.push(isNull(tickets.orgId));
     } else {
       conditions.push(eq(tickets.orgId, filters.orgId));
@@ -117,7 +129,7 @@ async function getTicketsInternal(filters: TicketFilters) {
       });
 
       const ticketIdsWithMatchingComments = new Set(
-        matchingCommentTickets.map((c) => c.ticketId)
+        matchingCommentTickets.map((c) => c.ticketId),
       );
 
       // Add condition to include tickets with matching comments
@@ -125,8 +137,8 @@ async function getTicketsInternal(filters: TicketFilters) {
         searchConditions.push(
           sql`${tickets.id} IN (${sql.join(
             Array.from(ticketIdsWithMatchingComments).map((id) => sql`${id}`),
-            sql`, `
-          )})`
+            sql`, `,
+          )})`,
         );
       }
     }
@@ -146,8 +158,12 @@ async function getTicketsInternal(filters: TicketFilters) {
   }
 
   // Add filter to exclude soft-deleted tickets
-  const finalConditions = conditions.length > 0 ? [and(...conditions), isNull(tickets.deletedAt)] : [isNull(tickets.deletedAt)];
-  const finalWhereClause = finalConditions.length > 1 ? and(...finalConditions) : finalConditions[0];
+  const finalConditions =
+    conditions.length > 0
+      ? [and(...conditions), isNull(tickets.deletedAt)]
+      : [isNull(tickets.deletedAt)];
+  const finalWhereClause =
+    finalConditions.length > 1 ? and(...finalConditions) : finalConditions[0];
 
   let ticketResults = await db.query.tickets.findMany({
     where: finalWhereClause,
@@ -219,10 +235,10 @@ async function getTicketsInternal(filters: TicketFilters) {
 
 /**
  * Get a ticket by ID
- * 
+ *
  * For customer users: orgId is required to ensure tenant isolation
  * For internal users: orgId is optional (can view any ticket)
- * 
+ *
  * @param ticketId - The ticket ID
  * @param orgId - Optional org ID for tenant scoping
  * @returns The ticket or null if not found
@@ -334,22 +350,29 @@ export async function getTicketById(ticketId: string, orgId?: string) {
   if (orgId) {
     return withOrgScope(orgId, async (scopedOrgId) => {
       const ticket = await db.query.tickets.findFirst({
-        where: and(eq(tickets.id, ticketId), eq(tickets.orgId, scopedOrgId), isNull(tickets.deletedAt)),
+        where: and(
+          eq(tickets.id, ticketId),
+          eq(tickets.orgId, scopedOrgId),
+          isNull(tickets.deletedAt),
+        ),
         ...ticketQuery,
       });
       return ticket ?? null;
     });
   }
 
-      // Internal users can query without orgId (see any ticket)
-      const ticket = await db.query.tickets.findFirst({
-        where: and(eq(tickets.id, ticketId), isNull(tickets.deletedAt)),
+  // Internal users can query without orgId (see any ticket)
+  const ticket = await db.query.tickets.findFirst({
+    where: and(eq(tickets.id, ticketId), isNull(tickets.deletedAt)),
     ...ticketQuery,
   });
   return ticket ?? null;
 }
 
-export async function getTicketComments(ticketId: string, includeInternal = false) {
+export async function getTicketComments(
+  ticketId: string,
+  includeInternal = false,
+) {
   const conditions = [eq(ticketComments.ticketId, ticketId)];
 
   if (!includeInternal) {

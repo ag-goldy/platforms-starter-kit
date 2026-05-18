@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { useState } from "react";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   ThumbsUp,
   ThumbsDown,
@@ -17,8 +17,8 @@ import {
   Clock,
   CheckCircle2,
   Loader2,
-} from 'lucide-react';
-import type { KbArticle, KbCategory } from '@/db/schema';
+} from "lucide-react";
+import type { KbArticle, KbCategory } from "@/db/schema";
 
 interface ArticleWithRelations extends KbArticle {
   category: KbCategory | null;
@@ -46,33 +46,33 @@ export function ArticleView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Unknown';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    if (!date) return "Unknown";
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const formatDateTime = (date: Date | null) => {
-    if (!date) return 'Unknown';
-    return new Date(date).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    if (!date) return "Unknown";
+    return new Date(date).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const handleFeedback = async (helpful: boolean) => {
     if (feedbackSubmitted || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/kb/articles/${article.id}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ helpful }),
       });
 
@@ -80,7 +80,7 @@ export function ArticleView({
         setFeedbackSubmitted(true);
       }
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
+      console.error("Failed to submit feedback:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -89,33 +89,51 @@ export function ArticleView({
   const renderContent = (content: string) => {
     // Simple markdown-like rendering
     // In a real app, you'd use a proper markdown parser
-    return content
-      .split('\n')
-      .map((line, index) => {
-        // Headers
-        if (line.startsWith('# ')) {
-          return <h1 key={index} className="text-2xl font-bold mt-6 mb-4">{line.slice(2)}</h1>;
-        }
-        if (line.startsWith('## ')) {
-          return <h2 key={index} className="text-xl font-semibold mt-5 mb-3">{line.slice(3)}</h2>;
-        }
-        if (line.startsWith('### ')) {
-          return <h3 key={index} className="text-lg font-medium mt-4 mb-2">{line.slice(4)}</h3>;
-        }
-        
-        // Lists
-        if (line.startsWith('- ') || line.startsWith('* ')) {
-          return <li key={index} className="ml-4">{line.slice(2)}</li>;
-        }
-        
-        // Empty line
-        if (line.trim() === '') {
-          return <div key={index} className="h-4" />;
-        }
-        
-        // Regular paragraph
-        return <p key={index} className="mb-2 leading-relaxed">{line}</p>;
-      });
+    return content.split("\n").map((line, index) => {
+      // Headers
+      if (line.startsWith("# ")) {
+        return (
+          <h1 key={index} className="text-2xl font-bold mt-6 mb-4">
+            {line.slice(2)}
+          </h1>
+        );
+      }
+      if (line.startsWith("## ")) {
+        return (
+          <h2 key={index} className="text-xl font-semibold mt-5 mb-3">
+            {line.slice(3)}
+          </h2>
+        );
+      }
+      if (line.startsWith("### ")) {
+        return (
+          <h3 key={index} className="text-lg font-medium mt-4 mb-2">
+            {line.slice(4)}
+          </h3>
+        );
+      }
+
+      // Lists
+      if (line.startsWith("- ") || line.startsWith("* ")) {
+        return (
+          <li key={index} className="ml-4">
+            {line.slice(2)}
+          </li>
+        );
+      }
+
+      // Empty line
+      if (line.trim() === "") {
+        return <div key={index} className="h-4" />;
+      }
+
+      // Regular paragraph
+      return (
+        <p key={index} className="mb-2 leading-relaxed">
+          {line}
+        </p>
+      );
+    });
   };
 
   return (
@@ -151,7 +169,7 @@ export function ArticleView({
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <User className="h-4 w-4" />
-            {article.author?.name || article.author?.email || 'Unknown author'}
+            {article.author?.name || article.author?.email || "Unknown author"}
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />

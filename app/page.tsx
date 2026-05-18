@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
-import { 
-  Search, 
+import {
+  Search,
   Folder,
   Sparkles,
   X,
@@ -17,38 +17,38 @@ import {
   Activity,
   Ticket,
   BookOpen,
-} from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { PublicSiteHeader } from '@/components/public/site-header';
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { PublicSiteHeader } from "@/components/public/site-header";
 
 // Icon mapping for common category names
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  'Account & Billing': Ticket,
-  'Account': Ticket,
-  'Billing': Ticket,
-  'Payment': Ticket,
-  'Technical Issues': Bot,
-  'Technical': Bot,
-  'Troubleshooting': Bot,
-  'Bug': Bot,
-  'Network Setup': Activity,
-  'Network': Activity,
-  'Connectivity': Activity,
-  'VPN': Activity,
-  'Security & Access': Sparkles,
-  'Security': Sparkles,
-  'Access': Sparkles,
-  'Authentication': Sparkles,
-  'User Guides': BookOpen,
-  'Guides': BookOpen,
-  'Tutorial': BookOpen,
-  'How-to': BookOpen,
-  'FAQs': Folder,
-  'FAQ': Folder,
-  'Questions': Folder,
-  'Help': Folder,
+  "Account & Billing": Ticket,
+  Account: Ticket,
+  Billing: Ticket,
+  Payment: Ticket,
+  "Technical Issues": Bot,
+  Technical: Bot,
+  Troubleshooting: Bot,
+  Bug: Bot,
+  "Network Setup": Activity,
+  Network: Activity,
+  Connectivity: Activity,
+  VPN: Activity,
+  "Security & Access": Sparkles,
+  Security: Sparkles,
+  Access: Sparkles,
+  Authentication: Sparkles,
+  "User Guides": BookOpen,
+  Guides: BookOpen,
+  Tutorial: BookOpen,
+  "How-to": BookOpen,
+  FAQs: Folder,
+  FAQ: Folder,
+  Questions: Folder,
+  Help: Folder,
 };
 
 interface Category {
@@ -69,7 +69,7 @@ interface Stats {
 
 interface ChatMessage {
   id: string;
-  type: 'user' | 'ai';
+  type: "user" | "ai";
   content: string;
   timestamp: Date;
 }
@@ -80,47 +80,52 @@ interface Suggestion {
 }
 
 const quickSuggestions = [
-  'How do I reset my password?',
-  'How to set up VPN?',
-  'Billing and invoices',
-  'Contact support team',
+  "How do I reset my password?",
+  "How to set up VPN?",
+  "Billing and invoices",
+  "Contact support team",
 ];
 
 export default function HomePage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [stats, setStats] = useState<Stats>({
     articleCount: 500,
     ticketCount: 0,
     avgResponseMinutes: 120,
-    responseTimeDisplay: '2hr',
+    responseTimeDisplay: "2hr",
     isLive: false,
     threshold: 300,
   });
   const [statsLoading, setStatsLoading] = useState(true);
-  
+
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 'welcome',
-      type: 'ai',
-      content: 'Hello! I\'m Zeus AI. How can I help you today?',
+      id: "welcome",
+      type: "ai",
+      content: "Hello! I'm Zeus AI. How can I help you today?",
       timestamp: new Date(),
     },
   ]);
-  const [aiInput, setAiInput] = useState('');
+  const [aiInput, setAiInput] = useState("");
   const [isAITyping, setIsAITyping] = useState(false);
   const [aiSessionId] = useState<string>(() => {
     // Prefer browser crypto.randomUUID if available
-    const hasCrypto = typeof self !== 'undefined' && typeof (self as Window & { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID === 'function';
+    const hasCrypto =
+      typeof self !== "undefined" &&
+      typeof (self as Window & { crypto?: { randomUUID?: () => string } })
+        .crypto?.randomUUID === "function";
     if (hasCrypto) {
-      return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
+      return (
+        self as Window & { crypto: { randomUUID: () => string } }
+      ).crypto.randomUUID();
     }
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [supportIssue, setSupportIssue] = useState('');
+  const [supportIssue, setSupportIssue] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
@@ -128,13 +133,13 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const response = await fetch('/api/kb/categories');
+        const response = await fetch("/api/kb/categories");
         if (response.ok) {
           const data = await response.json();
           setCategories(data.categories || []);
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        console.error("Failed to fetch categories:", error);
       } finally {
         setLoading(false);
       }
@@ -142,13 +147,13 @@ export default function HomePage() {
 
     async function fetchStats() {
       try {
-        const response = await fetch('/api/stats');
+        const response = await fetch("/api/stats");
         if (response.ok) {
           const data = await response.json();
           setStats(data);
         }
       } catch (error) {
-        console.error('Failed to fetch stats:', error);
+        console.error("Failed to fetch stats:", error);
       } finally {
         setStatsLoading(false);
       }
@@ -159,7 +164,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
   useEffect(() => {
     if (!isAIModalOpen) return;
@@ -174,11 +179,11 @@ export default function HomePage() {
       setPanelWidth(w);
     };
     const onMouseUp = () => setIsResizing(false);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   }, [isResizing]);
 
@@ -191,7 +196,8 @@ export default function HomePage() {
 
   const handleAIAsk = async () => {
     if (!aiInput.trim()) return;
-    const intent = /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
+    const intent =
+      /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
     if (intent.test(aiInput)) {
       setSupportIssue(aiInput);
       await handleSupportSubmit();
@@ -200,32 +206,40 @@ export default function HomePage() {
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      type: 'user',
+      type: "user",
       content: aiInput,
       timestamp: new Date(),
     };
 
     setChatMessages((prev) => [...prev, userMessage]);
-    setAiInput('');
+    setAiInput("");
     setIsAITyping(true);
 
     try {
-      const res = await fetch('/api/ai/kb-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMessage.content, sessionId: aiSessionId }),
+      const res = await fetch("/api/ai/kb-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: userMessage.content,
+          sessionId: aiSessionId,
+        }),
       });
-      let content = 'Sorry, I can only assist with technology-related questions.';
+      let content =
+        "Sorry, I can only assist with technology-related questions.";
       if (res.ok) {
         const data = await res.json();
-        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
-          : '';
-        content = (data.answer || 'I could not find a precise match in the knowledge base.') + suggestions;
+        const suggestions =
+          Array.isArray(data.suggestions) && data.suggestions.length
+            ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || "#"})`).join("\n")}`
+            : "";
+        content =
+          (data.answer ||
+            "I could not find a precise match in the knowledge base.") +
+          suggestions;
       }
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
+        type: "ai",
         content,
         timestamp: new Date(),
       };
@@ -233,8 +247,8 @@ export default function HomePage() {
     } catch {
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: 'Something went wrong fetching the AI response.',
+        type: "ai",
+        content: "Something went wrong fetching the AI response.",
         timestamp: new Date(),
       };
       setChatMessages((prev) => [...prev, aiMessage]);
@@ -248,40 +262,41 @@ export default function HomePage() {
     if (!issue) return;
     setIsAITyping(true);
     try {
-      const res = await fetch('/api/ai/kb-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ai/kb-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: `${issue}\n\nopen a ticket`,
           sessionId: aiSessionId,
         }),
       });
-      let content = 'Ticket created. Check your email for the tracking link.';
+      let content = "Ticket created. Check your email for the tracking link.";
       if (res.ok) {
         const data = await res.json();
-        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
-          : '';
-        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
-        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
+        const suggestions =
+          Array.isArray(data.suggestions) && data.suggestions.length
+            ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || "#"})`).join("\n")}`
+            : "";
+        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : "";
+        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : "";
         const base = data.ticketKey
-          ? 'Ticket created. Check your email to stay updated.'
-          : (data.answer || 'Ticket created. Check your email to stay updated.');
-        content = base + created + (track ? `\n${track}` : '') + suggestions;
+          ? "Ticket created. Check your email to stay updated."
+          : data.answer || "Ticket created. Check your email to stay updated.";
+        content = base + created + (track ? `\n${track}` : "") + suggestions;
       }
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
+        type: "ai",
         content,
         timestamp: new Date(),
       };
       setChatMessages((prev) => [...prev, aiMessage]);
-      setSupportIssue('');
+      setSupportIssue("");
     } catch {
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: 'Failed to create ticket. Please try again.',
+        type: "ai",
+        content: "Failed to create ticket. Please try again.",
         timestamp: new Date(),
       };
       setChatMessages((prev) => [...prev, aiMessage]);
@@ -294,8 +309,8 @@ export default function HomePage() {
     if (iconMap[categoryName]) {
       return iconMap[categoryName];
     }
-    const key = Object.keys(iconMap).find(k => 
-      categoryName.toLowerCase().includes(k.toLowerCase())
+    const key = Object.keys(iconMap).find((k) =>
+      categoryName.toLowerCase().includes(k.toLowerCase()),
     );
     return key ? iconMap[key] : Folder;
   };
@@ -316,9 +331,10 @@ export default function HomePage() {
               How can we help you?
             </h1>
             <p className="text-lg text-gray-400 mb-8">
-              Search our knowledge base, ask our AI assistant, or submit a support ticket.
+              Search our knowledge base, ask our AI assistant, or submit a
+              support ticket.
             </p>
-            
+
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="flex gap-3">
               <div className="flex-1 relative">
@@ -331,7 +347,7 @@ export default function HomePage() {
                   className="pl-10 h-12 bg-white border-0"
                 />
               </div>
-              <Button 
+              <Button
                 type="submit"
                 className="h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white"
               >
@@ -394,7 +410,9 @@ export default function HomePage() {
       {/* Categories */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Browse by Category</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            Browse by Category
+          </h2>
           <Link href="/kb">
             <Button variant="outline" size="sm" className="gap-2">
               View All
@@ -406,7 +424,10 @@ export default function HomePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="p-4 bg-gray-100 rounded-lg animate-pulse h-24" />
+              <div
+                key={i}
+                className="p-4 bg-gray-100 rounded-lg animate-pulse h-24"
+              />
             ))}
           </div>
         ) : categories.length > 0 ? (
@@ -427,7 +448,7 @@ export default function HomePage() {
                       {category.name}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {category.description || 'Browse articles'}
+                      {category.description || "Browse articles"}
                     </p>
                   </div>
                 </Link>
@@ -449,13 +470,22 @@ export default function HomePage() {
               © {new Date().getFullYear()} AGR Networks. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <Link href="/kb" className="text-sm text-gray-500 hover:text-gray-900">
+              <Link
+                href="/kb"
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
                 Knowledge Base
               </Link>
-              <Link href="/support" className="text-sm text-gray-500 hover:text-gray-900">
+              <Link
+                href="/support"
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
                 Contact Support
               </Link>
-              <Link href="/login" className="text-sm text-gray-500 hover:text-gray-900">
+              <Link
+                href="/login"
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
                 Staff Login
               </Link>
             </div>
@@ -485,8 +515,8 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setIsAIModalOpen(false)}
             >
@@ -497,13 +527,13 @@ export default function HomePage() {
             {chatMessages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    msg.type === 'user'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                    msg.type === "user"
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-900"
                   }`}
                 >
                   <div className="prose prose-sm max-w-none">
@@ -549,7 +579,7 @@ export default function HomePage() {
                   onChange={(e) => setAiInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (
-                      e.key === 'Enter' &&
+                      e.key === "Enter" &&
                       !e.shiftKey &&
                       !e.altKey &&
                       !e.ctrlKey &&
@@ -582,7 +612,7 @@ export default function HomePage() {
                   {isAITyping ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    'Create Ticket'
+                    "Create Ticket"
                   )}
                 </Button>
               </div>

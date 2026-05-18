@@ -1,23 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/db';
-import { kbArticles, users, tickets } from '@/db/schema';
-import { and, sql, eq } from 'drizzle-orm';
-import { auth } from '@/auth';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { createTicketToken } from '@/lib/tickets/magic-links';
-import { renderTicketCreatedEmail } from '@/lib/email/templates/ticket-created';
-import { sendWithOutbox, deliverOutbox } from '@/lib/email/outbox';
-import { supportBaseUrl } from '@/lib/utils';
-import { safeRedisGet, safeRedisSet, safeRedisExpire } from '@/lib/redis/client';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { db } from "@/db";
+import { kbArticles, users, tickets } from "@/db/schema";
+import { and, sql, eq } from "drizzle-orm";
+import { auth } from "@/auth";
+import { generateTicketKey } from "@/lib/tickets/keys";
+import { createTicketToken } from "@/lib/tickets/magic-links";
+import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
+import { sendWithOutbox, deliverOutbox } from "@/lib/email/outbox";
+import { supportBaseUrl } from "@/lib/utils";
+import {
+  safeRedisGet,
+  safeRedisSet,
+  safeRedisExpire,
+} from "@/lib/redis/client";
 import {
   buildSecurityContext,
   validateDataAccess,
-  sanitizeResponse
-} from '@/lib/ai/security';
-import { detectPromptInjection } from '@/lib/ai/prompt-guard';
-import { logAIInteraction } from '@/lib/ai/audit';
-import { getAIResponse } from '@/lib/ai/client';
+  sanitizeResponse,
+} from "@/lib/ai/security";
+import { detectPromptInjection } from "@/lib/ai/prompt-guard";
+import { logAIInteraction } from "@/lib/ai/audit";
+import { getAIResponse } from "@/lib/ai/client";
 
 const chatSchema = z.object({
   query: z.string().min(3).max(2000),
@@ -26,7 +30,7 @@ const chatSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   phone: z.string().min(3).max(50).optional(),
   issue: z.string().min(3).max(4000).optional(),
-  priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
+  priority: z.enum(["P1", "P2", "P3", "P4"]).optional(),
 });
 
 function errorResponse(message: string, status: number = 400) {
@@ -35,10 +39,10 @@ function errorResponse(message: string, status: number = 400) {
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  console.log('[AI] KB Chat endpoint called', {
+  console.log("[AI] KB Chat endpoint called", {
     hasApiKey: !!process.env.BASETEN_API_KEY,
     apiKeyLength: process.env.BASETEN_API_KEY?.length || 0,
-    baseUrl: process.env.BASETEN_BASE_URL || 'default'
+    baseUrl: process.env.BASETEN_BASE_URL || "default",
   });
 
   try {
@@ -49,50 +53,67 @@ export async function POST(req: NextRequest) {
       return errorResponse(`Invalid request: ${parsed.error.message}`, 400);
     }
 
-    const { query, sessionId, email: formEmail, name: formName, phone: formPhone, issue: formIssue } = parsed.data;
+    const {
+      query,
+      sessionId,
+      email: formEmail,
+      name: formName,
+      phone: formPhone,
+      issue: formIssue,
+    } = parsed.data;
 
     // Build security context - this is PUBLIC interface for anonymous users
-    const securityContext = await buildSecurityContext(req, 'public');
+    const securityContext = await buildSecurityContext(req, "public");
     const ipAddress = securityContext.ipAddress;
 
     // Validate data access for public interface
-    const kbAccess = validateDataAccess(securityContext, 'kbArticles');
+    const kbAccess = validateDataAccess(securityContext, "kbArticles");
     if (!kbAccess.allowed) {
-      return errorResponse('Access denied', 403);
+      return errorResponse("Access denied", 403);
     }
 
     // Check for prompt injection
     const injectionCheck = detectPromptInjection(query);
     if (injectionCheck.isSuspicious) {
-      console.warn('[AI] Prompt injection detected:', { threats: injectionCheck.threats, ip: ipAddress });
+      console.warn("[AI] Prompt injection detected:", {
+        threats: injectionCheck.threats,
+        ip: ipAddress,
+      });
       await logAIInteraction({
         orgId: null,
         userId: session?.user?.id || null,
-        interface: 'public',
+        interface: "public",
         userQuery: query,
-        systemPromptHash: 'injection-detected',
-        aiResponse: 'Blocked: Prompt injection attempt detected',
+        systemPromptHash: "injection-detected",
+        aiResponse: "Blocked: Prompt injection attempt detected",
         piiDetected: false,
         wasFiltered: true,
         ipAddress,
-        userAgent: req.headers.get('user-agent') || '',
+        userAgent: req.headers.get("user-agent") || "",
         metadata: { threats: injectionCheck.threats },
       });
-      return errorResponse('I can help with general support questions. Could you rephrase?', 400);
+      return errorResponse(
+        "I can help with general support questions. Could you rephrase?",
+        400,
+      );
     }
 
     const supportIntentEarly =
-      /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i.test(query) ||
-      !!(formEmail || formName || formPhone || formIssue);
+      /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i.test(
+        query,
+      ) || !!(formEmail || formName || formPhone || formIssue);
 
-    console.log('[AI] Validating query:', { query: query.slice(0, 100), supportIntentEarly });
+    console.log("[AI] Validating query:", {
+      query: query.slice(0, 100),
+      supportIntentEarly,
+    });
 
     // Fetch ONLY public KB articles for public interface
     const results = await db.query.kbArticles.findMany({
       where: and(
-        eq(kbArticles.status, 'published'),
-        eq(kbArticles.visibility, 'public'),
-        sql`(${kbArticles.title} ILIKE ${'%' + query + '%'} OR ${kbArticles.content} ILIKE ${'%' + query + '%'})`
+        eq(kbArticles.status, "published"),
+        eq(kbArticles.visibility, "public"),
+        sql`(${kbArticles.title} ILIKE ${"%" + query + "%"} OR ${kbArticles.content} ILIKE ${"%" + query + "%"})`,
       ),
       orderBy: sql`greatest(${kbArticles.viewCount}, 1) DESC, ${kbArticles.updatedAt} DESC`,
       limit: 3,
@@ -103,9 +124,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const context = results.map(r => ({
+    const context = results.map((r) => ({
       title: r.title,
-      excerpt: r.excerpt || '',
+      excerpt: r.excerpt || "",
       url: r.slug ? `/kb/${r.slug}` : undefined,
     }));
 
@@ -125,32 +146,53 @@ export async function POST(req: NextRequest) {
     }
 
     // Load conversation history (with Redis fallback)
-    let stored: { messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> } = { messages: [] };
+    let stored: {
+      messages: Array<{
+        role: "system" | "user" | "assistant";
+        content: string;
+      }>;
+    } = { messages: [] };
     try {
-      const redisData = await safeRedisGet<{ messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> }>(memoryKey);
+      const redisData = await safeRedisGet<{
+        messages: Array<{
+          role: "system" | "user" | "assistant";
+          content: string;
+        }>;
+      }>(memoryKey);
       if (redisData) {
         stored = redisData;
       }
     } catch {
-      console.log('[AI] Redis unavailable, using memory-only mode');
+      console.log("[AI] Redis unavailable, using memory-only mode");
     }
     const history = stored.messages.slice(-12); // last 12 turns
 
     // Early support handling: if form fields are complete, create ticket immediately (after memoryKey is available)
     const isPublicEarly = !userId;
-    const formComplete =
-      !!(formEmail && formName && formPhone && (formIssue && formIssue.trim().length > 0));
+    const formComplete = !!(
+      formEmail &&
+      formName &&
+      formPhone &&
+      formIssue &&
+      formIssue.trim().length > 0
+    );
 
     if (isPublicEarly && formComplete) {
       const transcript = `${formIssue}\n\n${(history || [])
-        .map(m => `[${m.role}] ${m.content}`)
-        .join('\n')}`;
+        .map((m) => `[${m.role}] ${m.content}`)
+        .join("\n")}`;
 
       const createdEarly = await createSupportTicketIfPossible({
         title:
-          query.split('\n').find(line => /^#+\s+/.test(line))?.replace(/^#+\s+/, '') ||
-          'Zeus AI Support Request',
-        summary: context.map(c => c.excerpt).filter(Boolean).join(' ') || '',
+          query
+            .split("\n")
+            .find((line) => /^#+\s+/.test(line))
+            ?.replace(/^#+\s+/, "") || "Zeus AI Support Request",
+        summary:
+          context
+            .map((c) => c.excerpt)
+            .filter(Boolean)
+            .join(" ") || "",
         transcript,
         requesterEmail: formEmail,
         requesterName: formName,
@@ -167,10 +209,16 @@ export async function POST(req: NextRequest) {
           lastUserAt: new Date().toISOString(),
           deadlineTs: Date.now() + 10 * 60 * 1000,
         };
-        const existingData = await safeRedisGet<{ messages?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>; supportState?: unknown }>(memoryKey);
+        const existingData = await safeRedisGet<{
+          messages?: Array<{
+            role: "system" | "user" | "assistant";
+            content: string;
+          }>;
+          supportState?: unknown;
+        }>(memoryKey);
         const updatedEarly = {
           ...(existingData || {}),
-          messages: [...history, { role: 'user' as const, content: query }],
+          messages: [...history, { role: "user" as const, content: query }],
           supportState: updatedSupportState,
           aiTicketKey: createdEarly.key,
           aiMagicLink: createdEarly.magicLink,
@@ -182,21 +230,20 @@ export async function POST(req: NextRequest) {
         await logAIInteraction({
           orgId: null,
           userId: null,
-          interface: 'public',
+          interface: "public",
           userQuery: query,
-          systemPromptHash: 'public-kb-chat-ticket-created',
+          systemPromptHash: "public-kb-chat-ticket-created",
           aiResponse: `Ticket created: ${createdEarly.key}`,
           piiDetected: true,
           wasFiltered: true,
           ipAddress,
-          userAgent: req.headers.get('user-agent') || '',
+          userAgent: req.headers.get("user-agent") || "",
           metadata: { ticketKey: createdEarly.key, hasFormData: true },
         });
 
-        const createdMsg =
-          createdEarly.magicLink
-            ? `Understanding\n\nTicket created. Check your email to stay updated.\n\n- Ticket: ${createdEarly.key}\n- Track: ${createdEarly.magicLink}`
-            : `Understanding\n\nTicket created. Check your email to stay updated.\n\n- Ticket: ${createdEarly.key}`;
+        const createdMsg = createdEarly.magicLink
+          ? `Understanding\n\nTicket created. Check your email to stay updated.\n\n- Ticket: ${createdEarly.key}\n- Track: ${createdEarly.magicLink}`
+          : `Understanding\n\nTicket created. Check your email to stay updated.\n\n- Ticket: ${createdEarly.key}`;
 
         return NextResponse.json({
           success: true,
@@ -220,9 +267,10 @@ STRICT RULES:
 - NEVER discuss other organizations, tenants, or customers.
 - NEVER output code, SQL queries, or technical system details.
 - Keep responses concise and helpful.
-${hasContext
-  ? '- Use the knowledge base articles provided below to answer the question.'
-  : `- The knowledge base is currently being set up. For common questions like password resets, WiFi connectivity, or printer issues, provide general helpful troubleshooting steps. Always suggest contacting support at the end for account-specific help.`
+${
+  hasContext
+    ? "- Use the knowledge base articles provided below to answer the question."
+    : `- The knowledge base is currently being set up. For common questions like password resets, WiFi connectivity, or printer issues, provide general helpful troubleshooting steps. Always suggest contacting support at the end for account-specific help.`
 }
 
 COMMON TROUBLESHOOTING TOPICS (when no KB articles match):
@@ -231,25 +279,29 @@ COMMON TROUBLESHOOTING TOPICS (when no KB articles match):
 - Printer Problems: "Check that the printer is powered on, has paper/toner, and is connected to the network."
 - Slow Computer: "Try closing unused applications, restarting your computer, or clearing browser cache."
 
-${hasContext
-  ? `KNOWLEDGE BASE ARTICLES:\n${context.map((c, i) => `${i + 1}. ${c.title}\n${c.excerpt}`).join('\n\n')}`
-  : 'Note: Knowledge base articles are not yet available. Provide general guidance based on common IT practices or suggest contacting support.'
+${
+  hasContext
+    ? `KNOWLEDGE BASE ARTICLES:\n${context.map((c, i) => `${i + 1}. ${c.title}\n${c.excerpt}`).join("\n\n")}`
+    : "Note: Knowledge base articles are not yet available. Provide general guidance based on common IT practices or suggest contacting support."
 }`;
 
-    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: systemPrompt },
+    const messages: Array<{
+      role: "system" | "user" | "assistant";
+      content: string;
+    }> = [
+      { role: "system", content: systemPrompt },
       ...history,
-      { role: 'user', content: injectionCheck.sanitizedInput },
+      { role: "user", content: injectionCheck.sanitizedInput },
     ];
 
     let answer: string;
     const responseTimeMs = Date.now() - startTime;
 
     try {
-      console.log('[AI] Calling Baseten API...', {
-        model: 'deepseek-ai/DeepSeek-V3.1',
+      console.log("[AI] Calling Baseten API...", {
+        model: "deepseek-ai/DeepSeek-V3.1",
         messageCount: messages.length,
-        hasApiKey: !!process.env.BASETEN_API_KEY
+        hasApiKey: !!process.env.BASETEN_API_KEY,
       });
 
       const completion = await getAIResponse(messages, {
@@ -257,14 +309,17 @@ ${hasContext
         max_tokens: 900,
       });
 
-      answer = completion.choices[0]?.message?.content || 'I was unable to generate a response.';
-      console.log('[AI] Baseten response received:', {
+      answer =
+        completion.choices[0]?.message?.content ||
+        "I was unable to generate a response.";
+      console.log("[AI] Baseten response received:", {
         responseLength: answer?.length,
-        model: completion.model
+        model: completion.model,
       });
     } catch (aiError) {
-      console.error('[AI] Baseten API error:', aiError);
-      answer = 'I apologize, but I\'m having trouble connecting to my knowledge base right now. Please try again in a moment, or contact support if the issue persists.';
+      console.error("[AI] Baseten API error:", aiError);
+      answer =
+        "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, or contact support if the issue persists.";
     }
 
     // Sanitize response for public interface
@@ -275,8 +330,8 @@ ${hasContext
     const updated = {
       messages: [
         ...history,
-        { role: 'user' as const, content: injectionCheck.sanitizedInput },
-        { role: 'assistant' as const, content: finalAnswer },
+        { role: "user" as const, content: injectionCheck.sanitizedInput },
+        { role: "assistant" as const, content: finalAnswer },
       ],
       lastUserAt: new Date().toISOString(),
     };
@@ -289,24 +344,24 @@ ${hasContext
     await logAIInteraction({
       orgId: null,
       userId: session?.user?.id || null,
-      interface: 'public',
+      interface: "public",
       userQuery: query,
-      systemPromptHash: 'public-kb-chat', // In production, hash the actual prompt
+      systemPromptHash: "public-kb-chat", // In production, hash the actual prompt
       aiResponse: finalAnswer,
       piiDetected: sanitization.piiDetected,
       piiTypes: sanitization.piiTypes,
       wasFiltered: sanitization.piiDetected,
       ipAddress,
-      userAgent: req.headers.get('user-agent') || '',
+      userAgent: req.headers.get("user-agent") || "",
       tokensUsed: undefined,
       responseTimeMs,
       metadata: { kbArticlesUsed: context.length },
     });
 
-    console.log('[AI] Returning response:', {
+    console.log("[AI] Returning response:", {
       answerLength: finalAnswer?.length,
       hasSuggestions: context.length > 0,
-      piiDetected: sanitization.piiDetected
+      piiDetected: sanitization.piiDetected,
     });
 
     const response = NextResponse.json({
@@ -317,21 +372,20 @@ ${hasContext
 
     // Set session cookie for unauthenticated chat
     if (!userId) {
-      const sid = memoryKey.split(':').pop()!;
-      response.cookies.set('kb_ai_session', sid, {
+      const sid = memoryKey.split(":").pop()!;
+      response.cookies.set("kb_ai_session", sid, {
         maxAge: ephemeralTtlSeconds,
-        path: '/',
+        path: "/",
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: "lax",
         secure: true,
       });
     }
 
     return response;
-
   } catch (error) {
-    console.error('[AI] KB Chat error:', error);
-    return errorResponse('An error occurred processing your request', 500);
+    console.error("[AI] KB Chat error:", error);
+    return errorResponse("An error occurred processing your request", 500);
   }
 }
 
@@ -351,7 +405,7 @@ async function createSupportTicketIfPossible({
   requesterEmail: string;
   requesterName: string;
   contactNumber: string;
-  priority?: 'P1' | 'P2' | 'P3' | 'P4';
+  priority?: "P1" | "P2" | "P3" | "P4";
 }) {
   try {
     // Find or create the user
@@ -360,12 +414,15 @@ async function createSupportTicketIfPossible({
     });
 
     if (!user) {
-      const [newUser] = await db.insert(users).values({
-        email: requesterEmail.toLowerCase(),
-        name: requesterName,
-        phone: contactNumber,
-        isInternal: false,
-      }).returning();
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: requesterEmail.toLowerCase(),
+          name: requesterName,
+          phone: contactNumber,
+          isInternal: false,
+        })
+        .returning();
       user = newUser;
     }
 
@@ -373,23 +430,26 @@ async function createSupportTicketIfPossible({
     const ticketKey = await generateTicketKey(orgId);
 
     // Create the ticket
-    const [ticket] = await db.insert(tickets).values({
-      key: ticketKey,
-      orgId,
-      requesterId: user.id,
-      requesterEmail: user.email,
-      subject: title.slice(0, 200),
-      description: `Issue:\n${summary}\n\nTranscript:\n${transcript.slice(0, 3000)}`,
-      priority: priority || 'P3',
-      status: 'OPEN',
-      category: 'INCIDENT',
-    }).returning();
+    const [ticket] = await db
+      .insert(tickets)
+      .values({
+        key: ticketKey,
+        orgId,
+        requesterId: user.id,
+        requesterEmail: user.email,
+        subject: title.slice(0, 200),
+        description: `Issue:\n${summary}\n\nTranscript:\n${transcript.slice(0, 3000)}`,
+        priority: priority || "P3",
+        status: "OPEN",
+        category: "INCIDENT",
+      })
+      .returning();
 
     // Create magic link for ticket access
     const token = await createTicketToken({
       ticketId: ticket.id,
       email: user.email,
-      purpose: 'VIEW',
+      purpose: "VIEW",
       expiresInDays: 30,
     });
     const magicLink = `${supportBaseUrl}/ticket/${token}`;
@@ -403,7 +463,7 @@ async function createSupportTicketIfPossible({
     const html = emailContent.html;
 
     await sendWithOutbox({
-      type: 'ticket-created',
+      type: "ticket-created",
       to: user.email,
       subject: `Ticket Created: ${ticketKey}`,
       html,
@@ -412,7 +472,7 @@ async function createSupportTicketIfPossible({
 
     return { key: ticketKey, magicLink };
   } catch (error) {
-    console.error('[AI] Failed to create ticket:', error);
+    console.error("[AI] Failed to create ticket:", error);
     return null;
   }
 }

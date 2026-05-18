@@ -1,17 +1,23 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Shield, AlertTriangle, Loader2, Download, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
+} from "@/components/ui/dialog";
+import {
+  Shield,
+  AlertTriangle,
+  Loader2,
+  Download,
+  ArrowRight,
+} from "lucide-react";
+import Image from "next/image";
 
 interface MFASetupPromptProps {
   isOpen: boolean;
@@ -19,11 +25,17 @@ interface MFASetupPromptProps {
   onComplete: () => void;
 }
 
-export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptProps) {
-  const [step, setStep] = useState<'prompt' | 'qr' | 'verify' | 'backup'>('prompt');
+export function MFASetupPrompt({
+  isOpen,
+  onClose,
+  onComplete,
+}: MFASetupPromptProps) {
+  const [step, setStep] = useState<"prompt" | "qr" | "verify" | "backup">(
+    "prompt",
+  );
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
-  const [verificationToken, setVerificationToken] = useState('');
+  const [verificationToken, setVerificationToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,17 +43,17 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/user/2fa-setup', { method: 'POST' });
+      const res = await fetch("/api/user/2fa-setup", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         setQrCode(data.qrCode);
         setBackupCodes(data.backupCodes || []);
-        setStep('qr');
+        setStep("qr");
       } else {
-        setError(data.error || 'Failed to start MFA setup');
+        setError(data.error || "Failed to start MFA setup");
       }
     } catch {
-      setError('An error occurred');
+      setError("An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -52,31 +64,31 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/user/2fa-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/user/2fa-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: verificationToken }),
       });
       const data = await res.json();
       if (res.ok) {
-        setStep('backup');
+        setStep("backup");
       } else {
-        setError(data.error || 'Invalid verification code');
+        setError(data.error || "Invalid verification code");
       }
     } catch {
-      setError('An error occurred');
+      setError("An error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
   const downloadBackupCodes = () => {
-    const content = `Atlas Helpdesk - Backup Codes\n\nSave these codes in a safe place. Each code can only be used once.\n\n${backupCodes.join('\n')}\n\nGenerated: ${new Date().toLocaleString()}`;
-    const blob = new Blob([content], { type: 'text/plain' });
+    const content = `Atlas Helpdesk - Backup Codes\n\nSave these codes in a safe place. Each code can only be used once.\n\n${backupCodes.join("\n")}\n\nGenerated: ${new Date().toLocaleString()}`;
+    const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'atlas-backup-codes.txt';
+    a.download = "atlas-backup-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -87,8 +99,11 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-        {step === 'prompt' && (
+      <DialogContent
+        className="max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
+        {step === "prompt" && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -96,10 +111,11 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
                 Secure Your Account
               </DialogTitle>
               <DialogDescription>
-                Add an extra layer of security to your account with two-factor authentication.
+                Add an extra layer of security to your account with two-factor
+                authentication.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4 py-4">
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -109,7 +125,8 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
                       Your account is not fully secured
                     </p>
                     <p className="text-sm text-amber-700 mt-1">
-                      Without two-factor authentication, your account is vulnerable to unauthorized access.
+                      Without two-factor authentication, your account is
+                      vulnerable to unauthorized access.
                     </p>
                   </div>
                 </div>
@@ -126,7 +143,11 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
             </div>
 
             <div className="flex flex-col gap-2">
-              <Button onClick={handleStartSetup} disabled={isLoading} className="w-full">
+              <Button
+                onClick={handleStartSetup}
+                disabled={isLoading}
+                className="w-full"
+              >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -138,12 +159,13 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
           </>
         )}
 
-        {step === 'qr' && (
+        {step === "qr" && (
           <>
             <DialogHeader>
               <DialogTitle>Scan QR Code</DialogTitle>
               <DialogDescription>
-                Open your authenticator app and scan this QR code to add your account.
+                Open your authenticator app and scan this QR code to add your
+                account.
               </DialogDescription>
             </DialogHeader>
 
@@ -168,7 +190,9 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
                   pattern="[0-9]{6}"
                   maxLength={6}
                   value={verificationToken}
-                  onChange={(e) => setVerificationToken(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) =>
+                    setVerificationToken(e.target.value.replace(/\D/g, ""))
+                  }
                   placeholder="Enter 6-digit code from app"
                   className="text-center text-lg tracking-widest"
                 />
@@ -192,12 +216,13 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
           </>
         )}
 
-        {step === 'backup' && (
+        {step === "backup" && (
           <>
             <DialogHeader>
               <DialogTitle>Save Your Backup Codes</DialogTitle>
               <DialogDescription>
-                These codes can be used to access your account if you lose your authenticator device. Save them in a secure place.
+                These codes can be used to access your account if you lose your
+                authenticator device. Save them in a secure place.
               </DialogDescription>
             </DialogHeader>
 
@@ -207,18 +232,25 @@ export function MFASetupPrompt({ isOpen, onClose, onComplete }: MFASetupPromptPr
                   ⚠️ Important: Save these codes now!
                 </p>
                 <p className="text-sm text-amber-700">
-                  You won&apos;t be able to see them again. Store them in a password manager.
+                  You won&apos;t be able to see them again. Store them in a
+                  password manager.
                 </p>
               </div>
 
               <div className="bg-gray-100 rounded-lg p-4 font-mono text-sm grid grid-cols-2 gap-2">
                 {backupCodes.map((code, i) => (
-                  <div key={i} className="text-gray-700">{code}</div>
+                  <div key={i} className="text-gray-700">
+                    {code}
+                  </div>
                 ))}
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={downloadBackupCodes} className="flex-1">
+                <Button
+                  variant="outline"
+                  onClick={downloadBackupCodes}
+                  className="flex-1"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>

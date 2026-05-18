@@ -1,15 +1,15 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { getTicketById } from '@/lib/tickets/queries';
-import { getInternalUsers } from '@/lib/users/queries';
-import { getAuditLogsForTicket } from '@/lib/audit/queries';
-import { getTicketSLAMetrics } from '@/lib/tickets/sla';
-import { notFound } from 'next/navigation';
-import { TicketDetail } from '@/components/tickets/ticket-detail';
-import { AuditLogList } from '@/components/tickets/audit-log';
-import { type Ticket, type TicketComment, type Attachment } from '@/db/schema';
-import { db } from '@/db';
-import { assets } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { getTicketById } from "@/lib/tickets/queries";
+import { getInternalUsers } from "@/lib/users/queries";
+import { getAuditLogsForTicket } from "@/lib/audit/queries";
+import { getTicketSLAMetrics } from "@/lib/tickets/sla";
+import { notFound } from "next/navigation";
+import { TicketDetail } from "@/components/tickets/ticket-detail";
+import { AuditLogList } from "@/components/tickets/audit-log";
+import { type Ticket, type TicketComment, type Attachment } from "@/db/schema";
+import { db } from "@/db";
+import { assets } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function TicketDetailPage({
   params,
@@ -31,12 +31,19 @@ export default async function TicketDetailPage({
   }
 
   // Type guard to ensure ticket has required relations
-  if (!ticket || !('organization' in ticket) || !('requester' in ticket) || !('assignee' in ticket) || !('comments' in ticket) || !('attachments' in ticket)) {
+  if (
+    !ticket ||
+    !("organization" in ticket) ||
+    !("requester" in ticket) ||
+    !("assignee" in ticket) ||
+    !("comments" in ticket) ||
+    !("attachments" in ticket)
+  ) {
     notFound();
   }
 
   // Only load assets if ticket has an org (public tickets have no assets)
-  const availableAssets = ticket.orgId 
+  const availableAssets = ticket.orgId
     ? await db.query.assets.findMany({
         where: eq(assets.orgId, ticket.orgId),
         orderBy: (table, { asc }) => [asc(table.name)],
@@ -49,17 +56,24 @@ export default async function TicketDetailPage({
 
   return (
     <div className="space-y-6">
-      <TicketDetail ticket={ticket as unknown as Ticket & {
-        organization: { name: string } | null;
-        requesterEmail?: string | null;
-        requester: { name: string | null; email: string } | null;
-        assignee: { name: string | null; email: string } | null;
-        comments: (TicketComment & {
-          authorEmail?: string | null;
-          user: { name: string | null; email: string } | null;
-        })[];
-        attachments: Attachment[];
-      }} internalUsers={internalUsers} slaMetrics={slaMetrics} availableAssets={availableAssets} />
+      <TicketDetail
+        ticket={
+          ticket as unknown as Ticket & {
+            organization: { name: string } | null;
+            requesterEmail?: string | null;
+            requester: { name: string | null; email: string } | null;
+            assignee: { name: string | null; email: string } | null;
+            comments: (TicketComment & {
+              authorEmail?: string | null;
+              user: { name: string | null; email: string } | null;
+            })[];
+            attachments: Attachment[];
+          }
+        }
+        internalUsers={internalUsers}
+        slaMetrics={slaMetrics}
+        availableAssets={availableAssets}
+      />
       <AuditLogList logs={auditLogs} />
     </div>
   );

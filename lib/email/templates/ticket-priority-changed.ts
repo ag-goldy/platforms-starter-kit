@@ -1,4 +1,4 @@
-import { escapeHtml, renderBaseTemplate } from './utils';
+import { escapeHtml, renderBaseTemplate } from "./utils";
 
 export function renderPriorityChangedEmail(options: {
   ticketKey: string;
@@ -9,7 +9,7 @@ export function renderPriorityChangedEmail(options: {
 }) {
   const { ticketKey, subject, oldPriority, newPriority, ticketUrl } = options;
   const title = `Priority Update: ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -54,7 +54,7 @@ View Ticket: ${ticketUrl}
   return {
     subject: `Ticket ${ticketKey} Priority Updated`,
     html: renderBaseTemplate({
-      title: 'Priority Updated',
+      title: "Priority Updated",
       preheader: `Priority changed to ${newPriority} for ticket ${ticketKey}`,
       bodyHtml,
     }),

@@ -1,29 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { db } from '@/db';
-import { platformAdmins } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { bearerTokenMatches } from '@/lib/security/secrets';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { db } from "@/db";
+import { platformAdmins } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { bearerTokenMatches } from "@/lib/security/secrets";
 
 const bodySchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).optional(),
-  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'SUPPORT']).optional(),
+  role: z.enum(["SUPER_ADMIN", "ADMIN", "SUPPORT"]).optional(),
 });
 
 function verifyBootstrapAuth(request: NextRequest): NextResponse | null {
   const token = process.env.BOOTSTRAP_ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(
-      { error: 'Bootstrap endpoint not configured' },
-      { status: 503 }
+      { error: "Bootstrap endpoint not configured" },
+      { status: 503 },
     );
   }
-  const authHeader = request.headers.get('authorization');
+  const authHeader = request.headers.get("authorization");
   if (!bearerTokenMatches(authHeader, token)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return null;
 }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   const rejection = verifyBootstrapAuth(request);
   if (rejection) return rejection;
 
-  const allowOverride = process.env.ALLOW_BOOTSTRAP_ADMIN === 'true';
+  const allowOverride = process.env.ALLOW_BOOTSTRAP_ADMIN === "true";
 
   const anyAdmin = await db.query.platformAdmins.findFirst({
     columns: { id: true },
@@ -40,22 +40,19 @@ export async function POST(request: NextRequest) {
 
   if (anyAdmin && !allowOverride) {
     return NextResponse.json(
-      { error: 'Bootstrap disabled (admin already exists)' },
-      { status: 403 }
+      { error: "Bootstrap disabled (admin already exists)" },
+      { status: 403 },
     );
   }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
   const normalizedEmail = parsed.data.email.toLowerCase();
-  const name = parsed.data.name ?? 'Platform Admin';
-  const role = parsed.data.role ?? 'SUPER_ADMIN';
+  const name = parsed.data.name ?? "Platform Admin";
+  const role = parsed.data.role ?? "SUPER_ADMIN";
 
   const existing = await db.query.platformAdmins.findFirst({
     where: eq(platformAdmins.email, normalizedEmail),
@@ -80,7 +77,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const temporaryPassword = crypto.randomBytes(32).toString('base64url');
+  const temporaryPassword = crypto.randomBytes(32).toString("base64url");
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
   await db.insert(platformAdmins).values({

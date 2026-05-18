@@ -1,4 +1,4 @@
-import { escapeHtml, renderBaseTemplate, formatMultilineText } from './utils';
+import { escapeHtml, renderBaseTemplate, formatMultilineText } from "./utils";
 
 export function renderMentionNotificationEmail(options: {
   ticketKey: string;
@@ -9,7 +9,7 @@ export function renderMentionNotificationEmail(options: {
 }) {
   const { ticketKey, subject, mentionedBy, comment, ticketUrl } = options;
   const title = `You were mentioned in ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -42,7 +42,7 @@ View Ticket: ${ticketUrl}
   return {
     subject: `You were mentioned in ${ticketKey}`,
     html: renderBaseTemplate({
-      title: 'New Mention',
+      title: "New Mention",
       preheader: `${mentionedBy} mentioned you in ticket ${ticketKey}`,
       bodyHtml,
     }),

@@ -1,24 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { ticketDependencies } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { ticketDependencies } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { z } from "zod";
 
 const dependencySchema = z.object({
   dependsOnTicketId: z.string().uuid(),
-  dependencyType: z.enum(['blocks', 'blocked_by', 'relates_to']),
+  dependencyType: z.enum(["blocks", "blocked_by", "relates_to"]),
 });
 
 // GET /api/tickets/[id]/dependencies
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: ticketId } = await params;
@@ -27,7 +27,7 @@ export async function GET(
     const blocks = await db.query.ticketDependencies.findMany({
       where: and(
         eq(ticketDependencies.ticketId, ticketId),
-        eq(ticketDependencies.dependencyType, 'blocks')
+        eq(ticketDependencies.dependencyType, "blocks"),
       ),
       with: {
         dependsOnTicket: {
@@ -45,7 +45,7 @@ export async function GET(
     const blockedBy = await db.query.ticketDependencies.findMany({
       where: and(
         eq(ticketDependencies.ticketId, ticketId),
-        eq(ticketDependencies.dependencyType, 'blocked_by')
+        eq(ticketDependencies.dependencyType, "blocked_by"),
       ),
       with: {
         dependsOnTicket: {
@@ -63,7 +63,7 @@ export async function GET(
     const related = await db.query.ticketDependencies.findMany({
       where: and(
         eq(ticketDependencies.ticketId, ticketId),
-        eq(ticketDependencies.dependencyType, 'relates_to')
+        eq(ticketDependencies.dependencyType, "relates_to"),
       ),
       with: {
         dependsOnTicket: {
@@ -79,10 +79,10 @@ export async function GET(
 
     return NextResponse.json({ blocks, blockedBy, related });
   } catch (error) {
-    console.error('Error fetching dependencies:', error);
+    console.error("Error fetching dependencies:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch dependencies' },
-      { status: 500 }
+      { error: "Failed to fetch dependencies" },
+      { status: 500 },
     );
   }
 }
@@ -90,22 +90,22 @@ export async function GET(
 // POST /api/tickets/[id]/dependencies
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: ticketId } = await params;
     const body = await req.json();
-    
+
     const parsed = dependencySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid request', details: parsed.error.flatten() },
-        { status: 400 }
+        { error: "Invalid request", details: parsed.error.flatten() },
+        { status: 400 },
       );
     }
 
@@ -114,8 +114,8 @@ export async function POST(
     // Prevent self-dependency
     if (dependsOnTicketId === ticketId) {
       return NextResponse.json(
-        { error: 'Cannot create dependency on self' },
-        { status: 400 }
+        { error: "Cannot create dependency on self" },
+        { status: 400 },
       );
     }
 
@@ -124,14 +124,14 @@ export async function POST(
       where: and(
         eq(ticketDependencies.ticketId, ticketId),
         eq(ticketDependencies.dependsOnTicketId, dependsOnTicketId),
-        eq(ticketDependencies.dependencyType, dependencyType)
+        eq(ticketDependencies.dependencyType, dependencyType),
       ),
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: 'Dependency already exists' },
-        { status: 409 }
+        { error: "Dependency already exists" },
+        { status: 409 },
       );
     }
 
@@ -147,10 +147,10 @@ export async function POST(
 
     return NextResponse.json({ dependency }, { status: 201 });
   } catch (error) {
-    console.error('Error creating dependency:', error);
+    console.error("Error creating dependency:", error);
     return NextResponse.json(
-      { error: 'Failed to create dependency' },
-      { status: 500 }
+      { error: "Failed to create dependency" },
+      { status: 500 },
     );
   }
 }
@@ -158,22 +158,22 @@ export async function POST(
 // DELETE /api/tickets/[id]/dependencies
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: ticketId } = await params;
     const { searchParams } = new URL(req.url);
-    const dependencyId = searchParams.get('dependencyId');
+    const dependencyId = searchParams.get("dependencyId");
 
     if (!dependencyId) {
       return NextResponse.json(
-        { error: 'Dependency ID required' },
-        { status: 400 }
+        { error: "Dependency ID required" },
+        { status: 400 },
       );
     }
 
@@ -182,16 +182,16 @@ export async function DELETE(
       .where(
         and(
           eq(ticketDependencies.id, dependencyId),
-          eq(ticketDependencies.ticketId, ticketId)
-        )
+          eq(ticketDependencies.ticketId, ticketId),
+        ),
       );
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting dependency:', error);
+    console.error("Error deleting dependency:", error);
     return NextResponse.json(
-      { error: 'Failed to delete dependency' },
-      { status: 500 }
+      { error: "Failed to delete dependency" },
+      { status: 500 },
     );
   }
 }

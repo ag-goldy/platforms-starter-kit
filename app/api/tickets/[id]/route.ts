@@ -1,17 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { tickets, ticketComments, attachments, users, memberships } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import {
+  tickets,
+  ticketComments,
+  attachments,
+  users,
+  memberships,
+} from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -22,11 +28,14 @@ export async function GET(
     });
 
     if (!ticket) {
-      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
     if (!ticket.orgId) {
-      return NextResponse.json({ error: 'Public tickets cannot be fetched through this endpoint' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Public tickets cannot be fetched through this endpoint" },
+        { status: 400 },
+      );
     }
 
     // Check if user is a member of the ticket's organization
@@ -34,25 +43,29 @@ export async function GET(
       where: and(
         eq(memberships.userId, session.user.id),
         eq(memberships.orgId, ticket.orgId),
-        eq(memberships.isActive, true)
+        eq(memberships.isActive, true),
       ),
     });
 
     if (!membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     // Get requester separately
-    const requester = ticket.requesterId ? await db.query.users.findFirst({
-      where: eq(users.id, ticket.requesterId),
-      columns: { id: true, name: true, email: true },
-    }) : null;
+    const requester = ticket.requesterId
+      ? await db.query.users.findFirst({
+          where: eq(users.id, ticket.requesterId),
+          columns: { id: true, name: true, email: true },
+        })
+      : null;
 
     // Get assignee separately
-    const assignee = ticket.assigneeId ? await db.query.users.findFirst({
-      where: eq(users.id, ticket.assigneeId),
-      columns: { id: true, name: true, email: true },
-    }) : null;
+    const assignee = ticket.assigneeId
+      ? await db.query.users.findFirst({
+          where: eq(users.id, ticket.assigneeId),
+          columns: { id: true, name: true, email: true },
+        })
+      : null;
 
     // Get comments without relations
     const comments = await db.query.ticketComments.findMany({
@@ -63,18 +76,20 @@ export async function GET(
     // Get comment authors separately
     const commentAuthors = await Promise.all(
       comments.map(async (c) => {
-        const author = c.userId ? await db.query.users.findFirst({
-          where: eq(users.id, c.userId),
-          columns: { name: true, email: true },
-        }) : null;
+        const author = c.userId
+          ? await db.query.users.findFirst({
+              where: eq(users.id, c.userId),
+              columns: { name: true, email: true },
+            })
+          : null;
         return {
           id: c.id,
-          author: author?.name || c.authorEmail || 'Unknown',
+          author: author?.name || c.authorEmail || "Unknown",
           content: c.content,
           isInternal: c.isInternal || false,
           createdAt: c.createdAt,
         };
-      })
+      }),
     );
 
     // Get attachments
@@ -94,12 +109,14 @@ export async function GET(
       updatedAt: ticket.updatedAt,
       orgId: ticket.orgId,
       requester: {
-        name: requester?.name || requester?.email?.split('@')[0] || 'Unknown',
-        email: requester?.email || '',
+        name: requester?.name || requester?.email?.split("@")[0] || "Unknown",
+        email: requester?.email || "",
       },
-      assignee: assignee ? {
-        name: assignee.name || assignee.email?.split('@')[0] || 'Unknown',
-      } : undefined,
+      assignee: assignee
+        ? {
+            name: assignee.name || assignee.email?.split("@")[0] || "Unknown",
+          }
+        : undefined,
       comments: commentAuthors,
       attachments: ticketAttachments.map((a) => ({
         id: a.id,
@@ -109,10 +126,10 @@ export async function GET(
       })),
     });
   } catch (error) {
-    console.error('Error fetching ticket:', error);
+    console.error("Error fetching ticket:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch ticket' },
-      { status: 500 }
+      { error: "Failed to fetch ticket" },
+      { status: 500 },
     );
   }
 }

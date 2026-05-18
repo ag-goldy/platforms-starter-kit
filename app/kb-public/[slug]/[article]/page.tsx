@@ -1,14 +1,14 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
-import { Calendar, ChevronRight, Eye, FolderOpen } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { and, eq, or } from 'drizzle-orm';
-import { db } from '@/db';
-import { kbArticles, organizations } from '@/db/schema';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { Calendar, ChevronRight, Eye, FolderOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { and, eq, or } from "drizzle-orm";
+import { db } from "@/db";
+import { kbArticles, organizations } from "@/db/schema";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 interface PublicKbArticlePageProps {
   params: Promise<{ slug: string; article: string }>;
@@ -16,7 +16,10 @@ interface PublicKbArticlePageProps {
 
 async function getPublicArticle(orgSlug: string, articleSlug: string) {
   const org = await db.query.organizations.findFirst({
-    where: or(eq(organizations.slug, orgSlug), eq(organizations.subdomain, orgSlug)),
+    where: or(
+      eq(organizations.slug, orgSlug),
+      eq(organizations.subdomain, orgSlug),
+    ),
   });
 
   if (!org || !org.isActive || org.deletedAt) {
@@ -31,8 +34,8 @@ async function getPublicArticle(orgSlug: string, articleSlug: string) {
     where: and(
       eq(kbArticles.orgId, org.id),
       eq(kbArticles.slug, articleSlug),
-      eq(kbArticles.status, 'published'),
-      eq(kbArticles.visibility, 'public')
+      eq(kbArticles.status, "published"),
+      eq(kbArticles.visibility, "public"),
     ),
     with: {
       category: true,
@@ -53,12 +56,14 @@ async function getPublicArticle(orgSlug: string, articleSlug: string) {
   return { org, article };
 }
 
-export async function generateMetadata({ params }: PublicKbArticlePageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PublicKbArticlePageProps): Promise<Metadata> {
   const { slug, article: articleSlug } = await params;
   const result = await getPublicArticle(slug, articleSlug);
 
   if (!result) {
-    return { title: 'Article not found' };
+    return { title: "Article not found" };
   }
 
   const orgName = result.org.branding?.nameOverride || result.org.name;
@@ -68,7 +73,9 @@ export async function generateMetadata({ params }: PublicKbArticlePageProps): Pr
   };
 }
 
-export default async function PublicKbArticlePage({ params }: PublicKbArticlePageProps) {
+export default async function PublicKbArticlePage({
+  params,
+}: PublicKbArticlePageProps) {
   const { slug, article: articleSlug } = await params;
   const result = await getPublicArticle(slug, articleSlug);
 
@@ -88,8 +95,8 @@ export default async function PublicKbArticlePage({ params }: PublicKbArticlePag
         where: and(
           eq(kbArticles.orgId, org.id),
           eq(kbArticles.categoryId, article.categoryId),
-          eq(kbArticles.status, 'published'),
-          eq(kbArticles.visibility, 'public')
+          eq(kbArticles.status, "published"),
+          eq(kbArticles.visibility, "public"),
         ),
         orderBy: (table, { desc }) => [desc(table.updatedAt)],
         limit: 4,
@@ -144,18 +151,25 @@ export default async function PublicKbArticlePage({ params }: PublicKbArticlePag
         <Separator className="my-8" />
 
         {article.excerpt && (
-          <p className="mb-8 text-lg leading-8 text-gray-600">{article.excerpt}</p>
+          <p className="mb-8 text-lg leading-8 text-gray-600">
+            {article.excerpt}
+          </p>
         )}
 
         <article className="prose prose-slate max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {article.content}
+          </ReactMarkdown>
         </article>
 
-        {relatedArticles.filter((related) => related.id !== article.id).length > 0 && (
+        {relatedArticles.filter((related) => related.id !== article.id).length >
+          0 && (
           <>
             <Separator className="my-10" />
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-gray-950">Related articles</h2>
+              <h2 className="mb-4 text-lg font-semibold text-gray-950">
+                Related articles
+              </h2>
               <div className="grid gap-3">
                 {relatedArticles
                   .filter((related) => related.id !== article.id)
@@ -166,7 +180,9 @@ export default async function PublicKbArticlePage({ params }: PublicKbArticlePag
                       href={`/kb-public/${slug}/${related.slug}`}
                       className="rounded-md border border-gray-200 p-4 hover:bg-gray-50"
                     >
-                      <div className="font-medium text-gray-950">{related.title}</div>
+                      <div className="font-medium text-gray-950">
+                        {related.title}
+                      </div>
                       {related.excerpt && (
                         <p className="mt-1 line-clamp-2 text-sm text-gray-600">
                           {related.excerpt}

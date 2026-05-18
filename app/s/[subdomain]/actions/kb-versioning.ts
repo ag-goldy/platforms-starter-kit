@@ -1,11 +1,11 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { kbArticles, kbArticleVersions, kbArticleTemplates } from '@/db/schema';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { and, eq, desc, asc } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { db } from "@/db";
+import { kbArticles, kbArticleVersions, kbArticleTemplates } from "@/db/schema";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { and, eq, desc, asc } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 // ============================================================================
 // KB ARTICLE VERSIONING
@@ -24,20 +24,17 @@ export async function createArticleVersionAction(
     categoryId?: string | null;
     excerpt?: string;
     changeSummary?: string;
-  }
+  },
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   // Get the current article
   const article = await db.query.kbArticles.findFirst({
-    where: and(
-      eq(kbArticles.id, articleId),
-      eq(kbArticles.orgId, orgId)
-    ),
+    where: and(eq(kbArticles.id, articleId), eq(kbArticles.orgId, orgId)),
   });
 
   if (!article) {
-    throw new Error('Article not found');
+    throw new Error("Article not found");
   }
 
   // Get the latest version number
@@ -56,8 +53,8 @@ export async function createArticleVersionAction(
       versionNumber: nextVersionNumber,
       title: data.title,
       content: data.content,
-      contentType: data.contentType || 'markdown',
-      excerpt: data.excerpt || data.content.slice(0, 200) + '...',
+      contentType: data.contentType || "markdown",
+      excerpt: data.excerpt || data.content.slice(0, 200) + "...",
       categoryId: data.categoryId || null,
       changeSummary: data.changeSummary || null,
       createdById: user.id,
@@ -70,8 +67,8 @@ export async function createArticleVersionAction(
     .set({
       title: data.title,
       content: data.content,
-      contentType: data.contentType || 'markdown',
-      excerpt: data.excerpt || data.content.slice(0, 200) + '...',
+      contentType: data.contentType || "markdown",
+      excerpt: data.excerpt || data.content.slice(0, 200) + "...",
       categoryId: data.categoryId || null,
       updatedAt: new Date(),
     })
@@ -86,8 +83,11 @@ export async function createArticleVersionAction(
 /**
  * Get all versions of an article
  */
-export async function getArticleVersionsAction(orgId: string, articleId: string) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function getArticleVersionsAction(
+  orgId: string,
+  articleId: string,
+) {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const versions = await db.query.kbArticleVersions.findMany({
     where: eq(kbArticleVersions.articleId, articleId),
@@ -112,14 +112,14 @@ export async function getArticleVersionsAction(orgId: string, articleId: string)
 export async function getArticleVersionAction(
   orgId: string,
   articleId: string,
-  versionNumber: number
+  versionNumber: number,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const version = await db.query.kbArticleVersions.findFirst({
     where: and(
       eq(kbArticleVersions.articleId, articleId),
-      eq(kbArticleVersions.versionNumber, versionNumber)
+      eq(kbArticleVersions.versionNumber, versionNumber),
     ),
     with: {
       createdBy: {
@@ -141,14 +141,18 @@ export async function getArticleVersionAction(
 export async function revertToVersionAction(
   orgId: string,
   articleId: string,
-  versionNumber: number
+  versionNumber: number,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
-  const version = await getArticleVersionAction(orgId, articleId, versionNumber);
+  const version = await getArticleVersionAction(
+    orgId,
+    articleId,
+    versionNumber,
+  );
 
   if (!version) {
-    throw new Error('Version not found');
+    throw new Error("Version not found");
   }
 
   // Create a new version recording the revert
@@ -178,7 +182,9 @@ const templateSchema = z.object({
   contentTemplate: z.string().min(1),
   categoryId: z.string().uuid().optional().nullable(),
   defaultTags: z.array(z.string()).optional(),
-  defaultVisibility: z.enum(['public', 'internal', 'org_only']).default('public'),
+  defaultVisibility: z
+    .enum(["public", "internal", "org_only"])
+    .default("public"),
   sortOrder: z.number().default(0),
 });
 
@@ -187,9 +193,9 @@ const templateSchema = z.object({
  */
 export async function createArticleTemplateAction(
   orgId: string,
-  data: z.infer<typeof templateSchema>
+  data: z.infer<typeof templateSchema>,
 ) {
-  const { user } = await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  const { user } = await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = templateSchema.parse(data);
 
   const [template] = await db
@@ -216,12 +222,12 @@ export async function createArticleTemplateAction(
  * Get all templates for an organization
  */
 export async function getArticleTemplatesAction(orgId: string) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const templates = await db.query.kbArticleTemplates.findMany({
     where: and(
       eq(kbArticleTemplates.orgId, orgId),
-      eq(kbArticleTemplates.isActive, true)
+      eq(kbArticleTemplates.isActive, true),
     ),
     orderBy: [asc(kbArticleTemplates.sortOrder), asc(kbArticleTemplates.name)],
     with: {
@@ -244,9 +250,9 @@ export async function getArticleTemplatesAction(orgId: string) {
 export async function updateArticleTemplateAction(
   orgId: string,
   templateId: string,
-  data: z.infer<typeof templateSchema>
+  data: z.infer<typeof templateSchema>,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = templateSchema.parse(data);
 
   const [template] = await db
@@ -262,14 +268,16 @@ export async function updateArticleTemplateAction(
       sortOrder: validated.sortOrder,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(kbArticleTemplates.id, templateId),
-      eq(kbArticleTemplates.orgId, orgId)
-    ))
+    .where(
+      and(
+        eq(kbArticleTemplates.id, templateId),
+        eq(kbArticleTemplates.orgId, orgId),
+      ),
+    )
     .returning();
 
   if (!template) {
-    throw new Error('Template not found');
+    throw new Error("Template not found");
   }
 
   revalidatePath(`/s/[subdomain]/kb/templates`);
@@ -281,9 +289,9 @@ export async function updateArticleTemplateAction(
  */
 export async function deleteArticleTemplateAction(
   orgId: string,
-  templateId: string
+  templateId: string,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const [template] = await db
     .update(kbArticleTemplates)
@@ -291,14 +299,16 @@ export async function deleteArticleTemplateAction(
       isActive: false,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(kbArticleTemplates.id, templateId),
-      eq(kbArticleTemplates.orgId, orgId)
-    ))
+    .where(
+      and(
+        eq(kbArticleTemplates.id, templateId),
+        eq(kbArticleTemplates.orgId, orgId),
+      ),
+    )
     .returning();
 
   if (!template) {
-    throw new Error('Template not found');
+    throw new Error("Template not found");
   }
 
   revalidatePath(`/s/[subdomain]/kb/templates`);
@@ -315,24 +325,24 @@ export async function applyTemplateAction(
     title?: string;
     categoryId?: string;
     tags?: string[];
-  }
+  },
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const template = await db.query.kbArticleTemplates.findFirst({
     where: and(
       eq(kbArticleTemplates.id, templateId),
       eq(kbArticleTemplates.orgId, orgId),
-      eq(kbArticleTemplates.isActive, true)
+      eq(kbArticleTemplates.isActive, true),
     ),
   });
 
   if (!template) {
-    throw new Error('Template not found');
+    throw new Error("Template not found");
   }
 
   return {
-    title: customizations?.title || template.titleTemplate || '',
+    title: customizations?.title || template.titleTemplate || "",
     content: template.contentTemplate,
     categoryId: customizations?.categoryId || template.categoryId,
     tags: customizations?.tags || template.defaultTags || [],
@@ -357,8 +367,10 @@ export interface KBArticleAnalytics {
 /**
  * Get analytics for all KB articles
  */
-export async function getKBArticleAnalyticsAction(orgId: string): Promise<KBArticleAnalytics[]> {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function getKBArticleAnalyticsAction(
+  orgId: string,
+): Promise<KBArticleAnalytics[]> {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const articles = await db.query.kbArticles.findMany({
     where: eq(kbArticles.orgId, orgId),
@@ -372,11 +384,12 @@ export async function getKBArticleAnalyticsAction(orgId: string): Promise<KBArti
     },
   });
 
-  return articles.map(article => {
+  return articles.map((article) => {
     const totalFeedback = article.helpfulCount + article.notHelpfulCount;
-    const feedbackScore = totalFeedback > 0
-      ? Math.round((article.helpfulCount / totalFeedback) * 100)
-      : 0;
+    const feedbackScore =
+      totalFeedback > 0
+        ? Math.round((article.helpfulCount / totalFeedback) * 100)
+        : 0;
 
     return {
       articleId: article.id,
@@ -396,15 +409,12 @@ export async function getKBArticleAnalyticsAction(orgId: string): Promise<KBArti
 export async function getRelatedArticlesAction(
   orgId: string,
   articleId: string,
-  limit: number = 5
+  limit: number = 5,
 ) {
   await requireOrgMemberRole(orgId);
 
   const article = await db.query.kbArticles.findFirst({
-    where: and(
-      eq(kbArticles.id, articleId),
-      eq(kbArticles.orgId, orgId)
-    ),
+    where: and(eq(kbArticles.id, articleId), eq(kbArticles.orgId, orgId)),
     columns: {
       id: true,
       categoryId: true,
@@ -422,12 +432,12 @@ export async function getRelatedArticlesAction(
   const relatedArticles = await db.query.kbArticles.findMany({
     where: and(
       eq(kbArticles.orgId, orgId),
-      eq(kbArticles.status, 'published'),
+      eq(kbArticles.status, "published"),
       sql`${kbArticles.id} != ${articleId}`,
       sql`(
         ${kbArticles.categoryId} = ${article.categoryId}
         OR ${kbArticles.tags} && ${articleTags}::jsonb
-      )`
+      )`,
     ),
     orderBy: [desc(kbArticles.helpfulCount), desc(kbArticles.viewCount)],
     limit,
@@ -444,4 +454,4 @@ export async function getRelatedArticlesAction(
   return relatedArticles;
 }
 
-import { sql } from 'drizzle-orm';
+import { sql } from "drizzle-orm";

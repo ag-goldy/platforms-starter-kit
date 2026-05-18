@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useTicketPresence } from '@/lib/hooks/useTicketPresence';
-import { Pencil, Eye } from 'lucide-react';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useTicketPresence } from "@/lib/hooks/useTicketPresence";
+import { Pencil, Eye } from "lucide-react";
 
 interface PresenceAvatarsProps {
   ticketId: string;
@@ -10,7 +10,11 @@ interface PresenceAvatarsProps {
   userName: string;
 }
 
-export function PresenceAvatars({ ticketId, userId, userName }: PresenceAvatarsProps) {
+export function PresenceAvatars({
+  ticketId,
+  userId,
+  userName,
+}: PresenceAvatarsProps) {
   const { viewers, hasOtherViewers, typingViewers } = useTicketPresence({
     ticketId,
     userId,
@@ -21,9 +25,9 @@ export function PresenceAvatars({ ticketId, userId, userName }: PresenceAvatarsP
   // Get initials from name
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -31,16 +35,18 @@ export function PresenceAvatars({ ticketId, userId, userName }: PresenceAvatarsP
   // Generate avatar color based on userId
   const getAvatarColor = (id: string) => {
     const colors = [
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-yellow-500',
-      'bg-purple-500',
-      'bg-pink-500',
-      'bg-indigo-500',
-      'bg-red-500',
-      'bg-teal-500',
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+      "bg-red-500",
+      "bg-teal-500",
     ];
-    const index = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const index = id
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[index % colors.length];
   };
 
@@ -73,18 +79,16 @@ export function PresenceAvatars({ ticketId, userId, userName }: PresenceAvatarsP
         {typingViewers.length > 0 ? (
           <span className="text-amber-600 font-medium animate-pulse flex items-center gap-1">
             <Pencil className="w-3 h-3" />
-            {typingViewers.length === 1 
-              ? 'Someone is typing...'
-              : `${typingViewers.length} people are typing...`
-            }
+            {typingViewers.length === 1
+              ? "Someone is typing..."
+              : `${typingViewers.length} people are typing...`}
           </span>
         ) : (
           <span className="text-muted-foreground flex items-center gap-1">
             <Eye className="w-3 h-3" />
-            {viewers.length === 1 
-              ? '1 person viewing'
-              : `${viewers.length} people viewing`
-            }
+            {viewers.length === 1
+              ? "1 person viewing"
+              : `${viewers.length} people viewing`}
           </span>
         )}
       </div>

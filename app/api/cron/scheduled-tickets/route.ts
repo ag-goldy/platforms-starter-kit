@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 import {
   getDueScheduledTickets,
   processScheduledTicket,
-} from '@/lib/scheduled-tickets/queries';
-import { verifyCronAuth } from '@/lib/auth/cron';
+} from "@/lib/scheduled-tickets/queries";
+import { verifyCronAuth } from "@/lib/auth/cron";
 
 export async function GET(req: NextRequest) {
   // Fail-closed: rejects if CRON_SECRET not set or header mismatch
@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
   if (rejection) return rejection;
 
   try {
-
     // Get all due scheduled tickets
     const dueTickets = await getDueScheduledTickets();
 
@@ -28,7 +27,7 @@ export async function GET(req: NextRequest) {
         results.push({
           scheduledId: scheduled.id,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -38,10 +37,10 @@ export async function GET(req: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('Error processing scheduled tickets:', error);
+    console.error("Error processing scheduled tickets:", error);
     return NextResponse.json(
-      { error: 'Failed to process scheduled tickets' },
-      { status: 500 }
+      { error: "Failed to process scheduled tickets" },
+      { status: 500 },
     );
   }
 }

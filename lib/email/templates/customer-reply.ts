@@ -1,4 +1,4 @@
-import { escapeHtml, formatMultilineText, renderBaseTemplate } from './utils';
+import { escapeHtml, formatMultilineText, renderBaseTemplate } from "./utils";
 
 export function renderCustomerReplyEmail(options: {
   ticketKey: string;
@@ -9,7 +9,7 @@ export function renderCustomerReplyEmail(options: {
 }) {
   const { ticketKey, subject, customerName, comment, ticketUrl } = options;
   const title = `Customer Reply: ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p><strong>${escapeHtml(customerName)}</strong> replied to ticket <strong>${escapeHtml(ticketKey)}</strong>:</p>
     
@@ -31,7 +31,7 @@ export function renderCustomerReplyEmail(options: {
   return {
     subject: `[${ticketKey}] New reply from ${customerName}`,
     html: renderBaseTemplate({
-      title: 'Customer Reply',
+      title: "Customer Reply",
       preheader: `${customerName} replied to ticket ${ticketKey}`,
       bodyHtml,
     }),

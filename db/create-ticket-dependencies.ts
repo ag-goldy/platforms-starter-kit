@@ -1,12 +1,12 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 async function create() {
   const sql = neon(process.env.DATABASE_URL!);
-  
-  console.log('Creating ticket_dependencies and ticket_watchers tables...\n');
+
+  console.log("Creating ticket_dependencies and ticket_watchers tables...\n");
 
   // Create ticket_dependencies
   try {
@@ -21,13 +21,13 @@ async function create() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `;
-    console.log('✓ ticket_dependencies table created');
-    
+    console.log("✓ ticket_dependencies table created");
+
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_dependencies_ticket_id ON ticket_dependencies(ticket_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_dependencies_depends_on ON ticket_dependencies(depends_on_ticket_id)`;
-    console.log('  Indexes created');
+    console.log("  Indexes created");
   } catch (e) {
-    console.error('✗ ticket_dependencies:', e);
+    console.error("✗ ticket_dependencies:", e);
   }
 
   // Create ticket_watchers
@@ -43,16 +43,16 @@ async function create() {
         UNIQUE(ticket_id, platform_admin_id)
       )
     `;
-    console.log('✓ ticket_watchers table created');
-    
+    console.log("✓ ticket_watchers table created");
+
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_watchers_ticket_id ON ticket_watchers(ticket_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_watchers_user_id ON ticket_watchers(user_id)`;
-    console.log('  Indexes created');
+    console.log("  Indexes created");
   } catch (e) {
-    console.error('✗ ticket_watchers:', e);
+    console.error("✗ ticket_watchers:", e);
   }
 
-  console.log('\n✅ Tables created successfully!');
+  console.log("\n✅ Tables created successfully!");
   process.exit(0);
 }
 

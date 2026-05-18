@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { motion, type Variants } from 'framer-motion';
-import { TicketInboxWidget } from './TicketInboxWidget';
-import { HealthStatusWidget } from './HealthStatusWidget';
-import { KBSuggestionsWidget } from './KBSuggestionsWidget';
-import { TeamActivityWidget } from './TeamActivityWidget';
-import { QuickActionsWidget } from './QuickActionsWidget';
-import { useCustomerPortal, WidgetConfig } from '@/components/customer/CustomerPortalContext';
+import React from "react";
+import { motion, type Variants } from "framer-motion";
+import { TicketInboxWidget } from "./TicketInboxWidget";
+import { HealthStatusWidget } from "./HealthStatusWidget";
+import { KBSuggestionsWidget } from "./KBSuggestionsWidget";
+import { TeamActivityWidget } from "./TeamActivityWidget";
+import { QuickActionsWidget } from "./QuickActionsWidget";
+import {
+  useCustomerPortal,
+  WidgetConfig,
+} from "@/components/customer/CustomerPortalContext";
 
 interface WidgetGridProps {
   subdomain: string;
@@ -36,7 +39,7 @@ const widgetVariants: Variants = {
     opacity: 1,
     y: 0,
     transition: {
-      type: 'spring',
+      type: "spring",
       damping: 20,
       stiffness: 100,
     },
@@ -52,15 +55,15 @@ export function WidgetGrid({ subdomain, org }: WidgetGridProps) {
     const props = { subdomain, org };
 
     switch (widget.type) {
-      case 'ticket_inbox':
+      case "ticket_inbox":
         return <TicketInboxWidget {...props} />;
-      case 'health_status':
+      case "health_status":
         return <HealthStatusWidget {...props} />;
-      case 'kb_suggestions':
+      case "kb_suggestions":
         return <KBSuggestionsWidget {...props} />;
-      case 'team_activity':
+      case "team_activity":
         return <TeamActivityWidget {...props} />;
-      case 'quick_actions':
+      case "quick_actions":
         return <QuickActionsWidget {...props} />;
       default:
         return null;
@@ -69,8 +72,8 @@ export function WidgetGrid({ subdomain, org }: WidgetGridProps) {
 
   const getGridClass = (position: { w: number; h: number }) => {
     // Map widget dimensions to grid classes
-    const widthClass = position.w === 2 ? 'col-span-2' : 'col-span-1';
-    const heightClass = position.h === 2 ? 'row-span-2' : 'row-span-1';
+    const widthClass = position.w === 2 ? "col-span-2" : "col-span-1";
+    const heightClass = position.h === 2 ? "row-span-2" : "row-span-1";
     return `${widthClass} ${heightClass}`;
   };
 
@@ -86,8 +89,8 @@ export function WidgetGrid({ subdomain, org }: WidgetGridProps) {
           key={widget.id}
           variants={widgetVariants}
           className={`${getGridClass(widget.position)} ${
-            widget.position.w === 2 ? 'md:col-span-2' : ''
-          } ${widget.position.h === 2 ? 'min-h-[400px]' : 'min-h-[200px]'}`}
+            widget.position.w === 2 ? "md:col-span-2" : ""
+          } ${widget.position.h === 2 ? "min-h-[400px]" : "min-h-[200px]"}`}
         >
           <div className="h-full bg-surface-elevated rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             {renderWidget(widget)}

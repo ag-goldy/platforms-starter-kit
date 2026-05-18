@@ -1,15 +1,15 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { getServerSession } from '@/lib/auth/session';
-import { SignOutButton } from '@/components/auth/signout-button';
-import { db } from '@/db';
-import { memberships } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { getActiveNotices, pickPrimaryNotice } from '@/lib/notices/queries';
-import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
+import Link from "next/link";
+import Image from "next/image";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { getServerSession } from "@/lib/auth/session";
+import { SignOutButton } from "@/components/auth/signout-button";
+import { db } from "@/db";
+import { memberships } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { getActiveNotices, pickPrimaryNotice } from "@/lib/notices/queries";
+import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
 
 interface CustomerPortalShellProps {
   subdomain: string;
@@ -17,15 +17,18 @@ interface CustomerPortalShellProps {
   siteId?: string | null;
 }
 
-async function getUserRole(userId: string, subdomain: string): Promise<string | null> {
+async function getUserRole(
+  userId: string,
+  subdomain: string,
+): Promise<string | null> {
   const org = await getOrgBySubdomain(subdomain);
   if (!org) return null;
-  
+
   const membership = await db.query.memberships.findFirst({
     where: and(
       eq(memberships.userId, userId),
       eq(memberships.orgId, org.id),
-      eq(memberships.isActive, true)
+      eq(memberships.isActive, true),
     ),
   });
   return membership?.role || null;
@@ -37,17 +40,22 @@ export async function CustomerPortalShell({
   siteId,
 }: CustomerPortalShellProps) {
   const session = await getServerSession();
-  const userRole = session?.user?.id ? await getUserRole(session.user.id, subdomain) : null;
-  const isAdmin = userRole === 'CUSTOMER_ADMIN';
+  const userRole = session?.user?.id
+    ? await getUserRole(session.user.id, subdomain)
+    : null;
+  const isAdmin = userRole === "CUSTOMER_ADMIN";
   const org = await getOrgBySubdomain(subdomain);
   const notices = org ? await getActiveNotices(org.id, siteId) : [];
   const primaryNotice = pickPrimaryNotice(notices);
   const noticeStyle =
-    primaryNotice?.severity === 'CRITICAL'
-      ? { container: 'bg-red-50 text-red-900', badge: 'destructive' as const }
-      : primaryNotice?.severity === 'WARN'
-      ? { container: 'bg-yellow-50 text-yellow-900', badge: 'secondary' as const }
-      : { container: 'bg-blue-50 text-blue-900', badge: 'outline' as const };
+    primaryNotice?.severity === "CRITICAL"
+      ? { container: "bg-red-50 text-red-900", badge: "destructive" as const }
+      : primaryNotice?.severity === "WARN"
+        ? {
+            container: "bg-yellow-50 text-yellow-900",
+            badge: "secondary" as const,
+          }
+        : { container: "bg-blue-50 text-blue-900", badge: "outline" as const };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,11 +71,20 @@ export async function CustomerPortalShell({
       <nav className="border-b bg-white">
         <div className="flex h-14 items-center justify-between px-6">
           <div className="flex items-center gap-6">
-            <Link href={`/s/${subdomain}/dashboard`} className="flex items-center gap-2 text-sm font-semibold">
+            <Link
+              href={`/s/${subdomain}/dashboard`}
+              className="flex items-center gap-2 text-sm font-semibold"
+            >
               {org?.branding?.logoUrl ? (
-                <Image src={org.branding.logoUrl} alt="Logo" width={24} height={24} className="h-6 w-6 rounded" />
+                <Image
+                  src={org.branding.logoUrl}
+                  alt="Logo"
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 rounded"
+                />
               ) : null}
-              <span>{org?.branding?.nameOverride ?? 'Support Portal'}</span>
+              <span>{org?.branding?.nameOverride ?? "Support Portal"}</span>
             </Link>
             <Link
               href={`/s/${subdomain}/tickets`}
@@ -116,7 +133,9 @@ export async function CustomerPortalShell({
           </div>
           <div className="flex items-center gap-4">
             {session?.user?.email && (
-              <span className="text-sm text-gray-600">{session.user.email}</span>
+              <span className="text-sm text-gray-600">
+                {session.user.email}
+              </span>
             )}
             {session ? (
               <SignOutButton variant="ghost" size="sm" />

@@ -1,53 +1,62 @@
 /**
  * Customer AI Endpoint - Org-scoped, isolated to one tenant
- * 
+ *
  * ALLOWED:
  * - Answer questions using this org's KB articles
  * - Provide ticket status summaries (if enabled)
  * - Show service status (if enabled)
  * - Use org-specific AI memory
- * 
+ *
  * BLOCKED:
  * - Any data from other organizations
  * - Internal notes on tickets
  * - Internal user information
  * - Automation rules, SLA configs
  * - Audit logs
- * 
+ *
  * CRITICAL: EVERY query MUST include WHERE org_id = {currentOrgId}
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { auth } from '@/auth';
-import { headers } from 'next/headers';
-import { getClientIP } from '@/lib/rate-limit';
-import { rateLimit } from '@/lib/rate-limit';
-import { db } from '@/db';
-import { aiAuditLog, memberships } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import OpenAI from 'openai';
-import { detectPromptInjection, getSafeResponse, logSecurityEvent } from '@/lib/ai/prompt-guard';
-import { sanitizeResponse, sanitizeResponseWithOrgRules, anonymizeInternalUser, type AISecurityContext } from '@/lib/ai/security';
-import { 
-  fetchKBForAI, 
-  fetchTicketSummariesForAI, 
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { auth } from "@/auth";
+import { headers } from "next/headers";
+import { getClientIP } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
+import { db } from "@/db";
+import { aiAuditLog, memberships } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import OpenAI from "openai";
+import {
+  detectPromptInjection,
+  getSafeResponse,
+  logSecurityEvent,
+} from "@/lib/ai/prompt-guard";
+import {
+  sanitizeResponse,
+  sanitizeResponseWithOrgRules,
+  anonymizeInternalUser,
+  type AISecurityContext,
+} from "@/lib/ai/security";
+import {
+  fetchKBForAI,
+  fetchTicketSummariesForAI,
   fetchServiceStatusForAI,
   fetchOrgAIMemories,
   fetchOrgAIConfig,
-} from '@/lib/ai/data-fetchers';
-import { createHash } from 'crypto';
-import { logAIUsage } from '@/lib/ai/usage-tracking';
+} from "@/lib/ai/data-fetchers";
+import { createHash } from "crypto";
+import { logAIUsage } from "@/lib/ai/usage-tracking";
 
 const requestSchema = z.object({
   query: z.string().min(2).max(2000),
   sessionId: z.string().optional(),
-  orgId: z.string().uuid('orgId must be a valid UUID'),
+  orgId: z.string().uuid("orgId must be a valid UUID"),
 });
 
 const client = new OpenAI({
-  apiKey: process.env.BASETEN_API_KEY || '',
-  baseURL: process.env.BASETEN_BASE_URL || 'https://inference.baseten.co/v1',
+  apiKey: process.env.BASETEN_API_KEY || "",
+  baseURL: process.env.BASETEN_BASE_URL || "https://inference.baseten.co/v1",
 });
 
 // Customer system prompt template
@@ -81,12 +90,12 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
   const headersList = await headers();
   const ip = getClientIP(headersList);
-  
+
   try {
     // 1. Authenticate
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 2. Parse request
@@ -94,8 +103,8 @@ export async function POST(req: NextRequest) {
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid request', details: parsed.error.flatten() },
-        { status: 400 }
+        { error: "Invalid request", details: parsed.error.flatten() },
+        { status: 400 },
       );
     }
 
@@ -106,35 +115,39 @@ export async function POST(req: NextRequest) {
       where: and(
         eq(memberships.userId, session.user.id),
         eq(memberships.orgId, orgId),
-        eq(memberships.isActive, true)
+        eq(memberships.isActive, true),
       ),
     });
 
     if (!membership) {
-      console.warn('[AI:Customer] Access denied — no active membership', {
+      console.warn("[AI:Customer] Access denied — no active membership", {
         userId: session.user.id,
         orgId,
         ip,
       });
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     // 4. Load org AI config
     const aiConfig = await fetchOrgAIConfig(orgId);
     if (!aiConfig?.customerAIEnabled) {
       return NextResponse.json(
-        { error: 'AI assistant is not available for this organization' },
-        { status: 403 }
+        { error: "AI assistant is not available for this organization" },
+        { status: 403 },
       );
     }
 
     // 5. Rate limit by user + org
     const rateLimitKey = `ai:customer:${orgId}:${session.user.id}`;
-    const rateLimitResult = await rateLimit({ identifier: rateLimitKey, limit: aiConfig.customerRateLimit ?? 50, windowSeconds: 60 * 60 });
+    const rateLimitResult = await rateLimit({
+      identifier: rateLimitKey,
+      limit: aiConfig.customerRateLimit ?? 50,
+      windowSeconds: 60 * 60,
+    });
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
-        { error: 'Rate limit exceeded. Please try again later.' },
-        { status: 429 }
+        { error: "Rate limit exceeded. Please try again later." },
+        { status: 429 },
       );
     }
 
@@ -143,11 +156,11 @@ export async function POST(req: NextRequest) {
     // 7. Run prompt injection detection
     const guardResult = detectPromptInjection(query);
     if (guardResult.shouldBlock) {
-      logSecurityEvent('prompt_injection_blocked', {
+      logSecurityEvent("prompt_injection_blocked", {
         threats: guardResult.threats,
         userId: session.user.id,
         orgId,
-        interface: 'customer',
+        interface: "customer",
         ipAddress: ip,
         inputLength: query.length,
       });
@@ -155,13 +168,13 @@ export async function POST(req: NextRequest) {
       await db.insert(aiAuditLog).values({
         orgId,
         userId: session.user.id,
-        interface: 'customer',
+        interface: "customer",
         userQuery: query,
-        systemPromptHash: 'BLOCKED',
+        systemPromptHash: "BLOCKED",
         aiResponse: getSafeResponse(guardResult.threats),
         wasFiltered: true,
         ipAddress: ip,
-        userAgent: headersList.get('user-agent') || undefined,
+        userAgent: headersList.get("user-agent") || undefined,
       });
 
       return NextResponse.json({
@@ -172,7 +185,7 @@ export async function POST(req: NextRequest) {
 
     // 8. Build security context
     const securityContext: AISecurityContext = {
-      interface: 'customer',
+      interface: "customer",
       orgId,
       userId: session.user.id,
       userRole: membership.role,
@@ -181,42 +194,57 @@ export async function POST(req: NextRequest) {
     };
 
     // 9. Fetch data based on config
-    const [
-      orgMemory,
-      kbContext,
-      ticketContext,
-      serviceContext,
-    ] = await Promise.all([
-      fetchOrgAIMemories(orgId, 5),
-      aiConfig.allowKBAccess ? fetchKBForAI(securityContext, guardResult.sanitizedInput, 3) : '',
-      aiConfig.allowTicketSummaries ? fetchTicketSummariesForAI(securityContext, 5) : '',
-      aiConfig.allowServiceStatus ? fetchServiceStatusForAI(securityContext) : '',
-    ]);
+    const [orgMemory, kbContext, ticketContext, serviceContext] =
+      await Promise.all([
+        fetchOrgAIMemories(orgId, 5),
+        aiConfig.allowKBAccess
+          ? fetchKBForAI(securityContext, guardResult.sanitizedInput, 3)
+          : "",
+        aiConfig.allowTicketSummaries
+          ? fetchTicketSummariesForAI(securityContext, 5)
+          : "",
+        aiConfig.allowServiceStatus
+          ? fetchServiceStatusForAI(securityContext)
+          : "",
+      ]);
 
     // 10. Build system prompt
-    const orgName = session.user.name || session.user.email || 'Your Organization';
-    const systemPrompt = CUSTOMER_SYSTEM_PROMPT_TEMPLATE
-      .replace('{org_name}', orgName)
-      .replace('{custom_instructions}', aiConfig.systemInstructions || '')
-      .replace('{org_memory}', orgMemory || 'No specific memories configured.')
-      .replace('{kb_context}', kbContext || 'No relevant articles found.')
-      .replace('{ticket_context}', ticketContext ? `RECENT TICKET ACTIVITY:\n${ticketContext}` : '')
-      .replace('{service_context}', serviceContext ? `SERVICE STATUS:\n${serviceContext}` : '');
+    const orgName =
+      session.user.name || session.user.email || "Your Organization";
+    const systemPrompt = CUSTOMER_SYSTEM_PROMPT_TEMPLATE.replace(
+      "{org_name}",
+      orgName,
+    )
+      .replace("{custom_instructions}", aiConfig.systemInstructions || "")
+      .replace("{org_memory}", orgMemory || "No specific memories configured.")
+      .replace("{kb_context}", kbContext || "No relevant articles found.")
+      .replace(
+        "{ticket_context}",
+        ticketContext ? `RECENT TICKET ACTIVITY:\n${ticketContext}` : "",
+      )
+      .replace(
+        "{service_context}",
+        serviceContext ? `SERVICE STATUS:\n${serviceContext}` : "",
+      );
 
-    const systemPromptHash = createHash('sha256').update(systemPrompt).digest('hex');
+    const systemPromptHash = createHash("sha256")
+      .update(systemPrompt)
+      .digest("hex");
 
     // 11. Call OpenAI
     const completion = await client.chat.completions.create({
-      model: 'deepseek-ai/DeepSeek-V3.1',
+      model: "deepseek-ai/DeepSeek-V3.1",
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: guardResult.sanitizedInput },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: guardResult.sanitizedInput },
       ],
       temperature: 0.3,
       max_tokens: aiConfig.maxResponseTokens,
     });
 
-    let aiResponse = completion.choices[0]?.message?.content || 'I was unable to generate a response.';
+    let aiResponse =
+      completion.choices[0]?.message?.content ||
+      "I was unable to generate a response.";
 
     // 12. Anonymize internal users and strip any internal notes that might have slipped through
     aiResponse = anonymizeInternalUser(aiResponse);
@@ -231,7 +259,7 @@ export async function POST(req: NextRequest) {
       await db.insert(aiAuditLog).values({
         orgId,
         userId: session.user.id,
-        interface: 'customer',
+        interface: "customer",
         userQuery: query,
         systemPromptHash,
         aiResponse: `[Blocked by org PII rule: ${blockedByRule}]`,
@@ -239,11 +267,11 @@ export async function POST(req: NextRequest) {
         piiDetected: true,
         piiTypes: [blockedByRule],
         ipAddress: ip,
-        userAgent: (await headers()).get('user-agent') || undefined,
+        userAgent: (await headers()).get("user-agent") || undefined,
       });
       return NextResponse.json(
-        { error: 'Response blocked by content policy' },
-        { status: 400 }
+        { error: "Response blocked by content policy" },
+        { status: 400 },
       );
     }
 
@@ -251,7 +279,7 @@ export async function POST(req: NextRequest) {
     await db.insert(aiAuditLog).values({
       orgId,
       userId: session.user.id,
-      interface: 'customer',
+      interface: "customer",
       userQuery: query,
       systemPromptHash,
       aiResponse: sanitized,
@@ -262,12 +290,12 @@ export async function POST(req: NextRequest) {
       piiTypes,
       wasFiltered: piiDetected,
       sourcesUsed: [
-        ...(kbContext ? ['kb:org'] : []),
-        ...(ticketContext ? ['tickets:summary'] : []),
-        ...(serviceContext ? ['services:status'] : []),
+        ...(kbContext ? ["kb:org"] : []),
+        ...(ticketContext ? ["tickets:summary"] : []),
+        ...(serviceContext ? ["services:status"] : []),
       ],
       ipAddress: ip,
-      userAgent: headersList.get('user-agent') || undefined,
+      userAgent: headersList.get("user-agent") || undefined,
     });
 
     // 15. Log usage for cost tracking
@@ -275,13 +303,17 @@ export async function POST(req: NextRequest) {
       await logAIUsage({
         orgId,
         userId: session.user.id,
-        interface: 'customer',
+        interface: "customer",
         modelUsed: completion.model,
         promptTokens: completion.usage.prompt_tokens,
         completionTokens: completion.usage.completion_tokens,
         metadata: {
           responseTimeMs: Date.now() - startTime,
-          sources: [kbContext ? 'kb' : null, ticketContext ? 'tickets' : null, serviceContext ? 'services' : null].filter(Boolean),
+          sources: [
+            kbContext ? "kb" : null,
+            ticketContext ? "tickets" : null,
+            serviceContext ? "services" : null,
+          ].filter(Boolean),
         },
       });
     }
@@ -290,12 +322,11 @@ export async function POST(req: NextRequest) {
       answer: sanitized,
       suggestions: [],
     });
-
   } catch (error) {
-    console.error('[AI Customer] Error:', error);
+    console.error("[AI Customer] Error:", error);
     return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
+      { error: "Failed to process request" },
+      { status: 500 },
     );
   }
 }

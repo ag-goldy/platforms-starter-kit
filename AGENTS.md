@@ -18,19 +18,19 @@ Key features: ticketing with SLA tracking, asset management, knowledge base, ema
 
 ## 2. Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 15 (App Router), React 19, TypeScript 5 |
-| Styling | Tailwind CSS 4, shadcn/ui primitives, `lucide-react` icons |
-| Database | PostgreSQL via Neon (`@neondatabase/serverless`); Drizzle ORM |
-| Auth | Next-Auth v5 (Auth.js) with Credentials provider, JWT sessions, bcrypt hashing |
+| Layer              | Technology                                                                      |
+| ------------------ | ------------------------------------------------------------------------------- |
+| Framework          | Next.js 15 (App Router), React 19, TypeScript 5                                 |
+| Styling            | Tailwind CSS 4, shadcn/ui primitives, `lucide-react` icons                      |
+| Database           | PostgreSQL via Neon (`@neondatabase/serverless`); Drizzle ORM                   |
+| Auth               | Next-Auth v5 (Auth.js) with Credentials provider, JWT sessions, bcrypt hashing  |
 | Cache / Rate Limit | Upstash Redis (`@upstash/redis`) or self-hosted Redis; in-memory mock for tests |
-| File Storage | Vercel Blob (`@vercel/blob`) for attachments |
-| Email | Microsoft Graph API (priority) > SMTP (`nodemailer`) > console fallback |
-| AI | Baseten (`deepseek-ai/DeepSeek-V3.1`) via OpenAI-compatible client |
-| Jobs | Redis-backed BullMQ queues with typed handlers |
-| Testing | Vitest (unit/integration), Playwright (E2E) |
-| Package Manager | pnpm 10.12.4 |
+| File Storage       | Vercel Blob (`@vercel/blob`) for attachments                                    |
+| Email              | Microsoft Graph API (priority) > SMTP (`nodemailer`) > console fallback         |
+| AI                 | Baseten (`deepseek-ai/DeepSeek-V3.1`) via OpenAI-compatible client              |
+| Jobs               | Redis-backed BullMQ queues with typed handlers                                  |
+| Testing            | Vitest (unit/integration), Playwright (E2E)                                     |
+| Package Manager    | pnpm 10.12.4                                                                    |
 
 ---
 
@@ -128,6 +128,7 @@ pnpm check:emails     # Check failed email diagnostics
 ## 6. Testing Strategy
 
 ### Vitest (Unit / Integration)
+
 - Config: `vitest.config.ts`
 - Environment: `node`, globals enabled, single-threaded to avoid DB contention
 - Setup file: `tests/setup.ts` truncates `organizations` and `users` before each test
@@ -139,10 +140,12 @@ pnpm check:emails     # Check failed email diagnostics
 - Heavy mocking of `@/lib/auth/context` for permission tests; Redis is mocked in-memory for rate-limit tests.
 
 ### Playwright (E2E)
+
 - Located in `tests/e2e/`
 - Not in `package.json` devDependencies by default; tests degrade gracefully if not installed.
 
 ### Key Test Files
+
 - `permissions.test.ts` — role enforcement boundaries
 - `security.test.ts` — org isolation, magic-link expiry, attachment gating
 - `org-isolation.test.ts` — query-layer tenant scoping
@@ -156,22 +159,26 @@ pnpm check:emails     # Check failed email diagnostics
 ## 7. Database and Migrations
 
 ### Schema
+
 - Primary schema: `db/schema.ts`
 - Extensions: `db/schema-extensions.ts`
 - ~60 tables covering: organizations, users, platform admins, memberships, tickets, comments, attachments, services, assets, KB, automation rules, audit logs, notifications, AI usage, Zabbix configs, etc.
 
 ### Connection
+
 - `db/index.ts` exports a Proxy-based singleton `db` client.
 - Supports two drivers via `DB_DRIVER` env var:
   - `neon` (default): `@neondatabase/serverless` for serverless/edge
   - `postgres`: `postgres-js` with connection pooling (max 10)
 
 ### Migrations
+
 - Managed with Drizzle Kit (`drizzle.config.ts`).
 - Migration files live in `drizzle/`.
 - Feature migrations were applied in phases (Phase 3, Phase 4, etc.). Historical one-off scripts are in `scripts/archive/`.
 
 ### Seeding
+
 - `db/seed.ts` creates two hardcoded internal users (`ag@agrnetworks.com` admin, `help@agrnetworks.com` agent) with bcrypt-hashed passwords.
 
 ---
@@ -179,6 +186,7 @@ pnpm check:emails     # Check failed email diagnostics
 ## 8. Authentication and Authorization
 
 ### Auth Flow
+
 - Next-Auth v5 with Credentials provider only.
 - Config split: `auth.config.ts` (cookies, JWT callbacks, session) + `auth.ts` (authorize logic, DB queries).
 - JWT strategy, 30-day max age.
@@ -188,11 +196,13 @@ pnpm check:emails     # Check failed email diagnostics
   2. `users` — tenant users, with `isInternal` flag distinguishing agents from customers
 
 ### 2FA / TOTP
+
 - If `twoFactorEnabled` is true, password login returns `null` and issues a `loginToken`.
 - User completes 2FA on `/login/verify-2fa`.
 - Implemented in `lib/auth/two-factor-login.ts` using `otplib`.
 
 ### Permission Guards (use these — do not reinvent)
+
 - `requireAuth()` — any authenticated user
 - `requireInternalRole()` — staff dashboard access (`ADMIN`, `AGENT`, `READONLY`)
 - `requireInternalAdmin()` — platform admin panel access
@@ -201,6 +211,7 @@ pnpm check:emails     # Check failed email diagnostics
 - `withOrgScope()` / `withValidatedOrgScope()` — mandatory tenant scoping wrapper for DB queries
 
 ### Middleware (`middleware.ts`)
+
 - Extracts subdomain from host (local: `*.localhost`, prod: `*.rootdomain`, Vercel preview: `*---*.vercel.app`; also falls back to `/s/[subdomain]` path on localhost).
 - Protects `/app/*` and `/admin/*` — redirects to `/login` if no session cookie.
 - Blocks `/app` and `/admin` access from subdomains.
@@ -214,48 +225,51 @@ pnpm check:emails     # Check failed email diagnostics
 
 Required for local development:
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `NEXTAUTH_SECRET` | JWT signing secret (generate with `openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | Base URL for auth callbacks (`http://localhost:3000`) |
-| `NEXT_PUBLIC_ROOT_DOMAIN` | Root domain for subdomain routing (`localhost:3000`) |
-| `APP_BASE_URL` | Internal app base URL |
-| `SUPPORT_BASE_URL` | Public support base URL |
-| `TOKEN_PEPPER` | HMAC pepper for magic links (`openssl rand -base64 32`) |
-| `EXPORT_SIGNED_URL_SECRET` | HMAC secret for customer export signed URLs |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token for attachment uploads |
+| Variable                   | Purpose                                                      |
+| -------------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`             | PostgreSQL connection string                                 |
+| `NEXTAUTH_SECRET`          | JWT signing secret (generate with `openssl rand -base64 32`) |
+| `NEXTAUTH_URL`             | Base URL for auth callbacks (`http://localhost:3000`)        |
+| `NEXT_PUBLIC_ROOT_DOMAIN`  | Root domain for subdomain routing (`localhost:3000`)         |
+| `APP_BASE_URL`             | Internal app base URL                                        |
+| `SUPPORT_BASE_URL`         | Public support base URL                                      |
+| `TOKEN_PEPPER`             | HMAC pepper for magic links (`openssl rand -base64 32`)      |
+| `EXPORT_SIGNED_URL_SECRET` | HMAC secret for customer export signed URLs                  |
+| `BLOB_READ_WRITE_TOKEN`    | Vercel Blob token for attachment uploads                     |
 
 Optional but recommended:
 
-| Variable | Purpose |
-|----------|---------|
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Upstash Redis for rate limiting and caching |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE` | SMTP fallback email |
-| `EMAIL_FROM` | Default sender address |
-| `MICROSOFT_GRAPH_TENANT_ID` / `CLIENT_ID` / `CLIENT_SECRET` | Microsoft Graph email (priority over SMTP) |
-| `GRAPH_WEBHOOK_SECRET` | Graph inbound webhook validation |
-| `INBOUND_EMAIL_SECRET` | Generic inbound email webhook auth |
-| `CRON_SECRET_TOKEN` | External cron / VPS auth |
-| `BASETEN_API_KEY` | AI inference API |
-| `INTERNAL_ADMIN_EMAILS` | Comma-separated emails with `/app/admin/health` access |
-| `HEALTHCHECK_EMAIL_TO` / `SUPPORT_INBOX_EMAIL` | Diagnostics and intake addresses |
+| Variable                                                                  | Purpose                                                |
+| ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN`                                   | Upstash Redis for rate limiting and caching            |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE` | SMTP fallback email                                    |
+| `EMAIL_FROM`                                                              | Default sender address                                 |
+| `MICROSOFT_GRAPH_TENANT_ID` / `CLIENT_ID` / `CLIENT_SECRET`               | Microsoft Graph email (priority over SMTP)             |
+| `GRAPH_WEBHOOK_SECRET`                                                    | Graph inbound webhook validation                       |
+| `INBOUND_EMAIL_SECRET`                                                    | Generic inbound email webhook auth                     |
+| `CRON_SECRET_TOKEN`                                                       | External cron / VPS auth                               |
+| `BASETEN_API_KEY`                                                         | AI inference API                                       |
+| `INTERNAL_ADMIN_EMAILS`                                                   | Comma-separated emails with `/app/admin/health` access |
+| `HEALTHCHECK_EMAIL_TO` / `SUPPORT_INBOX_EMAIL`                            | Diagnostics and intake addresses                       |
 
 ---
 
 ## 10. Deployment
 
 ### Primary: Vercel
+
 - Designed for Vercel with wildcard DNS (`*.yourdomain.com`).
 - `vercel.json` defines two daily cron jobs: `/api/jobs/process` and `/api/cron/graph-subscription`.
 - `next.config.ts` has `ignoreDuringBuilds: true` for ESLint and `ignoreBuildErrors: true` for TypeScript — noted as temporary.
 
 ### Optional AWS Real-Time Polling
+
 - Terraform configs in `aws/terraform/` for sub-100ms Zabbix polling.
 - Uses EC2 (`m7i-flex.large`) + ElastiCache Redis.
 - Docs: `docs/AWS_DEPLOYMENT_GUIDE.md`, `docs/AWS_1MS_ARCHITECTURE.md`.
 
 ### Optional External VPS Sync
+
 - Lightweight Node.js poller in `scripts/vps-sync/`.
 - Calls Vercel API endpoints on configurable intervals.
 

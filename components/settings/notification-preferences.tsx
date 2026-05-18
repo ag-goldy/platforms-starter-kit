@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { Loader2, Bell, Mail, BellRing } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { Loader2, Bell, Mail, BellRing } from "lucide-react";
 
 interface Preference {
   id: string;
@@ -23,12 +29,14 @@ export function NotificationPreferences() {
 
   const fetchPreferences = useCallback(async () => {
     try {
-      const response = await fetch('/api/user/notification-preferences');
-      if (!response.ok) throw new Error('Failed to fetch preferences');
+      const response = await fetch("/api/user/notification-preferences");
+      if (!response.ok) throw new Error("Failed to fetch preferences");
       const data = await response.json();
       setPreferences(data.preferences);
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to load preferences');
+      showError(
+        err instanceof Error ? err.message : "Failed to load preferences",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -38,32 +46,38 @@ export function NotificationPreferences() {
     fetchPreferences();
   }, [fetchPreferences]);
 
-  async function updatePreference(eventType: string, emailEnabled?: boolean, inAppEnabled?: boolean) {
+  async function updatePreference(
+    eventType: string,
+    emailEnabled?: boolean,
+    inAppEnabled?: boolean,
+  ) {
     setIsSaving(true);
     try {
-      const response = await fetch('/api/user/notification-preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/user/notification-preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventType, emailEnabled, inAppEnabled }),
       });
 
-      if (!response.ok) throw new Error('Failed to update preference');
+      if (!response.ok) throw new Error("Failed to update preference");
 
       // Update local state
-      setPreferences(prev => prev.map(p => {
-        if (p.eventType === eventType) {
-          return {
-            ...p,
-            emailEnabled: emailEnabled ?? p.emailEnabled,
-            inAppEnabled: inAppEnabled ?? p.inAppEnabled,
-          };
-        }
-        return p;
-      }));
+      setPreferences((prev) =>
+        prev.map((p) => {
+          if (p.eventType === eventType) {
+            return {
+              ...p,
+              emailEnabled: emailEnabled ?? p.emailEnabled,
+              inAppEnabled: inAppEnabled ?? p.inAppEnabled,
+            };
+          }
+          return p;
+        }),
+      );
 
-      success('Preference updated');
+      success("Preference updated");
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to update');
+      showError(err instanceof Error ? err.message : "Failed to update");
     } finally {
       setIsSaving(false);
     }
@@ -107,21 +121,26 @@ export function NotificationPreferences() {
 
           {/* Preference rows */}
           {preferences.map((pref) => (
-            <div key={pref.eventType} className="grid grid-cols-3 gap-4 py-3 items-center border-b last:border-0">
-              <div className="text-sm">
-                {pref.label}
-              </div>
+            <div
+              key={pref.eventType}
+              className="grid grid-cols-3 gap-4 py-3 items-center border-b last:border-0"
+            >
+              <div className="text-sm">{pref.label}</div>
               <div>
                 <Switch
                   checked={pref.emailEnabled}
-                  onCheckedChange={(checked) => updatePreference(pref.eventType, checked, undefined)}
+                  onCheckedChange={(checked) =>
+                    updatePreference(pref.eventType, checked, undefined)
+                  }
                   disabled={isSaving}
                 />
               </div>
               <div>
                 <Switch
                   checked={pref.inAppEnabled}
-                  onCheckedChange={(checked) => updatePreference(pref.eventType, undefined, checked)}
+                  onCheckedChange={(checked) =>
+                    updatePreference(pref.eventType, undefined, checked)
+                  }
                   disabled={isSaving}
                 />
               </div>
@@ -134,7 +153,7 @@ export function NotificationPreferences() {
             variant="outline"
             onClick={() => {
               // Reset all to defaults
-              preferences.forEach(pref => {
+              preferences.forEach((pref) => {
                 updatePreference(pref.eventType, true, true);
               });
             }}

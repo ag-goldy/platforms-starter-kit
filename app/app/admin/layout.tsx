@@ -1,17 +1,17 @@
-import { requireInternalAdmin } from '@/lib/auth/permissions';
-import Link from 'next/link';
-import { ShieldCheck } from 'lucide-react';
+import { requireInternalAdmin } from "@/lib/auth/permissions";
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 
 const governanceLinks = [
-  { href: '/app/admin/audit', label: 'Audit' },
-  { href: '/app/admin/health', label: 'Health' },
-  { href: '/app/admin/ops', label: 'Operations' },
-  { href: '/app/admin/jobs', label: 'Jobs' },
-  { href: '/app/admin/compliance', label: 'Compliance' },
-  { href: '/app/admin/retention', label: 'Retention' },
-  { href: '/app/admin/integrations', label: 'Integrations' },
-  { href: '/app/admin/zabbix', label: 'Zabbix' },
-  { href: '/app/admin/ai-audit', label: 'AI Audit' },
+  { href: "/app/admin/audit", label: "Audit" },
+  { href: "/app/admin/health", label: "Health" },
+  { href: "/app/admin/ops", label: "Operations" },
+  { href: "/app/admin/jobs", label: "Jobs" },
+  { href: "/app/admin/compliance", label: "Compliance" },
+  { href: "/app/admin/retention", label: "Retention" },
+  { href: "/app/admin/integrations", label: "Integrations" },
+  { href: "/app/admin/zabbix", label: "Zabbix" },
+  { href: "/app/admin/ai-audit", label: "AI Audit" },
 ];
 
 export default async function AdminLayout({
@@ -30,9 +30,12 @@ export default async function AdminLayout({
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">Governance and Operations</h1>
+              <h1 className="text-lg font-semibold tracking-tight">
+                Governance and Operations
+              </h1>
               <p className="text-sm text-slate-500">
-                Guarded administration for security events, system health, jobs, compliance, integrations, and platform-facing controls.
+                Guarded administration for security events, system health, jobs,
+                compliance, integrations, and platform-facing controls.
               </p>
             </div>
           </div>

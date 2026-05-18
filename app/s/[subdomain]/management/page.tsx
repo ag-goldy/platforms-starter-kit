@@ -1,22 +1,22 @@
-import React from 'react';
-import { notFound } from 'next/navigation';
-import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { exportRequests, requestTypes } from '@/db/schema';
-import { eq, sql } from 'drizzle-orm';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
-import { 
-  FileText, 
-  Download, 
-  Users, 
+import React from "react";
+import { notFound } from "next/navigation";
+import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { exportRequests, requestTypes } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import {
+  FileText,
+  Download,
+  Users,
   Settings,
   Ticket,
   BookOpen,
-  Activity
-} from 'lucide-react';
+  Activity,
+} from "lucide-react";
 
 interface ModuleItem {
   title: string;
@@ -41,12 +41,18 @@ export default async function OrganizationManagementPage({
   }
 
   try {
-    await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
+    await requireOrgMemberRole(org.id, ["CUSTOMER_ADMIN"]);
 
     // Fetch counts for modules
     const [requestTypeCountRows, exportCountRows] = await Promise.all([
-      db.select({ count: sql<number>`count(*)::int` }).from(requestTypes).where(eq(requestTypes.orgId, org.id)),
-      db.select({ count: sql<number>`count(*)::int` }).from(exportRequests).where(eq(exportRequests.orgId, org.id)),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(requestTypes)
+        .where(eq(requestTypes.orgId, org.id)),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(exportRequests)
+        .where(eq(exportRequests.orgId, org.id)),
     ]);
 
     const requestTypeCount = Number(requestTypeCountRows[0]?.count ?? 0);
@@ -54,48 +60,48 @@ export default async function OrganizationManagementPage({
 
     const modules: ModuleItem[] = [
       {
-        title: 'Service Catalog',
-        description: 'Request types and dynamic forms.',
+        title: "Service Catalog",
+        description: "Request types and dynamic forms.",
         href: `/s/${subdomain}/tickets/new`,
         icon: FileText,
         count: requestTypeCount,
-        badge: 'New',
+        badge: "New",
       },
       {
-        title: 'Exports',
-        description: 'Download customer export history.',
+        title: "Exports",
+        description: "Download customer export history.",
         href: `/s/${subdomain}/exports`,
         icon: Download,
         count: exportCount,
-        footer: 'Admin only',
+        footer: "Admin only",
       },
       {
-        title: 'Team',
-        description: 'Manage users and offboarding.',
+        title: "Team",
+        description: "Manage users and offboarding.",
         href: `/s/${subdomain}/team`,
         icon: Users,
       },
       {
-        title: 'Tickets',
-        description: 'View and manage support tickets.',
+        title: "Tickets",
+        description: "View and manage support tickets.",
         href: `/s/${subdomain}?view=tickets`,
         icon: Ticket,
       },
       {
-        title: 'Knowledge Base',
-        description: 'Browse help articles and guides.',
+        title: "Knowledge Base",
+        description: "Browse help articles and guides.",
         href: `/s/${subdomain}?view=kb`,
         icon: BookOpen,
       },
       {
-        title: 'Status Page',
-        description: 'Service health and incidents.',
+        title: "Status Page",
+        description: "Service health and incidents.",
         href: `/s/${subdomain}?view=status`,
         icon: Activity,
       },
       {
-        title: 'Settings',
-        description: 'Organization configuration.',
+        title: "Settings",
+        description: "Organization configuration.",
         href: `/s/${subdomain}?view=settings`,
         icon: Settings,
       },
@@ -140,12 +146,12 @@ export default async function OrganizationManagementPage({
                     </p>
                     <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
                       <span>
-                        {typeof module.count === 'number' && module.count > 0
+                        {typeof module.count === "number" && module.count > 0
                           ? `${module.count} items`
-                          : ''}
+                          : ""}
                       </span>
                       <span className="text-gray-400">
-                        {module.footer || 'Open →'}
+                        {module.footer || "Open →"}
                       </span>
                     </div>
                   </Link>

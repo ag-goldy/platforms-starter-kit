@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MessageSquare, AlertTriangle, Filter, Clock } from 'lucide-react';
-import { getAIAuditStatsAction } from '@/app/app/actions/ai-audit';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquare, AlertTriangle, Filter, Clock } from "lucide-react";
+import { getAIAuditStatsAction } from "@/app/app/actions/ai-audit";
 
 interface Stats {
   totalQueries: number;
@@ -26,7 +26,7 @@ export function AIAuditStats() {
         });
         setStats(data);
       } catch (error) {
-        console.error('Failed to load stats:', error);
+        console.error("Failed to load stats:", error);
       } finally {
         setIsLoading(false);
       }
@@ -47,8 +47,14 @@ export function AIAuditStats() {
 
   if (!stats) return null;
 
-  const piiRate = stats.totalQueries > 0 ? (stats.piiDetected / stats.totalQueries * 100).toFixed(1) : '0';
-  const filterRate = stats.totalQueries > 0 ? (stats.filtered / stats.totalQueries * 100).toFixed(1) : '0';
+  const piiRate =
+    stats.totalQueries > 0
+      ? ((stats.piiDetected / stats.totalQueries) * 100).toFixed(1)
+      : "0";
+  const filterRate =
+    stats.totalQueries > 0
+      ? ((stats.filtered / stats.totalQueries) * 100).toFixed(1)
+      : "0";
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -60,7 +66,9 @@ export function AIAuditStats() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalQueries.toLocaleString()}</div>
+          <div className="text-2xl font-bold">
+            {stats.totalQueries.toLocaleString()}
+          </div>
           <div className="flex gap-2 mt-2">
             {stats.byInterface.map((item) => (
               <Badge key={item.interface} variant="outline" className="text-xs">
@@ -80,9 +88,7 @@ export function AIAuditStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.piiDetected}</div>
-          <p className="text-sm text-gray-500 mt-1">
-            {piiRate}% of queries
-          </p>
+          <p className="text-sm text-gray-500 mt-1">{piiRate}% of queries</p>
         </CardContent>
       </Card>
 
@@ -95,9 +101,7 @@ export function AIAuditStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.filtered}</div>
-          <p className="text-sm text-gray-500 mt-1">
-            {filterRate}% of queries
-          </p>
+          <p className="text-sm text-gray-500 mt-1">{filterRate}% of queries</p>
         </CardContent>
       </Card>
 
@@ -110,9 +114,7 @@ export function AIAuditStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.avgResponseTime}ms</div>
-          <p className="text-sm text-gray-500 mt-1">
-            Target: &lt;2000ms
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Target: &lt;2000ms</p>
         </CardContent>
       </Card>
     </div>

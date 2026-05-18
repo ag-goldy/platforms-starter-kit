@@ -2,17 +2,22 @@
  * User invitation management
  */
 
-import crypto from 'crypto';
-import { db } from '@/db';
-import { userInvitations, users, memberships, organizations } from '@/db/schema';
-import { eq, and, desc, isNull } from 'drizzle-orm';
-import { sendInvitationEmail } from '@/lib/email/invitations';
-import { appBaseUrl } from '@/lib/utils';
+import crypto from "crypto";
+import { db } from "@/db";
+import {
+  userInvitations,
+  users,
+  memberships,
+  organizations,
+} from "@/db/schema";
+import { eq, and, desc, isNull } from "drizzle-orm";
+import { sendInvitationEmail } from "@/lib/email/invitations";
+import { appBaseUrl } from "@/lib/utils";
 
 export interface InvitationData {
   orgId: string;
   email: string;
-  role: 'CUSTOMER_ADMIN' | 'REQUESTER' | 'VIEWER';
+  role: "CUSTOMER_ADMIN" | "REQUESTER" | "VIEWER";
   invitedBy: string;
 }
 
@@ -20,7 +25,7 @@ export interface InvitationData {
  * Generate a secure invitation token
  */
 export function generateInvitationToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(32).toString("hex");
 }
 
 /**
@@ -45,13 +50,13 @@ export async function createInvitation(data: InvitationData): Promise<{
       .where(
         and(
           eq(memberships.userId, existingUser.id),
-          eq(memberships.orgId, data.orgId)
-        )
+          eq(memberships.orgId, data.orgId),
+        ),
       )
       .limit(1);
 
     if (existingMemberships.length > 0) {
-      throw new Error('User is already a member of this organization');
+      throw new Error("User is already a member of this organization");
     }
   }
 
@@ -63,14 +68,14 @@ export async function createInvitation(data: InvitationData): Promise<{
       and(
         eq(userInvitations.email, data.email),
         eq(userInvitations.orgId, data.orgId),
-        isNull(userInvitations.acceptedAt)
-      )
+        isNull(userInvitations.acceptedAt),
+      ),
     )
     .limit(1);
   const pendingInvitation = pendingInvitations[0];
 
   if (pendingInvitation) {
-    throw new Error('An invitation is already pending for this email');
+    throw new Error("An invitation is already pending for this email");
   }
 
   const token = generateInvitationToken();
@@ -104,7 +109,7 @@ export async function createInvitation(data: InvitationData): Promise<{
     await sendInvitationEmail({
       email: data.email,
       invitationLink,
-      orgName: org?.name || 'Organization',
+      orgName: org?.name || "Organization",
     });
     console.log(`[Invitation] Email sent successfully to ${data.email}`);
   } catch (error: unknown) {
@@ -151,7 +156,7 @@ export async function acceptInvitation(
   userData: {
     name?: string;
     password: string;
-  }
+  },
 ): Promise<{
   userId: string;
   orgId: string;
@@ -161,20 +166,17 @@ export async function acceptInvitation(
     .select()
     .from(userInvitations)
     .where(
-      and(
-        eq(userInvitations.token, token),
-        isNull(userInvitations.acceptedAt)
-      )
+      and(eq(userInvitations.token, token), isNull(userInvitations.acceptedAt)),
     )
     .limit(1);
   const invitation = invitations[0];
 
   if (!invitation) {
-    throw new Error('Invalid or expired invitation');
+    throw new Error("Invalid or expired invitation");
   }
 
   if (new Date() > invitation.expiresAt) {
-    throw new Error('Invitation has expired');
+    throw new Error("Invitation has expired");
   }
 
   // Find or create user
@@ -186,7 +188,7 @@ export async function acceptInvitation(
   let user = existingUsers[0];
 
   if (!user) {
-    const bcrypt = await import('bcryptjs');
+    const bcrypt = await import("bcryptjs");
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     const newUsers = await db
@@ -232,10 +234,7 @@ export async function getPendingInvitations(orgId: string) {
     .select()
     .from(userInvitations)
     .where(
-      and(
-        eq(userInvitations.orgId, orgId),
-        isNull(userInvitations.acceptedAt)
-      )
+      and(eq(userInvitations.orgId, orgId), isNull(userInvitations.acceptedAt)),
     )
     .orderBy(desc(userInvitations.createdAt));
 
@@ -259,7 +258,7 @@ export async function getPendingInvitations(orgId: string) {
         ...invitation,
         inviter,
       };
-    })
+    }),
   );
 
   return invitationsWithInviter;
@@ -268,16 +267,26 @@ export async function getPendingInvitations(orgId: string) {
 /**
  * Cancel/delete an invitation
  */
-export async function cancelInvitation(invitationId: string, orgId: string): Promise<void> {
+export async function cancelInvitation(
+  invitationId: string,
+  orgId: string,
+): Promise<void> {
   await db
     .delete(userInvitations)
-    .where(and(eq(userInvitations.id, invitationId), eq(userInvitations.orgId, orgId)));
+    .where(
+      and(
+        eq(userInvitations.id, invitationId),
+        eq(userInvitations.orgId, orgId),
+      ),
+    );
 }
 
 /**
  * Resend invitation email
  */
-export async function resendInvitationEmail(invitationId: string): Promise<void> {
+export async function resendInvitationEmail(
+  invitationId: string,
+): Promise<void> {
   const invitations = await db
     .select()
     .from(userInvitations)
@@ -286,7 +295,7 @@ export async function resendInvitationEmail(invitationId: string): Promise<void>
   const invitation = invitations[0];
 
   if (!invitation || invitation.acceptedAt) {
-    throw new Error('Invitation not found or already accepted');
+    throw new Error("Invitation not found or already accepted");
   }
 
   const orgs = await db
@@ -297,7 +306,7 @@ export async function resendInvitationEmail(invitationId: string): Promise<void>
   const org = orgs[0];
 
   if (!org) {
-    throw new Error('Organization not found');
+    throw new Error("Organization not found");
   }
 
   const invitationLink = `${appBaseUrl}/invite/${invitation.token}`;

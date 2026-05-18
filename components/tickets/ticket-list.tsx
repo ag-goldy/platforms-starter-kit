@@ -1,18 +1,26 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Ticket } from '@/db/schema';
-import { BulkActions } from './bulk-actions';
-import { formatDate } from '@/lib/utils/date';
-import { SearchHighlight } from './search-highlight';
-import { assignToMeAction, replyAndWaitingAction, closeAndSendCSATAction } from '@/app/app/actions/fast-actions';
-import { UserPlus, MessageSquare, CheckCircle } from 'lucide-react';
-import { EmptyTickets, EmptySearch, EmptyFilters } from '@/components/ui/empty-state';
-import { TicketListSkeleton } from '@/components/ui/skeleton';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Ticket } from "@/db/schema";
+import { BulkActions } from "./bulk-actions";
+import { formatDate } from "@/lib/utils/date";
+import { SearchHighlight } from "./search-highlight";
+import {
+  assignToMeAction,
+  replyAndWaitingAction,
+  closeAndSendCSATAction,
+} from "@/app/app/actions/fast-actions";
+import { UserPlus, MessageSquare, CheckCircle } from "lucide-react";
+import {
+  EmptyTickets,
+  EmptySearch,
+  EmptyFilters,
+} from "@/components/ui/empty-state";
+import { TicketListSkeleton } from "@/components/ui/skeleton";
 
 interface TicketListProps {
   tickets: (Ticket & {
@@ -33,19 +41,23 @@ interface TicketListProps {
   onClearFilters?: () => void;
 }
 
-export function TicketList({ 
-  tickets, 
-  basePath = '/app/tickets', 
-  internalUsers, 
-  searchTerm, 
+export function TicketList({
+  tickets,
+  basePath = "/app/tickets",
+  internalUsers,
+  searchTerm,
   currentUserId,
   isLoading,
   hasFilters,
-  onClearFilters
+  onClearFilters,
 }: TicketListProps) {
   const router = useRouter();
-  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
-  const [processingTicketId, setProcessingTicketId] = useState<string | null>(null);
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [processingTicketId, setProcessingTicketId] = useState<string | null>(
+    null,
+  );
 
   const toggleSelection = (ticketId: string) => {
     setSelectedTicketIds((prev) => {
@@ -76,47 +88,53 @@ export function TicketList({
   if (tickets.length === 0) {
     // Search returned no results
     if (searchTerm) {
-      return <EmptySearch query={searchTerm} onClear={() => router.push(basePath)} />;
+      return (
+        <EmptySearch query={searchTerm} onClear={() => router.push(basePath)} />
+      );
     }
-    
+
     // Filters applied but no results
     if (hasFilters) {
-      return <EmptyFilters onClear={onClearFilters || (() => router.push(basePath))} />;
+      return (
+        <EmptyFilters
+          onClear={onClearFilters || (() => router.push(basePath))}
+        />
+      );
     }
-    
+
     // Truly empty - no tickets at all
     return <EmptyTickets onCreate={() => router.push(`${basePath}/new`)} />;
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'NEW':
-        return 'bg-blue-100 text-blue-800';
-      case 'OPEN':
-        return 'bg-green-100 text-green-800';
-      case 'IN_PROGRESS':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'RESOLVED':
-        return 'bg-gray-100 text-gray-800';
-      case 'CLOSED':
-        return 'bg-gray-200 text-gray-900';
+      case "NEW":
+        return "bg-blue-100 text-blue-800";
+      case "OPEN":
+        return "bg-green-100 text-green-800";
+      case "IN_PROGRESS":
+        return "bg-yellow-100 text-yellow-800";
+      case "RESOLVED":
+        return "bg-gray-100 text-gray-800";
+      case "CLOSED":
+        return "bg-gray-200 text-gray-900";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'P1':
-        return 'bg-red-100 text-red-800';
-      case 'P2':
-        return 'bg-orange-100 text-orange-800';
-      case 'P3':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'P4':
-        return 'bg-gray-100 text-gray-800';
+      case "P1":
+        return "bg-red-100 text-red-800";
+      case "P2":
+        return "bg-orange-100 text-orange-800";
+      case "P3":
+        return "bg-yellow-100 text-yellow-800";
+      case "P4":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -130,7 +148,7 @@ export function TicketList({
         />
       )}
 
-    <div className="space-y-2">
+      <div className="space-y-2">
         {tickets.length > 0 && internalUsers && (
           <div className="flex items-center gap-2 pb-2 border-b">
             <input
@@ -145,11 +163,13 @@ export function TicketList({
           </div>
         )}
 
-      {tickets.map((ticket) => (
+        {tickets.map((ticket) => (
           <div
             key={ticket.id}
             className={`flex items-start gap-3 rounded-lg border bg-white p-4 transition-colors ${
-              selectedTicketIds.has(ticket.id) ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+              selectedTicketIds.has(ticket.id)
+                ? "border-blue-500 bg-blue-50"
+                : "hover:bg-gray-50"
             }`}
           >
             {internalUsers && (
@@ -161,10 +181,10 @@ export function TicketList({
                 className="mt-1 rounded border-gray-300"
               />
             )}
-        <Link
-          href={`${basePath}/${ticket.id}`}
+            <Link
+              href={`${basePath}/${ticket.id}`}
               className="flex-1 space-y-2"
-        >
+            >
               <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                 <span className="font-mono text-xs md:text-sm font-semibold text-gray-900">
                   {ticket.key}
@@ -177,48 +197,68 @@ export function TicketList({
                 </Badge>
                 {ticket.tagAssignments && ticket.tagAssignments.length > 0 && (
                   <>
-                    {ticket.tagAssignments.map((assignment: { tag: { id: string; name: string; color: string | null } }) => (
-                      <Badge
-                        key={assignment.tag.id}
-                        className="text-xs"
-                        style={{
-                          backgroundColor: assignment.tag.color ? `${assignment.tag.color}20` : undefined,
-                          color: assignment.tag.color || undefined,
-                        }}
-                      >
-                        {assignment.tag.name}
-                      </Badge>
-                    ))}
+                    {ticket.tagAssignments.map(
+                      (assignment: {
+                        tag: { id: string; name: string; color: string | null };
+                      }) => (
+                        <Badge
+                          key={assignment.tag.id}
+                          className="text-xs"
+                          style={{
+                            backgroundColor: assignment.tag.color
+                              ? `${assignment.tag.color}20`
+                              : undefined,
+                            color: assignment.tag.color || undefined,
+                          }}
+                        >
+                          {assignment.tag.name}
+                        </Badge>
+                      ),
+                    )}
                   </>
                 )}
               </div>
               <h3 className="font-medium text-gray-900">
                 {searchTerm ? (
-                  <SearchHighlight text={ticket.subject} searchTerm={searchTerm} />
+                  <SearchHighlight
+                    text={ticket.subject}
+                    searchTerm={searchTerm}
+                  />
                 ) : (
                   ticket.subject
                 )}
               </h3>
               <p className="text-sm text-gray-600 line-clamp-2">
                 {searchTerm ? (
-                  <SearchHighlight text={ticket.description} searchTerm={searchTerm} />
+                  <SearchHighlight
+                    text={ticket.description}
+                    searchTerm={searchTerm}
+                  />
                 ) : (
                   ticket.description
                 )}
               </p>
               <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span>{ticket.organization?.name || 'Public'}</span>
+                <span>{ticket.organization?.name || "Public"}</span>
                 <span>
-                  {ticket.requester?.name || ticket.requester?.email || ticket.requesterEmail || 'Unknown'}
+                  {ticket.requester?.name ||
+                    ticket.requester?.email ||
+                    ticket.requesterEmail ||
+                    "Unknown"}
                 </span>
                 {ticket.assignee && (
-                  <span>Assigned to {ticket.assignee.name || ticket.assignee.email}</span>
+                  <span>
+                    Assigned to {ticket.assignee.name || ticket.assignee.email}
+                  </span>
                 )}
                 <span>{formatDate(ticket.createdAt)}</span>
               </div>
             </Link>
             {internalUsers && currentUserId && (
-              <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="flex flex-col gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {ticket.assignee?.id !== currentUserId && (
                   <Button
                     size="sm"
@@ -229,7 +269,11 @@ export function TicketList({
                         await assignToMeAction(ticket.id);
                         router.refresh();
                       } catch (error) {
-                        alert(error instanceof Error ? error.message : 'Failed to assign ticket');
+                        alert(
+                          error instanceof Error
+                            ? error.message
+                            : "Failed to assign ticket",
+                        );
                       } finally {
                         setProcessingTicketId(null);
                       }
@@ -241,42 +285,53 @@ export function TicketList({
                     <UserPlus className="h-3 w-3" />
                   </Button>
                 )}
-                {ticket.status !== 'WAITING_ON_CUSTOMER' && ticket.status !== 'CLOSED' && (
+                {ticket.status !== "WAITING_ON_CUSTOMER" &&
+                  ticket.status !== "CLOSED" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        const comment = prompt(
+                          "Add a comment (this will set status to Waiting):",
+                        );
+                        if (!comment) return;
+                        setProcessingTicketId(ticket.id);
+                        try {
+                          await replyAndWaitingAction(ticket.id, comment);
+                          router.refresh();
+                        } catch (error) {
+                          alert(
+                            error instanceof Error
+                              ? error.message
+                              : "Failed to update ticket",
+                          );
+                        } finally {
+                          setProcessingTicketId(null);
+                        }
+                      }}
+                      disabled={processingTicketId === ticket.id}
+                      title="Reply + Waiting"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                    </Button>
+                  )}
+                {ticket.status !== "CLOSED" && (
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={async () => {
-                      const comment = prompt('Add a comment (this will set status to Waiting):');
-                      if (!comment) return;
-                      setProcessingTicketId(ticket.id);
-                      try {
-                        await replyAndWaitingAction(ticket.id, comment);
-                        router.refresh();
-                      } catch (error) {
-                        alert(error instanceof Error ? error.message : 'Failed to update ticket');
-                      } finally {
-                        setProcessingTicketId(null);
-                      }
-                    }}
-                    disabled={processingTicketId === ticket.id}
-                    title="Reply + Waiting"
-                    className="h-7 px-2 text-xs"
-                  >
-                    <MessageSquare className="h-3 w-3" />
-                  </Button>
-                )}
-                {ticket.status !== 'CLOSED' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      if (!confirm('Close this ticket?')) return;
+                      if (!confirm("Close this ticket?")) return;
                       setProcessingTicketId(ticket.id);
                       try {
                         await closeAndSendCSATAction(ticket.id);
                         router.refresh();
                       } catch (error) {
-                        alert(error instanceof Error ? error.message : 'Failed to close ticket');
+                        alert(
+                          error instanceof Error
+                            ? error.message
+                            : "Failed to close ticket",
+                        );
                       } finally {
                         setProcessingTicketId(null);
                       }
@@ -291,7 +346,7 @@ export function TicketList({
               </div>
             )}
           </div>
-      ))}
+        ))}
       </div>
     </div>
   );

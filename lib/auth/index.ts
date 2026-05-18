@@ -1,12 +1,12 @@
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { db } from '@/db'; // Assuming db is exported from @/db
-import * as schema from '@/db/schema';
-import { magicLink, twoFactor } from 'better-auth/plugins';
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { db } from "@/db"; // Assuming db is exported from @/db
+import * as schema from "@/db/schema";
+import { magicLink, twoFactor } from "better-auth/plugins";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: "pg",
     schema: {
       user: schema.users,
       session: schema.sessions,
@@ -25,7 +25,7 @@ export const auth = betterAuth({
       },
     }),
     twoFactor({
-      issuer: 'Atlas Helpdesk',
+      issuer: "Atlas Helpdesk",
     }),
   ],
 });

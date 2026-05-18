@@ -1,12 +1,12 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 async function create() {
   const sql = neon(process.env.DATABASE_URL!);
-  
-  console.log('Creating ticket_subtasks table...\n');
+
+  console.log("Creating ticket_subtasks table...\n");
 
   try {
     await sql`
@@ -31,20 +31,19 @@ async function create() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `;
-    console.log('✓ ticket_subtasks table created');
-    
+    console.log("✓ ticket_subtasks table created");
+
     // Create indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_subtasks_ticket_id ON ticket_subtasks(ticket_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_subtasks_org_id ON ticket_subtasks(org_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_ticket_subtasks_status ON ticket_subtasks(status)`;
-    console.log('✓ Indexes created');
-    
+    console.log("✓ Indexes created");
   } catch (e) {
-    console.error('Error creating ticket_subtasks:', e);
+    console.error("Error creating ticket_subtasks:", e);
     process.exit(1);
   }
-  
-  console.log('\n✅ ticket_subtasks table created successfully!');
+
+  console.log("\n✅ ticket_subtasks table created successfully!");
   process.exit(0);
 }
 

@@ -1,9 +1,12 @@
-import { redirect } from 'next/navigation';
-import { getOrgByPortalSlug } from '@/lib/portal/access';
+import { redirect } from "next/navigation";
+import { getOrgByPortalSlug } from "@/lib/portal/access";
 
-export async function redirectLegacyPortal(slug: string, suffix = ''): Promise<never> {
+export async function redirectLegacyPortal(
+  slug: string,
+  suffix = "",
+): Promise<never> {
   const org = await getOrgByPortalSlug(slug);
   const subdomain = org?.subdomain || slug;
-  const normalizedSuffix = suffix ? `/${suffix.replace(/^\/+/, '')}` : '';
+  const normalizedSuffix = suffix ? `/${suffix.replace(/^\/+/, "")}` : "";
   redirect(`/s/${subdomain}${normalizedSuffix}`);
 }

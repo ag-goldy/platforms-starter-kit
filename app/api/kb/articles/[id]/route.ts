@@ -1,20 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { kbArticles } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
-import { requireAuth, requireInternalRole, requireOrgMemberRole, requireOrgRole } from '@/lib/auth/permissions';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { kbArticles } from "@/db/schema";
+import { eq, and, isNull } from "drizzle-orm";
+import {
+  requireAuth,
+  requireInternalRole,
+  requireOrgMemberRole,
+  requireOrgRole,
+} from "@/lib/auth/permissions";
 
 // GET /api/kb/articles/[id] - Get a single article (by ID or slug)
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await requireAuth();
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const global = searchParams.get('global') === 'true';
-    const bySlug = searchParams.get('bySlug') === 'true';
+    const global = searchParams.get("global") === "true";
+    const bySlug = searchParams.get("bySlug") === "true";
 
     // Build query conditions
     let whereCondition;
@@ -41,17 +46,14 @@ export async function GET(
     });
 
     if (!article) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
     // If global flag is set, verify article has no org
     if (global && article.orgId !== null) {
       return NextResponse.json(
-        { error: 'Article not found in global KB' },
-        { status: 404 }
+        { error: "Article not found in global KB" },
+        { status: 404 },
       );
     }
 
@@ -71,10 +73,10 @@ export async function GET(
 
     return NextResponse.json({ article });
   } catch (error) {
-    console.error('Failed to fetch article:', error);
+    console.error("Failed to fetch article:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch article' },
-      { status: 500 }
+      { error: "Failed to fetch article" },
+      { status: 500 },
     );
   }
 }
@@ -82,7 +84,7 @@ export async function GET(
 // PATCH /api/kb/articles/[id] - Update an article
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -107,17 +109,14 @@ export async function PATCH(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
     if (!existing.orgId) {
       await requireInternalRole();
     } else {
       try {
-        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+        await requireOrgMemberRole(existing.orgId, ["CUSTOMER_ADMIN"]);
       } catch {
         await requireInternalRole();
       }
@@ -127,22 +126,24 @@ export async function PATCH(
     if (slug && slug !== existing.slug) {
       const slugExists = await db.query.kbArticles.findFirst({
         where: and(
-          existing.orgId ? eq(kbArticles.orgId, existing.orgId) : isNull(kbArticles.orgId),
-          eq(kbArticles.slug, slug)
+          existing.orgId
+            ? eq(kbArticles.orgId, existing.orgId)
+            : isNull(kbArticles.orgId),
+          eq(kbArticles.slug, slug),
         ),
       });
 
       if (slugExists) {
         return NextResponse.json(
-          { error: 'An article with this slug already exists' },
-          { status: 409 }
+          { error: "An article with this slug already exists" },
+          { status: 409 },
         );
       }
     }
 
     // Build update values
     const updateValues: Partial<typeof kbArticles.$inferInsert> = {};
-    
+
     if (title !== undefined) updateValues.title = title;
     if (slug !== undefined) updateValues.slug = slug;
     if (content !== undefined) updateValues.content = content;
@@ -152,9 +153,9 @@ export async function PATCH(
     if (status !== undefined) updateValues.status = status;
     if (visibility !== undefined) updateValues.visibility = visibility;
     if (tags !== undefined) updateValues.tags = tags;
-    
+
     // Update publishedAt if status changed to published
-    if (status === 'published' && existing.status !== 'published') {
+    if (status === "published" && existing.status !== "published") {
       updateValues.publishedAt = new Date();
     }
 
@@ -166,16 +167,13 @@ export async function PATCH(
 
     return NextResponse.json({ article });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error('Failed to update article:', error);
+    console.error("Failed to update article:", error);
     return NextResponse.json(
-      { error: 'Failed to update article' },
-      { status: 500 }
+      { error: "Failed to update article" },
+      { status: 500 },
     );
   }
 }
@@ -183,7 +181,7 @@ export async function PATCH(
 // DELETE /api/kb/articles/[id] - Delete an article
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -194,10 +192,7 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
     // Permission: Global articles (orgId null) require internal role
@@ -206,7 +201,7 @@ export async function DELETE(
       await requireInternalRole();
     } else {
       try {
-        await requireOrgMemberRole(existing.orgId, ['CUSTOMER_ADMIN']);
+        await requireOrgMemberRole(existing.orgId, ["CUSTOMER_ADMIN"]);
       } catch {
         // Allow internal users as well
         await requireInternalRole();
@@ -217,16 +212,13 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error('Failed to delete article:', error);
+    console.error("Failed to delete article:", error);
     return NextResponse.json(
-      { error: 'Failed to delete article' },
-      { status: 500 }
+      { error: "Failed to delete article" },
+      { status: 500 },
     );
   }
 }

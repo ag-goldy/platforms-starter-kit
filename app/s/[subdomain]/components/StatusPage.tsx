@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import type { Organization } from '@/db/schema';
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import type { Organization } from "@/db/schema";
 import {
   Activity,
   CheckCircle,
@@ -18,7 +18,7 @@ import {
   Wifi,
   Calendar,
   BarChart3,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface StatusPageProps {
   subdomain: string;
@@ -28,7 +28,7 @@ interface StatusPageProps {
 interface ServiceStatus {
   id: string;
   name: string;
-  status: 'operational' | 'degraded' | 'outage' | 'maintenance';
+  status: "operational" | "degraded" | "outage" | "maintenance";
   description?: string;
   uptime24h: number;
   uptime7d: number;
@@ -39,8 +39,8 @@ interface ServiceStatus {
 interface Incident {
   id: string;
   title: string;
-  status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
-  severity: 'minor' | 'major' | 'critical';
+  status: "investigating" | "identified" | "monitoring" | "resolved";
+  severity: "minor" | "major" | "critical";
   serviceId: string;
   createdAt: string;
   updatedAt: string;
@@ -58,9 +58,9 @@ interface IncidentUpdate {
 interface ExternalIntegration {
   id: string;
   name: string;
-  type: 'zabbix' | 'datadog' | 'grafana' | 'custom';
+  type: "zabbix" | "datadog" | "grafana" | "custom";
   url: string;
-  status: 'connected' | 'disconnected' | 'error';
+  status: "connected" | "disconnected" | "error";
   lastSyncAt?: string;
 }
 
@@ -71,7 +71,7 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [integrations, setIntegrations] = useState<ExternalIntegration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
+  const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("7d");
 
   const fetchStatusData = useCallback(async () => {
     try {
@@ -96,7 +96,7 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
         setIntegrations(integrationsData.integrations || []);
       }
     } catch (error) {
-      console.error('Failed to fetch status data:', error);
+      console.error("Failed to fetch status data:", error);
     } finally {
       setLoading(false);
     }
@@ -107,10 +107,10 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
   }, [fetchStatusData]);
 
   const getOverallStatus = () => {
-    if (services.some((s) => s.status === 'outage')) return 'outage';
-    if (services.some((s) => s.status === 'degraded')) return 'degraded';
-    if (services.some((s) => s.status === 'maintenance')) return 'maintenance';
-    return 'operational';
+    if (services.some((s) => s.status === "outage")) return "outage";
+    if (services.some((s) => s.status === "degraded")) return "degraded";
+    if (services.some((s) => s.status === "maintenance")) return "maintenance";
+    return "operational";
   };
 
   const overallStatus = getOverallStatus();
@@ -118,35 +118,35 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
   const statusConfig = {
     operational: {
       icon: CheckCircle,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-50',
-      borderColor: 'border-emerald-200',
-      label: 'All Systems Operational',
-      description: 'All services are running normally',
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-50",
+      borderColor: "border-emerald-200",
+      label: "All Systems Operational",
+      description: "All services are running normally",
     },
     degraded: {
       icon: AlertTriangle,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200',
-      label: 'Partial Degradation',
-      description: 'Some services are experiencing issues',
+      color: "text-amber-500",
+      bgColor: "bg-amber-50",
+      borderColor: "border-amber-200",
+      label: "Partial Degradation",
+      description: "Some services are experiencing issues",
     },
     outage: {
       icon: XCircle,
-      color: 'text-red-500',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200',
-      label: 'Major Outage',
-      description: 'Critical services are down',
+      color: "text-red-500",
+      bgColor: "bg-red-50",
+      borderColor: "border-red-200",
+      label: "Major Outage",
+      description: "Critical services are down",
     },
     maintenance: {
       icon: Clock,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-      label: 'Scheduled Maintenance',
-      description: 'Services are undergoing maintenance',
+      color: "text-blue-500",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-200",
+      label: "Scheduled Maintenance",
+      description: "Services are undergoing maintenance",
     },
   };
 
@@ -155,35 +155,39 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
 
   const getServiceIcon = (name: string) => {
     const lower = name.toLowerCase();
-    if (lower.includes('database') || lower.includes('db')) return <Database className="w-5 h-5" />;
-    if (lower.includes('cloud') || lower.includes('api')) return <Cloud className="w-5 h-5" />;
-    if (lower.includes('security') || lower.includes('auth')) return <Shield className="w-5 h-5" />;
-    if (lower.includes('network') || lower.includes('cdn')) return <Wifi className="w-5 h-5" />;
+    if (lower.includes("database") || lower.includes("db"))
+      return <Database className="w-5 h-5" />;
+    if (lower.includes("cloud") || lower.includes("api"))
+      return <Cloud className="w-5 h-5" />;
+    if (lower.includes("security") || lower.includes("auth"))
+      return <Shield className="w-5 h-5" />;
+    if (lower.includes("network") || lower.includes("cdn"))
+      return <Wifi className="w-5 h-5" />;
     return <Server className="w-5 h-5" />;
   };
 
   const getServiceStatusColor = (status: string) => {
     switch (status) {
-      case 'operational':
-        return 'text-emerald-500 bg-emerald-50';
-      case 'degraded':
-        return 'text-amber-500 bg-amber-50';
-      case 'outage':
-        return 'text-red-500 bg-red-50';
-      case 'maintenance':
-        return 'text-blue-500 bg-blue-50';
+      case "operational":
+        return "text-emerald-500 bg-emerald-50";
+      case "degraded":
+        return "text-amber-500 bg-amber-50";
+      case "outage":
+        return "text-red-500 bg-red-50";
+      case "maintenance":
+        return "text-blue-500 bg-blue-50";
       default:
-        return 'text-stone-500 bg-stone-50';
+        return "text-stone-500 bg-stone-50";
     }
   };
 
   const getUptime = (service: ServiceStatus) => {
     switch (timeRange) {
-      case '24h':
+      case "24h":
         return service.uptime24h;
-      case '7d':
+      case "7d":
         return service.uptime7d;
-      case '30d':
+      case "30d":
         return service.uptime30d;
       default:
         return service.uptime7d;
@@ -199,11 +203,15 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
         className={`p-6 rounded-2xl border ${config.bgColor} ${config.borderColor}`}
       >
         <div className="flex items-start gap-4">
-          <div className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center ${config.color}`}>
+          <div
+            className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center ${config.color}`}
+          >
             <StatusIcon className="w-6 h-6" />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-stone-900">{config.label}</h1>
+            <h1 className="text-2xl font-bold text-stone-900">
+              {config.label}
+            </h1>
             <p className="text-stone-600 mt-1">{config.description}</p>
             <p className="text-sm text-stone-500 mt-2">
               Last updated: {new Date().toLocaleString()}
@@ -235,21 +243,33 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
               >
                 <div
                   className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    integration.status === 'connected'
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : integration.status === 'error'
-                      ? 'bg-red-100 text-red-600'
-                      : 'bg-stone-200 text-stone-500'
+                    integration.status === "connected"
+                      ? "bg-emerald-100 text-emerald-600"
+                      : integration.status === "error"
+                        ? "bg-red-100 text-red-600"
+                        : "bg-stone-200 text-stone-500"
                   }`}
                 >
-                  {integration.type === 'zabbix' && <Server className="w-5 h-5" />}
-                  {integration.type === 'datadog' && <Activity className="w-5 h-5" />}
-                  {integration.type === 'grafana' && <BarChart3 className="w-5 h-5" />}
-                  {integration.type === 'custom' && <Link className="w-5 h-5" />}
+                  {integration.type === "zabbix" && (
+                    <Server className="w-5 h-5" />
+                  )}
+                  {integration.type === "datadog" && (
+                    <Activity className="w-5 h-5" />
+                  )}
+                  {integration.type === "grafana" && (
+                    <BarChart3 className="w-5 h-5" />
+                  )}
+                  {integration.type === "custom" && (
+                    <Link className="w-5 h-5" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-stone-900">{integration.name}</p>
-                  <p className="text-xs text-stone-500 capitalize">{integration.status}</p>
+                  <p className="font-medium text-sm text-stone-900">
+                    {integration.name}
+                  </p>
+                  <p className="text-xs text-stone-500 capitalize">
+                    {integration.status}
+                  </p>
                 </div>
                 <ExternalLink className="w-4 h-4 text-stone-400 group-hover:text-stone-600" />
               </a>
@@ -268,14 +288,14 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-stone-900">Services</h2>
           <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-1">
-            {(['24h', '7d', '30d'] as const).map((range) => (
+            {(["24h", "7d", "30d"] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                   timeRange === range
-                    ? 'bg-white text-stone-900 shadow-sm'
-                    : 'text-stone-500 hover:text-stone-700'
+                    ? "bg-white text-stone-900 shadow-sm"
+                    : "text-stone-500 hover:text-stone-700"
                 }`}
               >
                 {range}
@@ -318,22 +338,34 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
                     )}
                   </div>
                   {service.description && (
-                    <p className="text-sm text-stone-500 truncate">{service.description}</p>
+                    <p className="text-sm text-stone-500 truncate">
+                      {service.description}
+                    </p>
                   )}
                 </div>
                 <div className="text-right">
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(
-                      service.status
+                      service.status,
                     )}`}
                   >
-                    {service.status === 'operational' && <CheckCircle className="w-3 h-3" />}
-                    {service.status === 'degraded' && <AlertTriangle className="w-3 h-3" />}
-                    {service.status === 'outage' && <XCircle className="w-3 h-3" />}
-                    {service.status === 'maintenance' && <Clock className="w-3 h-3" />}
+                    {service.status === "operational" && (
+                      <CheckCircle className="w-3 h-3" />
+                    )}
+                    {service.status === "degraded" && (
+                      <AlertTriangle className="w-3 h-3" />
+                    )}
+                    {service.status === "outage" && (
+                      <XCircle className="w-3 h-3" />
+                    )}
+                    {service.status === "maintenance" && (
+                      <Clock className="w-3 h-3" />
+                    )}
                     <span className="capitalize">{service.status}</span>
                   </span>
-                  <p className="text-xs text-stone-400 mt-1">{getUptime(service)}% uptime</p>
+                  <p className="text-xs text-stone-400 mt-1">
+                    {getUptime(service)}% uptime
+                  </p>
                 </div>
               </div>
             ))
@@ -349,7 +381,9 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
         className="bg-surface-elevated rounded-2xl border border-stone-200 overflow-hidden"
       >
         <div className="px-6 py-4 border-b border-stone-100">
-          <h2 className="text-lg font-semibold text-stone-900">Incident History</h2>
+          <h2 className="text-lg font-semibold text-stone-900">
+            Incident History
+          </h2>
         </div>
 
         <div className="divide-y divide-stone-100">
@@ -360,42 +394,53 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
           ) : incidents.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center p-6">
               <Calendar className="w-8 h-8 text-stone-300 mb-2" />
-              <p className="text-sm text-stone-500">No incidents in the last 90 days</p>
+              <p className="text-sm text-stone-500">
+                No incidents in the last 90 days
+              </p>
             </div>
           ) : (
             incidents.map((incident) => (
-              <div key={incident.id} className="px-6 py-4 hover:bg-stone-50 transition-colors">
+              <div
+                key={incident.id}
+                className="px-6 py-4 hover:bg-stone-50 transition-colors"
+              >
                 <div className="flex items-start gap-3">
                   <div
                     className={`w-2 h-2 rounded-full mt-2 ${
-                      incident.severity === 'critical'
-                        ? 'bg-red-500'
-                        : incident.severity === 'major'
-                        ? 'bg-orange-500'
-                        : 'bg-amber-500'
+                      incident.severity === "critical"
+                        ? "bg-red-500"
+                        : incident.severity === "major"
+                          ? "bg-orange-500"
+                          : "bg-amber-500"
                     }`}
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-stone-900">{incident.title}</p>
+                      <p className="font-medium text-stone-900">
+                        {incident.title}
+                      </p>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                          incident.status === 'resolved'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                          incident.status === "resolved"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
                         }`}
                       >
                         {incident.status}
                       </span>
                     </div>
                     <p className="text-sm text-stone-500 mt-1">
-                      {new Date(incident.createdAt).toLocaleDateString()} •{' '}
-                      {services.find((s) => s.id === incident.serviceId)?.name || 'Unknown service'}
+                      {new Date(incident.createdAt).toLocaleDateString()} •{" "}
+                      {services.find((s) => s.id === incident.serviceId)
+                        ?.name || "Unknown service"}
                     </p>
                     {incident.updates.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {incident.updates.slice(0, 2).map((update) => (
-                          <div key={update.id} className="text-sm text-stone-600 pl-3 border-l-2 border-stone-200">
+                          <div
+                            key={update.id}
+                            className="text-sm text-stone-600 pl-3 border-l-2 border-stone-200"
+                          >
                             <p>{update.message}</p>
                             <p className="text-xs text-stone-400 mt-1">
                               {new Date(update.createdAt).toLocaleString()}
@@ -419,7 +464,9 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
         transition={{ delay: 0.4 }}
         className="bg-surface-elevated rounded-2xl border border-stone-200 p-6"
       >
-        <h2 className="text-lg font-semibold text-stone-900 mb-4">Uptime History</h2>
+        <h2 className="text-lg font-semibold text-stone-900 mb-4">
+          Uptime History
+        </h2>
         <div className="flex items-end gap-1 h-24">
           {Array.from({ length: 30 }).map((_, i) => {
             const height = Math.random() * 80 + 20;
@@ -427,9 +474,9 @@ export function StatusPage({ subdomain, org }: StatusPageProps) {
             return (
               <div
                 key={i}
-                className={`flex-1 rounded-t ${isOperational ? 'bg-emerald-400' : 'bg-red-400'}`}
+                className={`flex-1 rounded-t ${isOperational ? "bg-emerald-400" : "bg-red-400"}`}
                 style={{ height: `${height}%` }}
-                title={`Day ${i + 1}: ${isOperational ? 'Operational' : 'Incident'}`}
+                title={`Day ${i + 1}: ${isOperational ? "Operational" : "Incident"}`}
               />
             );
           })}

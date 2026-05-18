@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Bot, Shield, ExternalLink } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { Bot, Shield, ExternalLink } from "lucide-react";
 
-const AI_CONSENT_KEY = 'ai-consent-accepted-v1';
+const AI_CONSENT_KEY = "ai-consent-accepted-v1";
 
 interface AIConsentBannerProps {
   onConsentChange?: (hasConsent: boolean) => void;
@@ -26,12 +26,12 @@ export function useAIConsent() {
   useEffect(() => {
     // Check for consent in localStorage
     const stored = localStorage.getItem(AI_CONSENT_KEY);
-    setHasConsent(stored === 'true');
+    setHasConsent(stored === "true");
     setIsLoaded(true);
   }, []);
 
   const acceptConsent = () => {
-    localStorage.setItem(AI_CONSENT_KEY, 'true');
+    localStorage.setItem(AI_CONSENT_KEY, "true");
     setHasConsent(true);
   };
 
@@ -77,7 +77,8 @@ export function AIConsentDialog({ onConsentChange }: AIConsentBannerProps) {
             <DialogTitle className="text-xl">Zeus AI Assistant</DialogTitle>
           </div>
           <DialogDescription className="text-base leading-relaxed">
-            This AI assistant uses your organization&apos;s knowledge base and support data to help answer questions. 
+            This AI assistant uses your organization&apos;s knowledge base and
+            support data to help answer questions.
           </DialogDescription>
         </DialogHeader>
 
@@ -88,7 +89,8 @@ export function AIConsentDialog({ onConsentChange }: AIConsentBannerProps) {
               <div>
                 <h4 className="font-medium text-sm">Data Privacy & Security</h4>
                 <p className="text-sm text-muted-foreground">
-                  Your queries are processed securely and logged for quality assurance. We follow GDPR and PDPA compliance standards.
+                  Your queries are processed securely and logged for quality
+                  assurance. We follow GDPR and PDPA compliance standards.
                 </p>
               </div>
             </div>
@@ -108,8 +110,12 @@ export function AIConsentDialog({ onConsentChange }: AIConsentBannerProps) {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            By continuing, you agree to this data processing in accordance with our{' '}
-            <Link href="/privacy" className="text-primary hover:underline inline-flex items-center gap-1">
+            By continuing, you agree to this data processing in accordance with
+            our{" "}
+            <Link
+              href="/privacy"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
               Privacy Policy <ExternalLink className="w-3 h-3" />
             </Link>
             .
@@ -121,8 +127,7 @@ export function AIConsentDialog({ onConsentChange }: AIConsentBannerProps) {
             Not Now
           </Button>
           <Button onClick={handleAccept} className="gap-2">
-            <Bot className="w-4 h-4" />
-            I Understand, Continue
+            <Bot className="w-4 h-4" />I Understand, Continue
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -139,8 +144,9 @@ export function AIConsentInline({ onAccept }: { onAccept: () => void }) {
         <h4 className="font-medium">AI Assistant</h4>
       </div>
       <p className="text-sm text-muted-foreground">
-        This AI assistant uses your organization&apos;s knowledge base to help answer questions. 
-        Your queries are processed securely and logged for quality purposes.
+        This AI assistant uses your organization&apos;s knowledge base to help
+        answer questions. Your queries are processed securely and logged for
+        quality purposes.
       </p>
       <div className="flex gap-2">
         <Button size="sm" onClick={onAccept}>

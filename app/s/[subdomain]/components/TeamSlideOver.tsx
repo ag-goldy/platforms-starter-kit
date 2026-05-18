@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Plus,
@@ -14,12 +14,12 @@ import {
   Save,
   XCircle,
   RefreshCw,
-} from 'lucide-react';
-import { useParams } from 'next/navigation';
+} from "lucide-react";
+import { useParams } from "next/navigation";
 
 interface TeamSlideOverProps {
   data: {
-    mode?: 'view' | 'invite';
+    mode?: "view" | "invite";
   } | null;
   onClose: () => void;
 }
@@ -51,29 +51,29 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isInviting, setIsInviting] = useState(data?.mode === 'invite');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('REQUESTER');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isInviting, setIsInviting] = useState(data?.mode === "invite");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("REQUESTER");
+  const [searchQuery, setSearchQuery] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    department: '',
-    role: '',
+    name: "",
+    email: "",
+    phone: "",
+    department: "",
+    role: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'members' | 'invites'>('members');
+  const [activeTab, setActiveTab] = useState<"members" | "invites">("members");
 
   useEffect(() => {
     fetchTeamData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (data?.mode === 'invite') {
+    if (data?.mode === "invite") {
       setIsInviting(true);
     }
   }, [data]);
@@ -88,7 +88,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
         setUserRole(responseData.userRole);
       }
     } catch (error) {
-      console.error('Failed to fetch team:', error);
+      console.error("Failed to fetch team:", error);
     } finally {
       setLoading(false);
     }
@@ -100,19 +100,19 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/team/${subdomain}/invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
       });
 
       if (res.ok) {
         const newInvite = await res.json();
         setPendingInvites((prev) => [newInvite, ...prev]);
-        setInviteEmail('');
+        setInviteEmail("");
         setIsInviting(false);
       }
     } catch (error) {
-      console.error('Failed to invite:', error);
+      console.error("Failed to invite:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -121,18 +121,18 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
       const res = await fetch(`/api/team/${subdomain}/members/${memberId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: newRole }),
       });
 
       if (res.ok) {
         setMembers((prev) =>
-          prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
+          prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)),
         );
       }
     } catch (error) {
-      console.error('Failed to update role:', error);
+      console.error("Failed to update role:", error);
     }
   };
 
@@ -141,67 +141,73 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/team/${subdomain}/members/${editingMember.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm),
-      });
+      const res = await fetch(
+        `/api/team/${subdomain}/members/${editingMember.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editForm),
+        },
+      );
 
       if (res.ok) {
         const updated = await res.json();
         setMembers((prev) =>
-          prev.map((m) => (m.id === updated.id ? updated : m))
+          prev.map((m) => (m.id === updated.id ? updated : m)),
         );
         setEditingMember(null);
       }
     } catch (error) {
-      console.error('Failed to update member:', error);
+      console.error("Failed to update member:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to remove this member?')) return;
+    if (!confirm("Are you sure you want to remove this member?")) return;
 
     try {
       const res = await fetch(`/api/team/${subdomain}/members/${memberId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (res.ok) {
         setMembers((prev) => prev.filter((m) => m.id !== memberId));
       }
     } catch (error) {
-      console.error('Failed to remove member:', error);
+      console.error("Failed to remove member:", error);
     }
   };
 
   const handleCancelInvite = async (inviteId: string) => {
     try {
       const res = await fetch(`/api/team/${subdomain}/invites/${inviteId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (res.ok) {
         setPendingInvites((prev) => prev.filter((i) => i.id !== inviteId));
       }
     } catch (error) {
-      console.error('Failed to cancel invite:', error);
+      console.error("Failed to cancel invite:", error);
     }
   };
 
   const handleResendInvite = async (inviteId: string) => {
     try {
-      const res = await fetch(`/api/team/${subdomain}/invites/${inviteId}/resend`, {
-        method: 'POST',
-      });
+      const res = await fetch(
+        `/api/team/${subdomain}/invites/${inviteId}/resend`,
+        {
+          method: "POST",
+        },
+      );
 
       if (res.ok) {
-        alert('Invitation resent successfully');
+        alert("Invitation resent successfully");
       }
     } catch (error) {
-      console.error('Failed to resend invite:', error);
+      console.error("Failed to resend invite:", error);
     }
   };
 
@@ -210,30 +216,30 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
     setEditForm({
       name: member.name,
       email: member.email,
-      phone: member.phone || '',
-      department: member.department || '',
+      phone: member.phone || "",
+      department: member.department || "",
       role: member.role,
     });
   };
 
-  const isAdmin = userRole === 'CUSTOMER_ADMIN' || userRole === 'ADMIN';
+  const isAdmin = userRole === "CUSTOMER_ADMIN" || userRole === "ADMIN";
 
   const filteredMembers = members.filter(
     (m) =>
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.department?.toLowerCase().includes(searchQuery.toLowerCase())
+      m.department?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const getRoleBadgeColor = (role: string) => {
     const colors: Record<string, string> = {
-      CUSTOMER_ADMIN: 'bg-purple-100 text-purple-700',
-      ADMIN: 'bg-purple-100 text-purple-700',
-      REQUESTER: 'bg-blue-100 text-blue-700',
-      VIEWER: 'bg-stone-100 text-stone-700',
-      AGENT: 'bg-emerald-100 text-emerald-700',
+      CUSTOMER_ADMIN: "bg-purple-100 text-purple-700",
+      ADMIN: "bg-purple-100 text-purple-700",
+      REQUESTER: "bg-blue-100 text-blue-700",
+      VIEWER: "bg-stone-100 text-stone-700",
+      AGENT: "bg-emerald-100 text-emerald-700",
     };
-    return colors[role] || 'bg-stone-100 text-stone-700';
+    return colors[role] || "bg-stone-100 text-stone-700";
   };
 
   // Edit Member Form
@@ -244,7 +250,9 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
         <div className="px-6 py-4 border-b border-stone-100">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-stone-900">Edit Member</h2>
+              <h2 className="text-lg font-semibold text-stone-900">
+                Edit Member
+              </h2>
               <p className="text-sm text-stone-500">Update member details</p>
             </div>
             <button
@@ -271,11 +279,15 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-700">Full Name</label>
+            <label className="text-sm font-medium text-stone-700">
+              Full Name
+            </label>
             <input
               type="text"
               value={editForm.name}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, name: e.target.value }))
+              }
               className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
             />
           </div>
@@ -285,7 +297,9 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
             <input
               type="email"
               value={editForm.email}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, email: e.target.value }))
+              }
               className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
             />
           </div>
@@ -295,18 +309,24 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
             <input
               type="tel"
               value={editForm.phone}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+              }
               placeholder="+1 (555) 123-4567"
               className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-700">Department</label>
+            <label className="text-sm font-medium text-stone-700">
+              Department
+            </label>
             <input
               type="text"
               value={editForm.department}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, department: e.target.value }))
+              }
               placeholder="e.g., Engineering, Support"
               className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
             />
@@ -316,7 +336,9 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
             <label className="text-sm font-medium text-stone-700">Role</label>
             <select
               value={editForm.role}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, role: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, role: e.target.value }))
+              }
               className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
             >
               <option value="CUSTOMER_ADMIN">Admin</option>
@@ -341,7 +363,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
             className="flex items-center gap-2 px-6 py-2 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Save className="w-4 h-4" />
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
@@ -356,8 +378,9 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
           <div>
             <h2 className="text-lg font-semibold text-stone-900">Team</h2>
             <p className="text-sm text-stone-500">
-              {members.length} member{members.length !== 1 ? 's' : ''}
-              {pendingInvites.length > 0 && ` • ${pendingInvites.length} pending`}
+              {members.length} member{members.length !== 1 ? "s" : ""}
+              {pendingInvites.length > 0 &&
+                ` • ${pendingInvites.length} pending`}
             </p>
           </div>
           {isAdmin && (
@@ -375,21 +398,21 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
       {/* Tabs */}
       <div className="flex items-center gap-1 px-6 py-2 border-b border-stone-100">
         <button
-          onClick={() => setActiveTab('members')}
+          onClick={() => setActiveTab("members")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'members'
-              ? 'bg-stone-900 text-white'
-              : 'text-stone-600 hover:bg-stone-100'
+            activeTab === "members"
+              ? "bg-stone-900 text-white"
+              : "text-stone-600 hover:bg-stone-100"
           }`}
         >
           Members
         </button>
         <button
-          onClick={() => setActiveTab('invites')}
+          onClick={() => setActiveTab("invites")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${
-            activeTab === 'invites'
-              ? 'bg-stone-900 text-white'
-              : 'text-stone-600 hover:bg-stone-100'
+            activeTab === "invites"
+              ? "bg-stone-900 text-white"
+              : "text-stone-600 hover:bg-stone-100"
           }`}
         >
           Invites
@@ -402,7 +425,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
       </div>
 
       {/* Search */}
-      {activeTab === 'members' && (
+      {activeTab === "members" && (
         <div className="px-6 py-3 border-b border-stone-100">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -422,13 +445,15 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
         {isInviting && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="border-b border-stone-100 overflow-hidden"
           >
             <div className="p-4 bg-stone-50 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-stone-900">Invite Team Member</h3>
+                <h3 className="font-medium text-stone-900">
+                  Invite Team Member
+                </h3>
                 <button
                   onClick={() => setIsInviting(false)}
                   className="p-1 hover:bg-stone-200 rounded transition-colors"
@@ -459,7 +484,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
                   disabled={!inviteEmail.trim() || isSubmitting}
                   className="px-4 py-2 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                 >
-                  {isSubmitting ? '...' : 'Send'}
+                  {isSubmitting ? "..." : "Send"}
                 </button>
               </div>
             </div>
@@ -473,7 +498,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
           <div className="flex items-center justify-center h-32">
             <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : activeTab === 'members' ? (
+        ) : activeTab === "members" ? (
           <div className="p-4">
             <div className="grid grid-cols-1 gap-3">
               {filteredMembers.map((member, index) => (
@@ -506,14 +531,21 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm text-stone-900">{member.name}</p>
-                      {member.role === 'CUSTOMER_ADMIN' || member.role === 'ADMIN' ? (
+                      <p className="font-medium text-sm text-stone-900">
+                        {member.name}
+                      </p>
+                      {member.role === "CUSTOMER_ADMIN" ||
+                      member.role === "ADMIN" ? (
                         <Crown className="w-3 h-3 text-amber-500" />
                       ) : null}
                     </div>
-                    <p className="text-xs text-stone-500 truncate">{member.email}</p>
+                    <p className="text-xs text-stone-500 truncate">
+                      {member.email}
+                    </p>
                     {member.department && (
-                      <p className="text-[10px] text-stone-400">{member.department}</p>
+                      <p className="text-[10px] text-stone-400">
+                        {member.department}
+                      </p>
                     )}
                   </div>
 
@@ -521,7 +553,9 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <select
                         value={member.role}
-                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                        onChange={(e) =>
+                          handleRoleChange(member.id, e.target.value)
+                        }
                         className="text-xs font-medium bg-transparent border-none focus:ring-0 cursor-pointer text-stone-600"
                       >
                         <option value="CUSTOMER_ADMIN">Admin</option>
@@ -545,10 +579,10 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
                   ) : (
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                        member.role
+                        member.role,
                       )}`}
                     >
-                      {member.role.replace('_', ' ')}
+                      {member.role.replace("_", " ")}
                     </span>
                   )}
                 </motion.div>
@@ -559,7 +593,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
               <div className="text-center py-8">
                 <Users className="w-12 h-12 text-stone-300 mx-auto mb-3" />
                 <p className="text-sm text-stone-500">
-                  {searchQuery ? 'No members found' : 'No team members yet'}
+                  {searchQuery ? "No members found" : "No team members yet"}
                 </p>
                 {!searchQuery && isAdmin && (
                   <button
@@ -591,17 +625,21 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
                       <Mail className="w-4 h-4 text-amber-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-stone-900 truncate">{invite.email}</p>
+                      <p className="font-medium text-sm text-stone-900 truncate">
+                        {invite.email}
+                      </p>
                       <p className="text-xs text-stone-500">
-                        Invited {new Date(invite.invitedAt).toLocaleDateString()} • {invite.invitedBy}
+                        Invited{" "}
+                        {new Date(invite.invitedAt).toLocaleDateString()} •{" "}
+                        {invite.invitedBy}
                       </p>
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                        invite.role
+                        invite.role,
                       )}`}
                     >
-                      {invite.role.replace('_', ' ')}
+                      {invite.role.replace("_", " ")}
                     </span>
                     {isAdmin && (
                       <div className="flex items-center gap-1">

@@ -1,16 +1,21 @@
 /**
  * Automation rules engine
- * 
+ *
  * Evaluates and executes automation rules based on ticket events
  */
 
-import { db } from '@/db';
-import { automationRules, automationRuns, ticketTagAssignments, ticketTags } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
-import { evaluateConditions } from './conditions';
-import { executeActions } from './actions';
-import type { Condition, Action, TriggerOn } from './types';
-import type { Ticket } from '@/db/schema';
+import { db } from "@/db";
+import {
+  automationRules,
+  automationRuns,
+  ticketTagAssignments,
+  ticketTags,
+} from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { evaluateConditions } from "./conditions";
+import { executeActions } from "./actions";
+import type { Condition, Action, TriggerOn } from "./types";
+import type { Ticket } from "@/db/schema";
 
 export interface RuleEvaluationContext {
   ticket: Ticket;
@@ -30,8 +35,8 @@ export async function getEnabledRules(orgId: string, triggerOn: TriggerOn) {
       and(
         eq(automationRules.orgId, orgId),
         eq(automationRules.enabled, true),
-        eq(automationRules.triggerOn, triggerOn)
-      )
+        eq(automationRules.triggerOn, triggerOn),
+      ),
     )
     .orderBy(desc(automationRules.priority));
 
@@ -46,7 +51,7 @@ export async function getEnabledRules(orgId: string, triggerOn: TriggerOn) {
  * Evaluate and execute rules for a ticket event
  */
 export async function evaluateAndExecuteRules(
-  context: RuleEvaluationContext
+  context: RuleEvaluationContext,
 ): Promise<{ matched: number; executed: number }> {
   // Public tickets (no org) don't have automation rules
   if (!context.orgId) {
@@ -70,7 +75,7 @@ export async function evaluateAndExecuteRules(
     const startedAt = Date.now();
     let matches = false;
     let actionsExecuted = 0;
-    let status = 'SKIPPED';
+    let status = "SKIPPED";
     let errorMessage: string | null = null;
 
     try {
@@ -87,36 +92,40 @@ export async function evaluateAndExecuteRules(
           userId: context.userId,
         });
         actionsExecuted = result.executed;
-        status = result.errors.length === 0
-          ? 'SUCCESS'
-          : result.executed > 0
-            ? 'PARTIAL'
-            : 'FAILED';
-        errorMessage = result.errors.join('\n') || null;
+        status =
+          result.errors.length === 0
+            ? "SUCCESS"
+            : result.executed > 0
+              ? "PARTIAL"
+              : "FAILED";
+        errorMessage = result.errors.join("\n") || null;
         executed++;
       }
     } catch (error) {
-      status = 'FAILED';
+      status = "FAILED";
       errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`Failed to evaluate rule ${rule.id}:`, error);
     } finally {
-      await db.insert(automationRuns).values({
-        orgId: context.orgId,
-        ruleId: rule.id,
-        ticketId: context.ticket.id,
-        triggerOn: context.triggerOn,
-        matched: matches,
-        status,
-        actionsExecuted,
-        durationMs: Date.now() - startedAt,
-        error: errorMessage,
-        metadata: {
-          userId: context.userId || null,
-          ruleName: rule.name,
-        },
-      }).catch((error) => {
-        console.error(`Failed to log automation run ${rule.id}:`, error);
-      });
+      await db
+        .insert(automationRuns)
+        .values({
+          orgId: context.orgId,
+          ruleId: rule.id,
+          ticketId: context.ticket.id,
+          triggerOn: context.triggerOn,
+          matched: matches,
+          status,
+          actionsExecuted,
+          durationMs: Date.now() - startedAt,
+          error: errorMessage,
+          metadata: {
+            userId: context.userId || null,
+            ruleName: rule.name,
+          },
+        })
+        .catch((error) => {
+          console.error(`Failed to log automation run ${rule.id}:`, error);
+        });
     }
   }
 
@@ -126,10 +135,13 @@ export async function evaluateAndExecuteRules(
 /**
  * Trigger rules evaluation on ticket create
  */
-export async function triggerOnTicketCreate(ticket: Ticket, userId?: string): Promise<void> {
+export async function triggerOnTicketCreate(
+  ticket: Ticket,
+  userId?: string,
+): Promise<void> {
   await evaluateAndExecuteRules({
     ticket,
-    triggerOn: 'TICKET_CREATED',
+    triggerOn: "TICKET_CREATED",
     orgId: ticket.orgId,
     userId,
   });
@@ -138,10 +150,13 @@ export async function triggerOnTicketCreate(ticket: Ticket, userId?: string): Pr
 /**
  * Trigger rules evaluation on ticket update
  */
-export async function triggerOnTicketUpdate(ticket: Ticket, userId?: string): Promise<void> {
+export async function triggerOnTicketUpdate(
+  ticket: Ticket,
+  userId?: string,
+): Promise<void> {
   await evaluateAndExecuteRules({
     ticket,
-    triggerOn: 'TICKET_UPDATED',
+    triggerOn: "TICKET_UPDATED",
     orgId: ticket.orgId,
     userId,
   });
@@ -150,10 +165,13 @@ export async function triggerOnTicketUpdate(ticket: Ticket, userId?: string): Pr
 /**
  * Trigger rules evaluation on comment add
  */
-export async function triggerOnCommentAdd(ticket: Ticket, userId?: string): Promise<void> {
+export async function triggerOnCommentAdd(
+  ticket: Ticket,
+  userId?: string,
+): Promise<void> {
   await evaluateAndExecuteRules({
     ticket,
-    triggerOn: 'COMMENT_ADDED',
+    triggerOn: "COMMENT_ADDED",
     orgId: ticket.orgId,
     userId,
   });

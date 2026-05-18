@@ -1,199 +1,208 @@
-import { db } from '@/db';
-import { users, platformAdmins, passwordResetTokens } from '@/db/schema';
-import { eq, and, gt, isNull, lt } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import { db } from "@/db";
+import { users, platformAdmins, passwordResetTokens } from "@/db/schema";
+import { eq, and, gt, isNull, lt } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const TOKEN_EXPIRY_HOURS = 24;
 
 /**
  * Generate a password reset token for a user
  */
-export async function generatePasswordResetToken(email: string): Promise<string | null> {
-    const normalizedEmail = email.toLowerCase();
+export async function generatePasswordResetToken(
+  email: string,
+): Promise<string | null> {
+  const normalizedEmail = email.toLowerCase();
 
-    const user = await db.query.users.findFirst({
-        where: eq(users.email, normalizedEmail),
-    });
+  const user = await db.query.users.findFirst({
+    where: eq(users.email, normalizedEmail),
+  });
 
-    const platformAdmin = user
-        ? null
-        : await db.query.platformAdmins.findFirst({
-            where: eq(platformAdmins.email, normalizedEmail),
-        });
+  const platformAdmin = user
+    ? null
+    : await db.query.platformAdmins.findFirst({
+        where: eq(platformAdmins.email, normalizedEmail),
+      });
 
-    if (!user && !platformAdmin) {
-        return null;
-    }
+  if (!user && !platformAdmin) {
+    return null;
+  }
 
-    // Generate secure random token
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = await bcrypt.hash(token, 10);
+  // Generate secure random token
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = await bcrypt.hash(token, 10);
 
-    // Set expiry
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + TOKEN_EXPIRY_HOURS);
+  // Set expiry
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + TOKEN_EXPIRY_HOURS);
 
-    // Insert token (delete any existing tokens for this principal first)
-    if (user) {
-        await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
-    } else if (platformAdmin) {
-        await db
-            .delete(passwordResetTokens)
-            .where(eq(passwordResetTokens.platformAdminId, platformAdmin.id));
-    }
+  // Insert token (delete any existing tokens for this principal first)
+  if (user) {
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, user.id));
+  } else if (platformAdmin) {
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.platformAdminId, platformAdmin.id));
+  }
 
-    await db.insert(passwordResetTokens).values({
-        userId: user?.id ?? null,
-        platformAdminId: platformAdmin?.id ?? null,
-        tokenHash,
-        expiresAt,
-    });
+  await db.insert(passwordResetTokens).values({
+    userId: user?.id ?? null,
+    platformAdminId: platformAdmin?.id ?? null,
+    tokenHash,
+    expiresAt,
+  });
 
-    return token;
+  return token;
 }
 
 /**
  * Validate a password reset token
  */
 export async function validatePasswordResetToken(
-    token: string
-): Promise<{ tokenId: string; userId: string | null; platformAdminId: string | null; email: string } | null> {
-    // Get all unexpired, unused tokens
-    const tokens = await db
-        .select({
-            id: passwordResetTokens.id,
-            userId: passwordResetTokens.userId,
-            platformAdminId: passwordResetTokens.platformAdminId,
-            tokenHash: passwordResetTokens.tokenHash,
-            expiresAt: passwordResetTokens.expiresAt,
-        })
-        .from(passwordResetTokens)
-        .where(
-            and(
-                gt(passwordResetTokens.expiresAt, new Date()),
-                isNull(passwordResetTokens.usedAt)
-            )
-        );
+  token: string,
+): Promise<{
+  tokenId: string;
+  userId: string | null;
+  platformAdminId: string | null;
+  email: string;
+} | null> {
+  // Get all unexpired, unused tokens
+  const tokens = await db
+    .select({
+      id: passwordResetTokens.id,
+      userId: passwordResetTokens.userId,
+      platformAdminId: passwordResetTokens.platformAdminId,
+      tokenHash: passwordResetTokens.tokenHash,
+      expiresAt: passwordResetTokens.expiresAt,
+    })
+    .from(passwordResetTokens)
+    .where(
+      and(
+        gt(passwordResetTokens.expiresAt, new Date()),
+        isNull(passwordResetTokens.usedAt),
+      ),
+    );
 
-    // Check each token hash
-    for (const t of tokens) {
-        const isValid = await bcrypt.compare(token, t.tokenHash);
-        if (isValid) {
-            if (t.userId) {
-                const user = await db.query.users.findFirst({
-                    where: eq(users.id, t.userId),
-                });
-                if (user) {
-                    return {
-                        tokenId: t.id,
-                        userId: user.id,
-                        platformAdminId: null,
-                        email: user.email,
-                    };
-                }
-            }
-
-            if (t.platformAdminId) {
-                const admin = await db.query.platformAdmins.findFirst({
-                    where: eq(platformAdmins.id, t.platformAdminId),
-                });
-                if (admin) {
-                    return {
-                        tokenId: t.id,
-                        userId: null,
-                        platformAdminId: admin.id,
-                        email: admin.email,
-                    };
-                }
-            }
+  // Check each token hash
+  for (const t of tokens) {
+    const isValid = await bcrypt.compare(token, t.tokenHash);
+    if (isValid) {
+      if (t.userId) {
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, t.userId),
+        });
+        if (user) {
+          return {
+            tokenId: t.id,
+            userId: user.id,
+            platformAdminId: null,
+            email: user.email,
+          };
         }
-    }
+      }
 
-    return null;
+      if (t.platformAdminId) {
+        const admin = await db.query.platformAdmins.findFirst({
+          where: eq(platformAdmins.id, t.platformAdminId),
+        });
+        if (admin) {
+          return {
+            tokenId: t.id,
+            userId: null,
+            platformAdminId: admin.id,
+            email: admin.email,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
  * Reset password using a valid token
  */
 export async function resetPasswordWithToken(
-    token: string,
-    newPassword: string
+  token: string,
+  newPassword: string,
 ): Promise<{ success: boolean; error?: string }> {
-    const validation = await validatePasswordResetToken(token);
+  const validation = await validatePasswordResetToken(token);
 
-    if (!validation) {
-        return { success: false, error: 'Invalid or expired reset token' };
-    }
+  if (!validation) {
+    return { success: false, error: "Invalid or expired reset token" };
+  }
 
-    // Hash new password
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+  // Hash new password
+  const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    if (validation.userId) {
-        await db
-            .update(users)
-            .set({
-                passwordHash,
-                updatedAt: new Date(),
-            })
-            .where(eq(users.id, validation.userId));
-    } else if (validation.platformAdminId) {
-        await db
-            .update(platformAdmins)
-            .set({
-                passwordHash,
-                updatedAt: new Date(),
-            })
-            .where(eq(platformAdmins.id, validation.platformAdminId));
-    } else {
-        return { success: false, error: 'Invalid reset token' };
-    }
-
-    // Mark token as used
+  if (validation.userId) {
     await db
-        .update(passwordResetTokens)
-        .set({ usedAt: new Date() })
-        .where(eq(passwordResetTokens.id, validation.tokenId));
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, validation.userId));
+  } else if (validation.platformAdminId) {
+    await db
+      .update(platformAdmins)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(platformAdmins.id, validation.platformAdminId));
+  } else {
+    return { success: false, error: "Invalid reset token" };
+  }
 
-    return { success: true };
+  // Mark token as used
+  await db
+    .update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResetTokens.id, validation.tokenId));
+
+  return { success: true };
 }
 
 /**
  * Admin-initiated password reset (sets a new password directly)
  */
 export async function adminResetUserPassword(
-    userId: string,
-    newPassword: string
+  userId: string,
+  newPassword: string,
 ): Promise<{ success: boolean; error?: string }> {
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-    });
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
 
-    if (!user) {
-        return { success: false, error: 'User not found' };
-    }
+  if (!user) {
+    return { success: false, error: "User not found" };
+  }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    await db
-        .update(users)
-        .set({
-            passwordHash,
-            updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
 
-    return { success: true };
+  return { success: true };
 }
 
 /**
  * Cleanup expired tokens
  */
 export async function cleanupExpiredTokens(): Promise<number> {
-    const result = await db
-        .delete(passwordResetTokens)
-        .where(lt(passwordResetTokens.expiresAt, new Date()))
-        .returning();
+  const result = await db
+    .delete(passwordResetTokens)
+    .where(lt(passwordResetTokens.expiresAt, new Date()))
+    .returning();
 
-    return result.length;
+  return result.length;
 }

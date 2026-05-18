@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
   Circle,
@@ -9,17 +9,17 @@ import {
   Trash2,
   Calendar,
   User,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Subtask {
   id: string;
   title: string;
   description?: string;
-  status: 'todo' | 'in_progress' | 'done';
+  status: "todo" | "in_progress" | "done";
   assignee?: {
     id: string;
     name: string;
@@ -56,10 +56,10 @@ export function Subtasks({
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newSubtask, setNewSubtask] = useState({
-    title: '',
-    description: '',
-    assigneeId: '',
-    dueDate: '',
+    title: "",
+    description: "",
+    assigneeId: "",
+    dueDate: "",
   });
   // Items state is managed by parent component via subtasks prop
 
@@ -74,23 +74,33 @@ export function Subtasks({
         dueDate: newSubtask.dueDate ? new Date(newSubtask.dueDate) : undefined,
       });
       setIsAdding(false);
-      setNewSubtask({ title: '', description: '', assigneeId: '', dueDate: '' });
+      setNewSubtask({
+        title: "",
+        description: "",
+        assigneeId: "",
+        dueDate: "",
+      });
     } catch (e) {
-      console.error('Failed to add subtask:', e);
+      console.error("Failed to add subtask:", e);
     }
   };
 
   const handleToggleStatus = async (subtask: Subtask) => {
-    const newStatus: Subtask['status'] =
-      subtask.status === 'done' ? 'todo' : subtask.status === 'todo' ? 'in_progress' : 'done';
+    const newStatus: Subtask["status"] =
+      subtask.status === "done"
+        ? "todo"
+        : subtask.status === "todo"
+          ? "in_progress"
+          : "done";
     await onUpdate(subtask.id, { status: newStatus });
   };
 
-  const completedCount = subtasks.filter((s) => s.status === 'done').length;
-  const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
+  const completedCount = subtasks.filter((s) => s.status === "done").length;
+  const progress =
+    subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
 
   return (
-    <div className={cn('border rounded-lg p-4', className)}>
+    <div className={cn("border rounded-lg p-4", className)}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-gray-500" />
@@ -129,14 +139,16 @@ export function Subtasks({
         {isAdding && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="mb-4 space-y-3"
           >
             <Input
               placeholder="What needs to be done?"
               value={newSubtask.title}
-              onChange={(e) => setNewSubtask({ ...newSubtask, title: e.target.value })}
+              onChange={(e) =>
+                setNewSubtask({ ...newSubtask, title: e.target.value })
+              }
               autoFocus
             />
             <Input
@@ -174,7 +186,11 @@ export function Subtasks({
               <Button size="sm" onClick={handleAdd}>
                 Add Subtask
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsAdding(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -244,9 +260,9 @@ function SubtaskItem({
   const StatusIcon = statusIcons[subtask.status];
 
   const statusColors = {
-    todo: 'text-gray-400',
-    in_progress: 'text-blue-500',
-    done: 'text-green-500',
+    todo: "text-gray-400",
+    in_progress: "text-blue-500",
+    done: "text-green-500",
   };
 
   if (isEditing) {
@@ -257,10 +273,10 @@ function SubtaskItem({
           onChange={(e) => setEditValue(e.target.value)}
           autoFocus
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === "Enter") {
               onUpdate({ title: editValue });
               onCancelEdit();
-            } else if (e.key === 'Escape') {
+            } else if (e.key === "Escape") {
               onCancelEdit();
             }
           }}
@@ -282,15 +298,15 @@ function SubtaskItem({
     <motion.div
       layout
       className={cn(
-        'group flex items-start gap-2 p-3 rounded-lg border transition-colors',
-        subtask.status === 'done'
-          ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200'
-          : 'bg-white dark:bg-gray-800 border-gray-200 hover:border-gray-300'
+        "group flex items-start gap-2 p-3 rounded-lg border transition-colors",
+        subtask.status === "done"
+          ? "bg-gray-50 dark:bg-gray-800/50 border-gray-200"
+          : "bg-white dark:bg-gray-800 border-gray-200 hover:border-gray-300",
       )}
     >
       <button
         onClick={onToggle}
-        className={cn('mt-0.5 transition-colors', statusColors[subtask.status])}
+        className={cn("mt-0.5 transition-colors", statusColors[subtask.status])}
       >
         <StatusIcon className="w-5 h-5" />
       </button>
@@ -298,8 +314,8 @@ function SubtaskItem({
       <div className="flex-1 min-w-0">
         <div
           className={cn(
-            'font-medium',
-            subtask.status === 'done' && 'line-through text-gray-400'
+            "font-medium",
+            subtask.status === "done" && "line-through text-gray-400",
           )}
           onDoubleClick={onStartEdit}
         >
@@ -307,7 +323,9 @@ function SubtaskItem({
         </div>
 
         {subtask.description && (
-          <div className="text-sm text-gray-500 mt-1">{subtask.description}</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {subtask.description}
+          </div>
         )}
 
         <div className="flex items-center gap-3 mt-2">
@@ -319,7 +337,9 @@ function SubtaskItem({
                   {subtask.assignee.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="truncate max-w-[100px]">{subtask.assignee.name}</span>
+              <span className="truncate max-w-[100px]">
+                {subtask.assignee.name}
+              </span>
             </div>
           )}
 
@@ -329,8 +349,8 @@ function SubtaskItem({
               <span
                 className={cn(
                   new Date(subtask.dueDate) < new Date() &&
-                    subtask.status !== 'done' &&
-                    'text-red-500'
+                    subtask.status !== "done" &&
+                    "text-red-500",
                 )}
               >
                 {new Date(subtask.dueDate).toLocaleDateString()}
@@ -342,11 +362,15 @@ function SubtaskItem({
 
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
         <select
-          value={subtask.assignee?.id || ''}
+          value={subtask.assignee?.id || ""}
           onChange={(e) =>
             onUpdate({
               assignee: e.target.value
-                ? { id: e.target.value, name: users.find((u) => u.id === e.target.value)?.name || '' }
+                ? {
+                    id: e.target.value,
+                    name:
+                      users.find((u) => u.id === e.target.value)?.name || "",
+                  }
                 : null,
             })
           }

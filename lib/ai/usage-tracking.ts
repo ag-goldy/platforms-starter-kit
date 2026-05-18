@@ -1,19 +1,22 @@
 /**
  * AI Usage Tracking & Cost Calculation
- * 
+ *
  * Tracks token usage and estimates costs for AI queries
  * Provides quota enforcement per organization
  */
 
-import { db } from '@/db';
-import { aiUsage, orgAIConfigs } from '@/db/schema';
-import { eq, and, gte, sql } from 'drizzle-orm';
+import { db } from "@/db";
+import { aiUsage, orgAIConfigs } from "@/db/schema";
+import { eq, and, gte, sql } from "drizzle-orm";
 
 // Cost per 1K tokens in USD
-const COST_PER_1K_TOKENS: Record<string, { prompt: number; completion: number }> = {
-  'openai/gpt-oss-120b': { prompt: 0.0005, completion: 0.0015 },
-  'deepseek-ai/DeepSeek-V3.1': { prompt: 0.0003, completion: 0.001 },
-  'gpt-4o-mini': { prompt: 0.00015, completion: 0.0006 },
+const COST_PER_1K_TOKENS: Record<
+  string,
+  { prompt: number; completion: number }
+> = {
+  "openai/gpt-oss-120b": { prompt: 0.0005, completion: 0.0015 },
+  "deepseek-ai/DeepSeek-V3.1": { prompt: 0.0003, completion: 0.001 },
+  "gpt-4o-mini": { prompt: 0.00015, completion: 0.0006 },
 };
 
 interface UsageData {
@@ -34,11 +37,13 @@ interface QuotaStatus {
  * Calculate estimated cost for a query
  */
 export function calculateCost(modelUsed: string, usage: UsageData): number {
-  const costs = COST_PER_1K_TOKENS[modelUsed] || COST_PER_1K_TOKENS['deepseek-ai/DeepSeek-V3.1'];
-  
+  const costs =
+    COST_PER_1K_TOKENS[modelUsed] ||
+    COST_PER_1K_TOKENS["deepseek-ai/DeepSeek-V3.1"];
+
   const promptCost = (usage.promptTokens / 1000) * costs.prompt;
   const completionCost = (usage.completionTokens / 1000) * costs.completion;
-  
+
   return parseFloat((promptCost + completionCost).toFixed(6));
 }
 
@@ -56,7 +61,7 @@ export async function logAIUsage({
 }: {
   orgId: string;
   userId?: string;
-  interface: 'public' | 'customer' | 'admin';
+  interface: "public" | "customer" | "admin";
   modelUsed: string;
   promptTokens: number;
   completionTokens: number;
@@ -64,7 +69,11 @@ export async function logAIUsage({
 }): Promise<void> {
   try {
     const totalTokens = promptTokens + completionTokens;
-    const estimatedCost = calculateCost(modelUsed, { promptTokens, completionTokens, modelUsed });
+    const estimatedCost = calculateCost(modelUsed, {
+      promptTokens,
+      completionTokens,
+      modelUsed,
+    });
 
     await db.insert(aiUsage).values({
       orgId,
@@ -78,7 +87,7 @@ export async function logAIUsage({
       metadata,
     });
   } catch (error) {
-    console.error('[AI Usage] Failed to log usage:', error);
+    console.error("[AI Usage] Failed to log usage:", error);
     // Don't throw - logging failures shouldn't break AI functionality
   }
 }
@@ -102,17 +111,12 @@ export async function getMonthlyAIUsage(orgId: string): Promise<{
       totalCost: sql<number>`SUM(${aiUsage.estimatedCost})`,
     })
     .from(aiUsage)
-    .where(
-      and(
-        eq(aiUsage.orgId, orgId),
-        gte(aiUsage.createdAt, startOfMonth)
-      )
-    );
+    .where(and(eq(aiUsage.orgId, orgId), gte(aiUsage.createdAt, startOfMonth)));
 
   return {
     totalQueries: Number(result[0]?.totalQueries || 0),
     totalTokens: Number(result[0]?.totalTokens || 0),
-    totalCost: parseFloat(result[0]?.totalCost?.toString() || '0'),
+    totalCost: parseFloat(result[0]?.totalCost?.toString() || "0"),
   };
 }
 
@@ -127,14 +131,14 @@ export async function checkAIQuota(orgId: string): Promise<QuotaStatus> {
     });
 
     const limit = config?.customerRateLimit || 100; // Default 100 queries/month
-    
+
     // Get current usage
     const usage = await getMonthlyAIUsage(orgId);
-    
+
     // For rate limit, we count queries, not tokens
     const currentUsage = usage.totalQueries;
     const percentage = (currentUsage / limit) * 100;
-    
+
     return {
       allowed: currentUsage < limit,
       currentUsage,
@@ -143,7 +147,7 @@ export async function checkAIQuota(orgId: string): Promise<QuotaStatus> {
       isWarning: percentage >= 80 && percentage < 100,
     };
   } catch (error) {
-    console.error('[AI Quota] Failed to check quota:', error);
+    console.error("[AI Quota] Failed to check quota:", error);
     // Default to allowing if check fails
     return {
       allowed: true,
@@ -158,8 +162,14 @@ export async function checkAIQuota(orgId: string): Promise<QuotaStatus> {
 /**
  * Get detailed AI usage breakdown by interface and model
  */
-export async function getAIUsageBreakdown(orgId: string, days = 30): Promise<{
-  byInterface: Record<string, { queries: number; tokens: number; cost: number }>;
+export async function getAIUsageBreakdown(
+  orgId: string,
+  days = 30,
+): Promise<{
+  byInterface: Record<
+    string,
+    { queries: number; tokens: number; cost: number }
+  >;
   byModel: Record<string, { queries: number; tokens: number; cost: number }>;
   daily: Array<{ date: string; queries: number; tokens: number; cost: number }>;
 }> {
@@ -176,17 +186,21 @@ export async function getAIUsageBreakdown(orgId: string, days = 30): Promise<{
       createdAt: aiUsage.createdAt,
     })
     .from(aiUsage)
-    .where(
-      and(
-        eq(aiUsage.orgId, orgId),
-        gte(aiUsage.createdAt, startDate)
-      )
-    );
+    .where(and(eq(aiUsage.orgId, orgId), gte(aiUsage.createdAt, startDate)));
 
   // Aggregate by interface
-  const byInterface: Record<string, { queries: number; tokens: number; cost: number }> = {};
-  const byModel: Record<string, { queries: number; tokens: number; cost: number }> = {};
-  const dailyMap: Record<string, { queries: number; tokens: number; cost: number }> = {};
+  const byInterface: Record<
+    string,
+    { queries: number; tokens: number; cost: number }
+  > = {};
+  const byModel: Record<
+    string,
+    { queries: number; tokens: number; cost: number }
+  > = {};
+  const dailyMap: Record<
+    string,
+    { queries: number; tokens: number; cost: number }
+  > = {};
 
   for (const record of usage) {
     // By interface
@@ -195,7 +209,9 @@ export async function getAIUsageBreakdown(orgId: string, days = 30): Promise<{
     }
     byInterface[record.interface].queries++;
     byInterface[record.interface].tokens += Number(record.totalTokens);
-    byInterface[record.interface].cost += parseFloat(record.estimatedCost?.toString() || '0');
+    byInterface[record.interface].cost += parseFloat(
+      record.estimatedCost?.toString() || "0",
+    );
 
     // By model
     if (!byModel[record.modelUsed]) {
@@ -203,16 +219,18 @@ export async function getAIUsageBreakdown(orgId: string, days = 30): Promise<{
     }
     byModel[record.modelUsed].queries++;
     byModel[record.modelUsed].tokens += Number(record.totalTokens);
-    byModel[record.modelUsed].cost += parseFloat(record.estimatedCost?.toString() || '0');
+    byModel[record.modelUsed].cost += parseFloat(
+      record.estimatedCost?.toString() || "0",
+    );
 
     // Daily
-    const date = record.createdAt.toISOString().split('T')[0];
+    const date = record.createdAt.toISOString().split("T")[0];
     if (!dailyMap[date]) {
       dailyMap[date] = { queries: 0, tokens: 0, cost: 0 };
     }
     dailyMap[date].queries++;
     dailyMap[date].tokens += Number(record.totalTokens);
-    dailyMap[date].cost += parseFloat(record.estimatedCost?.toString() || '0');
+    dailyMap[date].cost += parseFloat(record.estimatedCost?.toString() || "0");
   }
 
   // Convert daily map to sorted array

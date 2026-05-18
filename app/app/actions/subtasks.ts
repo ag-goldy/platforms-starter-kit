@@ -1,10 +1,10 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { ticketSubtasks, tickets } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { requireAuth } from '@/lib/auth/permissions';
+import { db } from "@/db";
+import { ticketSubtasks, tickets } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { requireAuth } from "@/lib/auth/permissions";
 
 export async function getSubtasksAction(ticketId: string) {
   const subtasks = await db.query.ticketSubtasks.findMany({
@@ -30,7 +30,7 @@ export async function addSubtaskAction(
     description?: string;
     assigneeId?: string;
     dueDate?: Date;
-  }
+  },
 ) {
   await requireAuth();
 
@@ -41,7 +41,8 @@ export async function addSubtaskAction(
     limit: 1,
   });
 
-  const sortOrder = existingSubtasks.length > 0 ? existingSubtasks[0].sortOrder + 1 : 0;
+  const sortOrder =
+    existingSubtasks.length > 0 ? existingSubtasks[0].sortOrder + 1 : 0;
 
   // Get ticket to find orgId
   const ticket = await db.query.tickets.findFirst({
@@ -50,7 +51,7 @@ export async function addSubtaskAction(
   });
 
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
 
   const [subtask] = await db
@@ -62,7 +63,7 @@ export async function addSubtaskAction(
       description: data.description || null,
       assigneeId: data.assigneeId || null,
       dueDate: data.dueDate || null,
-      status: 'todo',
+      status: "todo",
       sortOrder,
     })
     .returning();
@@ -79,9 +80,9 @@ export async function updateSubtaskAction(
     description?: string;
     assigneeId?: string | null;
     dueDate?: Date | null;
-    status?: 'todo' | 'in_progress' | 'done';
+    status?: "todo" | "in_progress" | "done";
     sortOrder?: number;
-  }
+  },
 ) {
   await requireAuth();
 
@@ -94,8 +95,8 @@ export async function updateSubtaskAction(
     .where(
       and(
         eq(ticketSubtasks.id, subtaskId),
-        eq(ticketSubtasks.ticketId, ticketId)
-      )
+        eq(ticketSubtasks.ticketId, ticketId),
+      ),
     )
     .returning();
 
@@ -111,8 +112,8 @@ export async function deleteSubtaskAction(ticketId: string, subtaskId: string) {
     .where(
       and(
         eq(ticketSubtasks.id, subtaskId),
-        eq(ticketSubtasks.ticketId, ticketId)
-      )
+        eq(ticketSubtasks.ticketId, ticketId),
+      ),
     );
 
   revalidatePath(`/app/tickets/${ticketId}`);
@@ -120,7 +121,7 @@ export async function deleteSubtaskAction(ticketId: string, subtaskId: string) {
 
 export async function reorderSubtasksAction(
   ticketId: string,
-  orderedIds: string[]
+  orderedIds: string[],
 ) {
   await requireAuth();
 
@@ -132,8 +133,8 @@ export async function reorderSubtasksAction(
       .where(
         and(
           eq(ticketSubtasks.id, orderedIds[i]),
-          eq(ticketSubtasks.ticketId, ticketId)
-        )
+          eq(ticketSubtasks.ticketId, ticketId),
+        ),
       );
   }
 

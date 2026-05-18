@@ -1,8 +1,8 @@
 /**
  * Statuspage.io API Client
- * 
+ *
  * Documentation: https://developer.statuspage.io/
- * 
+ *
  * Features:
  * - Page management (status pages)
  * - Component management (services)
@@ -11,7 +11,7 @@
  * - Subscriber management
  */
 
-const STATUSPAGE_API_BASE = 'https://api.statuspage.io/v1';
+const STATUSPAGE_API_BASE = "https://api.statuspage.io/v1";
 
 export interface StatuspageConfig {
   apiKey: string;
@@ -30,7 +30,12 @@ export interface StatuspageComponent {
   id: string;
   name: string;
   description: string | null;
-  status: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage' | 'under_maintenance';
+  status:
+    | "operational"
+    | "degraded_performance"
+    | "partial_outage"
+    | "major_outage"
+    | "under_maintenance";
   position: number;
   group_id: string | null;
   group: boolean;
@@ -41,8 +46,8 @@ export interface StatuspageComponent {
 export interface StatuspageIncident {
   id: string;
   name: string;
-  status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
-  impact: 'none' | 'minor' | 'major' | 'critical';
+  status: "investigating" | "identified" | "monitoring" | "resolved";
+  impact: "none" | "minor" | "major" | "critical";
   components: StatuspageComponent[];
   created_at: string;
   updated_at: string;
@@ -60,19 +65,25 @@ export interface StatuspageIncident {
 
 export interface CreateIncidentData {
   name: string;
-  status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
-  impact: 'none' | 'minor' | 'major' | 'critical';
+  status: "investigating" | "identified" | "monitoring" | "resolved";
+  impact: "none" | "minor" | "major" | "critical";
   body: string;
   component_ids?: string[];
-  components?: Record<string, 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage'>;
+  components?: Record<
+    string,
+    "operational" | "degraded_performance" | "partial_outage" | "major_outage"
+  >;
 }
 
 export interface UpdateIncidentData {
-  status?: 'investigating' | 'identified' | 'monitoring' | 'resolved';
+  status?: "investigating" | "identified" | "monitoring" | "resolved";
   body?: string;
-  impact?: 'none' | 'minor' | 'major' | 'critical';
+  impact?: "none" | "minor" | "major" | "critical";
   component_ids?: string[];
-  components?: Record<string, 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage'>;
+  components?: Record<
+    string,
+    "operational" | "degraded_performance" | "partial_outage" | "major_outage"
+  >;
 }
 
 export class StatuspageClient {
@@ -86,15 +97,15 @@ export class StatuspageClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${STATUSPAGE_API_BASE}${endpoint}`;
-    
+
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Authorization': `OAuth ${this.apiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `OAuth ${this.apiKey}`,
+        "Content-Type": "application/json",
         ...options.headers,
       },
     });
@@ -113,7 +124,7 @@ export class StatuspageClient {
    * List all pages for the account
    */
   async listPages(): Promise<StatuspagePage[]> {
-    return this.request<StatuspagePage[]>('/pages');
+    return this.request<StatuspagePage[]>("/pages");
   }
 
   /**
@@ -121,7 +132,7 @@ export class StatuspageClient {
    */
   async getPage(pageId?: string): Promise<StatuspagePage> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
+    if (!id) throw new Error("Page ID required");
     return this.request<StatuspagePage>(`/pages/${id}`);
   }
 
@@ -132,17 +143,22 @@ export class StatuspageClient {
    */
   async listComponents(pageId?: string): Promise<StatuspageComponent[]> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
+    if (!id) throw new Error("Page ID required");
     return this.request<StatuspageComponent[]>(`/pages/${id}/components`);
   }
 
   /**
    * Get a specific component
    */
-  async getComponent(componentId: string, pageId?: string): Promise<StatuspageComponent> {
+  async getComponent(
+    componentId: string,
+    pageId?: string,
+  ): Promise<StatuspageComponent> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    return this.request<StatuspageComponent>(`/pages/${id}/components/${componentId}`);
+    if (!id) throw new Error("Page ID required");
+    return this.request<StatuspageComponent>(
+      `/pages/${id}/components/${componentId}`,
+    );
   }
 
   /**
@@ -152,16 +168,16 @@ export class StatuspageClient {
     data: {
       name: string;
       description?: string;
-      status?: StatuspageComponent['status'];
+      status?: StatuspageComponent["status"];
       group_id?: string;
     },
-    pageId?: string
+    pageId?: string,
   ): Promise<StatuspageComponent> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     return this.request<StatuspageComponent>(`/pages/${id}/components`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ component: data }),
     });
   }
@@ -172,15 +188,18 @@ export class StatuspageClient {
   async updateComponent(
     componentId: string,
     data: Partial<StatuspageComponent>,
-    pageId?: string
+    pageId?: string,
   ): Promise<StatuspageComponent> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
-    return this.request<StatuspageComponent>(`/pages/${id}/components/${componentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ component: data }),
-    });
+    if (!id) throw new Error("Page ID required");
+
+    return this.request<StatuspageComponent>(
+      `/pages/${id}/components/${componentId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ component: data }),
+      },
+    );
   }
 
   /**
@@ -188,10 +207,10 @@ export class StatuspageClient {
    */
   async deleteComponent(componentId: string, pageId?: string): Promise<void> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     await this.request<void>(`/pages/${id}/components/${componentId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -202,26 +221,31 @@ export class StatuspageClient {
    */
   async listIncidents(
     options: { status?: string; limit?: number } = {},
-    pageId?: string
+    pageId?: string,
   ): Promise<StatuspageIncident[]> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     const params = new URLSearchParams();
-    if (options.status) params.append('status', options.status);
-    if (options.limit) params.append('limit', options.limit.toString());
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
+    if (options.status) params.append("status", options.status);
+    if (options.limit) params.append("limit", options.limit.toString());
+
+    const query = params.toString() ? `?${params.toString()}` : "";
     return this.request<StatuspageIncident[]>(`/pages/${id}/incidents${query}`);
   }
 
   /**
    * Get a specific incident
    */
-  async getIncident(incidentId: string, pageId?: string): Promise<StatuspageIncident> {
+  async getIncident(
+    incidentId: string,
+    pageId?: string,
+  ): Promise<StatuspageIncident> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    return this.request<StatuspageIncident>(`/pages/${id}/incidents/${incidentId}`);
+    if (!id) throw new Error("Page ID required");
+    return this.request<StatuspageIncident>(
+      `/pages/${id}/incidents/${incidentId}`,
+    );
   }
 
   /**
@@ -229,13 +253,13 @@ export class StatuspageClient {
    */
   async createIncident(
     data: CreateIncidentData,
-    pageId?: string
+    pageId?: string,
   ): Promise<StatuspageIncident> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     return this.request<StatuspageIncident>(`/pages/${id}/incidents`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ incident: data }),
     });
   }
@@ -246,15 +270,18 @@ export class StatuspageClient {
   async updateIncident(
     incidentId: string,
     data: UpdateIncidentData,
-    pageId?: string
+    pageId?: string,
   ): Promise<StatuspageIncident> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
-    return this.request<StatuspageIncident>(`/pages/${id}/incidents/${incidentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ incident: data }),
-    });
+    if (!id) throw new Error("Page ID required");
+
+    return this.request<StatuspageIncident>(
+      `/pages/${id}/incidents/${incidentId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ incident: data }),
+      },
+    );
   }
 
   /**
@@ -262,10 +289,10 @@ export class StatuspageClient {
    */
   async deleteIncident(incidentId: string, pageId?: string): Promise<void> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     await this.request<void>(`/pages/${id}/incidents/${incidentId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -277,13 +304,13 @@ export class StatuspageClient {
   async submitMetric(
     metricId: string,
     data: { timestamp: number; value: number },
-    pageId?: string
+    pageId?: string,
   ): Promise<void> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     await this.request<void>(`/pages/${id}/metrics/${metricId}/data`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ data }),
     });
   }
@@ -295,7 +322,7 @@ export class StatuspageClient {
    */
   async listSubscribers(pageId?: string): Promise<unknown[]> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
+    if (!id) throw new Error("Page ID required");
     return this.request<unknown[]>(`/pages/${id}/subscribers`);
   }
 
@@ -304,13 +331,13 @@ export class StatuspageClient {
    */
   async createSubscriber(
     data: { email: string; webhook_url?: string; endpoint?: string },
-    pageId?: string
+    pageId?: string,
   ): Promise<unknown> {
     const id = pageId || this.pageId;
-    if (!id) throw new Error('Page ID required');
-    
+    if (!id) throw new Error("Page ID required");
+
     return this.request<unknown>(`/pages/${id}/subscribers`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ subscriber: data }),
     });
   }
@@ -320,37 +347,39 @@ export class StatuspageClient {
   /**
    * Map Atlas service status to Statuspage component status
    */
-  mapServiceStatus(atlasStatus: string): StatuspageComponent['status'] {
-    const mapping: Record<string, StatuspageComponent['status']> = {
-      'operational': 'operational',
-      'degraded': 'degraded_performance',
-      'partial_outage': 'partial_outage',
-      'major_outage': 'major_outage',
-      'maintenance': 'under_maintenance',
+  mapServiceStatus(atlasStatus: string): StatuspageComponent["status"] {
+    const mapping: Record<string, StatuspageComponent["status"]> = {
+      operational: "operational",
+      degraded: "degraded_performance",
+      partial_outage: "partial_outage",
+      major_outage: "major_outage",
+      maintenance: "under_maintenance",
     };
-    return mapping[atlasStatus] || 'operational';
+    return mapping[atlasStatus] || "operational";
   }
 
   /**
    * Map Atlas ticket priority to Statuspage incident impact
    */
-  mapImpact(priority: string): CreateIncidentData['impact'] {
-    const mapping: Record<string, CreateIncidentData['impact']> = {
-      'P1': 'critical',
-      'P2': 'major',
-      'P3': 'minor',
-      'P4': 'none',
+  mapImpact(priority: string): CreateIncidentData["impact"] {
+    const mapping: Record<string, CreateIncidentData["impact"]> = {
+      P1: "critical",
+      P2: "major",
+      P3: "minor",
+      P4: "none",
     };
-    return mapping[priority] || 'minor';
+    return mapping[priority] || "minor";
   }
 }
 
 // Factory function for creating client with org config
-export async function createStatuspageClient(orgId: string): Promise<StatuspageClient | null> {
-  const { db } = await import('@/db');
-  const { statuspageConfigs } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
-  
+export async function createStatuspageClient(
+  orgId: string,
+): Promise<StatuspageClient | null> {
+  const { db } = await import("@/db");
+  const { statuspageConfigs } = await import("@/db/schema");
+  const { eq } = await import("drizzle-orm");
+
   const config = await db.query.statuspageConfigs?.findFirst({
     where: eq(statuspageConfigs.orgId, orgId),
   });

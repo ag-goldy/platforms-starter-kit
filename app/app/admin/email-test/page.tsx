@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface EmailTestResult {
   success?: boolean;
@@ -16,40 +16,40 @@ interface EmailTestResult {
   statusCode?: number;
   details?: Record<string, unknown>;
 }
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, CheckCircle, XCircle } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react";
 
 export default function EmailTestPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<EmailTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sendTestEmail = async () => {
     if (!email) return;
-    
+
     setLoading(true);
     setResult(null);
     setError(null);
 
     try {
-      const response = await fetch('/api/test-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         setResult(data);
       } else {
-        setError(data.error || 'Failed to send email');
+        setError(data.error || "Failed to send email");
         setResult(data);
       }
     } catch (err: Error | unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
     }
@@ -77,8 +77,8 @@ export default function EmailTestPage() {
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
             />
-            <Button 
-              onClick={sendTestEmail} 
+            <Button
+              onClick={sendTestEmail}
               disabled={loading || !email}
               className="bg-orange-500 hover:bg-orange-600"
             >
@@ -97,8 +97,14 @@ export default function EmailTestPage() {
             <div className="bg-gray-50 p-4 rounded-lg text-sm">
               <h4 className="font-medium mb-2">Configuration:</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>Microsoft Graph: {result.config.graph ? '✅ Configured' : '❌ Not configured'}</li>
-                <li>SMTP: {result.config.smtp ? '✅ Configured' : '❌ Not configured'}</li>
+                <li>
+                  Microsoft Graph:{" "}
+                  {result.config.graph ? "✅ Configured" : "❌ Not configured"}
+                </li>
+                <li>
+                  SMTP:{" "}
+                  {result.config.smtp ? "✅ Configured" : "❌ Not configured"}
+                </li>
                 <li>From Address: {result.config.from}</li>
               </ul>
             </div>
@@ -108,7 +114,9 @@ export default function EmailTestPage() {
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
               <div>
-                <p className="font-medium text-green-800">Email sent successfully!</p>
+                <p className="font-medium text-green-800">
+                  Email sent successfully!
+                </p>
                 <p className="text-sm text-green-600">{result.message}</p>
                 <p className="text-sm text-green-600 mt-2">
                   Check your inbox (and spam folder) for the test email.
@@ -123,18 +131,24 @@ export default function EmailTestPage() {
               <div className="flex-1">
                 <p className="font-medium text-red-800">Failed to send email</p>
                 <p className="text-sm text-red-600">{error}</p>
-                
+
                 {result?.code && (
-                  <p className="text-xs text-red-500 mt-2">Error Code: {result.code}</p>
+                  <p className="text-xs text-red-500 mt-2">
+                    Error Code: {result.code}
+                  </p>
                 )}
-                
+
                 {result?.statusCode && (
-                  <p className="text-xs text-red-500">Status Code: {result.statusCode}</p>
+                  <p className="text-xs text-red-500">
+                    Status Code: {result.statusCode}
+                  </p>
                 )}
-                
+
                 {result?.details && (
                   <details className="mt-3">
-                    <summary className="text-xs text-red-500 cursor-pointer">View Details</summary>
+                    <summary className="text-xs text-red-500 cursor-pointer">
+                      View Details
+                    </summary>
                     <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto">
                       {JSON.stringify(result.details, null, 2)}
                     </pre>
@@ -169,7 +183,7 @@ export default function EmailTestPage() {
               <li>Copy Tenant ID and Client ID</li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-medium mb-2">2. Client Secret</h4>
             <ul className="list-disc list-inside text-gray-600 space-y-1">
@@ -177,7 +191,7 @@ export default function EmailTestPage() {
               <li>Copy the secret value immediately</li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-medium mb-2">3. API Permissions</h4>
             <ul className="list-disc list-inside text-gray-600 space-y-1">
@@ -186,14 +200,14 @@ export default function EmailTestPage() {
               <li>Click &quot;Grant admin consent&quot;</li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-medium mb-2">4. Environment Variables</h4>
             <pre className="bg-gray-100 p-3 rounded text-xs mt-2">
-MICROSOFT_GRAPH_TENANT_ID=your-tenant-id
-MICROSOFT_GRAPH_CLIENT_ID=your-client-id
-MICROSOFT_GRAPH_CLIENT_SECRET=your-secret
-EMAIL_FROM_ADDRESS=help@agrnetworks.com
+              MICROSOFT_GRAPH_TENANT_ID=your-tenant-id
+              MICROSOFT_GRAPH_CLIENT_ID=your-client-id
+              MICROSOFT_GRAPH_CLIENT_SECRET=your-secret
+              EMAIL_FROM_ADDRESS=help@agrnetworks.com
             </pre>
           </div>
         </CardContent>

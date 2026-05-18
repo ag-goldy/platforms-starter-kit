@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { PublicSiteHeader } from '@/components/public/site-header';
-import { 
-  Ticket, 
-  Mail, 
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { PublicSiteHeader } from "@/components/public/site-header";
+import {
+  Ticket,
+  Mail,
   MessageSquare,
   Sparkles,
   Bot,
@@ -22,11 +22,11 @@ import {
   CheckCircle,
   Clock,
   BookOpen,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface ChatMessage {
   id: string;
-  type: 'user' | 'ai';
+  type: "user" | "ai";
   content: string;
 }
 
@@ -57,43 +57,50 @@ export default function SupportPage() {
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 'welcome',
-      type: 'ai',
-      content: 'Hello! I\'m Zeus AI. How can I help you today?',
+      id: "welcome",
+      type: "ai",
+      content: "Hello! I'm Zeus AI. How can I help you today?",
     },
   ]);
-  const [aiInput, setAiInput] = useState('');
+  const [aiInput, setAiInput] = useState("");
   const [isAITyping, setIsAITyping] = useState(false);
   const [aiSessionId] = useState<string>(() => {
-    const hasCrypto = typeof self !== 'undefined' && 'crypto' in self && self.crypto && 'randomUUID' in self.crypto;
-    if (hasCrypto) return (self as Window & { crypto: { randomUUID: () => string } }).crypto.randomUUID();
+    const hasCrypto =
+      typeof self !== "undefined" &&
+      "crypto" in self &&
+      self.crypto &&
+      "randomUUID" in self.crypto;
+    if (hasCrypto)
+      return (
+        self as Window & { crypto: { randomUUID: () => string } }
+      ).crypto.randomUUID();
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
-  const [supportIssue, setSupportIssue] = useState('');
+  const [supportIssue, setSupportIssue] = useState("");
   const [ticketSubmitted, setTicketSubmitted] = useState(false);
   const [panelWidth, setPanelWidth] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
-  
+
   const [stats, setStats] = useState<Stats>({
     articleCount: 500,
     ticketCount: 0,
     avgResponseMinutes: 120,
-    responseTimeDisplay: '2hr',
+    responseTimeDisplay: "2hr",
     isLive: false,
     threshold: 300,
   });
   const [statsLoading, setStatsLoading] = useState(true);
-  
+
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch('/api/stats');
+        const response = await fetch("/api/stats");
         if (response.ok) {
           const data = await response.json();
           setStats(data);
         }
       } catch (error) {
-        console.error('Failed to fetch stats:', error);
+        console.error("Failed to fetch stats:", error);
       } finally {
         setStatsLoading(false);
       }
@@ -113,17 +120,18 @@ export default function SupportPage() {
       setPanelWidth(w);
     };
     const onMouseUp = () => setIsResizing(false);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   }, [isResizing]);
 
   const handleAIAsk = async () => {
     if (!aiInput.trim()) return;
-    const intent = /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
+    const intent =
+      /need support|contact support|support team|help desk|open a ticket|create ticket|raise a ticket|submit ticket|reach support|assist me|need assistance/i;
     if (intent.test(aiInput)) {
       setSupportIssue(aiInput);
       return;
@@ -131,48 +139,62 @@ export default function SupportPage() {
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      type: 'user',
+      type: "user",
       content: aiInput,
     };
 
     setChatMessages((prev) => [...prev, userMessage]);
-    setAiInput('');
+    setAiInput("");
     setIsAITyping(true);
 
     try {
-      const res = await fetch('/api/ai/kb-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMessage.content, sessionId: aiSessionId }),
+      const res = await fetch("/api/ai/kb-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: userMessage.content,
+          sessionId: aiSessionId,
+        }),
       });
-      
-      console.log('[Chat] API response:', { status: res.status, ok: res.ok });
-      
+
+      console.log("[Chat] API response:", { status: res.status, ok: res.ok });
+
       let content: string;
       if (res.ok) {
         const data = await res.json();
-        console.log('[Chat] API data:', { hasAnswer: !!data.answer, success: data.success });
-        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
-          : '';
-        content = (data.answer || '') + suggestions;
+        console.log("[Chat] API data:", {
+          hasAnswer: !!data.answer,
+          success: data.success,
+        });
+        const suggestions =
+          Array.isArray(data.suggestions) && data.suggestions.length
+            ? `\n\n### Related Articles\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || "#"})`).join("\n")}`
+            : "";
+        content = (data.answer || "") + suggestions;
       } else {
-        const errorData = await res.json().catch(() => ({})) as { error?: string };
-        console.error('[Chat] API error:', { status: res.status, error: errorData });
-        content = errorData.error || `Error ${res.status}: Failed to get AI response.`;
+        const errorData = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        console.error("[Chat] API error:", {
+          status: res.status,
+          error: errorData,
+        });
+        content =
+          errorData.error || `Error ${res.status}: Failed to get AI response.`;
       }
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
+        type: "ai",
         content,
       };
       setChatMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
-      console.error('[Chat] Fetch error:', err);
+      console.error("[Chat] Fetch error:", err);
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: 'Something went wrong fetching the AI response. Please try again.',
+        type: "ai",
+        content:
+          "Something went wrong fetching the AI response. Please try again.",
       };
       setChatMessages((prev) => [...prev, aiMessage]);
     } finally {
@@ -184,39 +206,40 @@ export default function SupportPage() {
     if (!issue) return;
     setIsAITyping(true);
     try {
-      const res = await fetch('/api/ai/kb-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ai/kb-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: `${issue}\n\nopen a ticket`,
           sessionId: aiSessionId,
         }),
       });
-      let content = 'Ticket created. Check your email for the tracking link.';
+      let content = "Ticket created. Check your email for the tracking link.";
       if (res.ok) {
         const data = await res.json();
-        const suggestions = Array.isArray(data.suggestions) && data.suggestions.length
-          ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || '#'})`).join('\n')}`
-          : '';
-        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : '';
-        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : '';
+        const suggestions =
+          Array.isArray(data.suggestions) && data.suggestions.length
+            ? `\n\n### Recommendations\n${(data.suggestions as Suggestion[]).map((s) => `- [${s.title}](${s.url || "#"})`).join("\n")}`
+            : "";
+        const created = data.ticketKey ? `\n\nTicket: ${data.ticketKey}` : "";
+        const track = data.magicLink ? `\nTrack: ${data.magicLink}` : "";
         const base = data.ticketKey
-          ? 'Ticket created. Check your email to stay updated.'
-          : (data.answer || 'Ticket created. Check your email to stay updated.');
-        content = base + created + (track ? `\n${track}` : '') + suggestions;
+          ? "Ticket created. Check your email to stay updated."
+          : data.answer || "Ticket created. Check your email to stay updated.";
+        content = base + created + (track ? `\n${track}` : "") + suggestions;
       }
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
+        type: "ai",
         content,
       };
       setChatMessages((prev) => [...prev, aiMessage]);
-      setSupportIssue('');
+      setSupportIssue("");
     } catch {
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: 'Failed to create ticket. Please try again.',
+        type: "ai",
+        content: "Failed to create ticket. Please try again.",
       };
       setChatMessages((prev) => [...prev, aiMessage]);
     } finally {
@@ -235,16 +258,16 @@ export default function SupportPage() {
 
     const formData = new FormData(e.currentTarget);
     const data = {
-      email: formData.get('email') as string,
-      name: formData.get('name') as string,
-      subject: formData.get('subject') as string,
-      description: formData.get('description') as string,
+      email: formData.get("email") as string,
+      name: formData.get("name") as string,
+      subject: formData.get("subject") as string,
+      description: formData.get("description") as string,
     };
 
     try {
-      const response = await fetch('/api/support/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/support/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
@@ -254,10 +277,10 @@ export default function SupportPage() {
         setTicketData(result as TicketData);
         setTicketSubmitted(true);
       } else {
-        setSubmitError(result.error || 'Failed to submit ticket');
+        setSubmitError(result.error || "Failed to submit ticket");
       }
     } catch {
-      setSubmitError('Network error. Please try again.');
+      setSubmitError("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -280,12 +303,14 @@ export default function SupportPage() {
               <p className="text-gray-600 mb-6">
                 We&apos;ve received your request and will respond shortly.
               </p>
-              
+
               <div className="mb-6 rounded-lg bg-gray-50 p-4 text-left text-sm">
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <div>
                     <p className="text-gray-500">Ticket ID</p>
-                    <p className="font-semibold text-gray-900">{ticketData.ticket.key}</p>
+                    <p className="font-semibold text-gray-900">
+                      {ticketData.ticket.key}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-500">Status</p>
@@ -296,7 +321,9 @@ export default function SupportPage() {
                 </div>
                 <div>
                   <p className="text-gray-500">Subject</p>
-                  <p className="font-medium text-gray-900">{ticketData.ticket.subject}</p>
+                  <p className="font-medium text-gray-900">
+                    {ticketData.ticket.subject}
+                  </p>
                 </div>
               </div>
 
@@ -310,7 +337,11 @@ export default function SupportPage() {
                     Return Home
                   </Button>
                 </Link>
-                <a href={ticketData.ticketUrl} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={ticketData.ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Button className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto">
                     View Ticket
                   </Button>
@@ -328,10 +359,16 @@ export default function SupportPage() {
                 © {new Date().getFullYear()} AGR Networks. All rights reserved.
               </p>
               <div className="flex items-center gap-6">
-                <Link href="/kb" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link
+                  href="/kb"
+                  className="text-sm text-gray-500 hover:text-gray-900"
+                >
                   Knowledge Base
                 </Link>
-                <Link href="/login" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link
+                  href="/login"
+                  className="text-sm text-gray-500 hover:text-gray-900"
+                >
                   Login
                 </Link>
               </div>
@@ -358,7 +395,8 @@ export default function SupportPage() {
               Contact Support
             </h1>
             <p className="text-lg text-gray-400">
-              Submit a ticket and our team will get back to you as soon as possible.
+              Submit a ticket and our team will get back to you as soon as
+              possible.
             </p>
           </div>
         </div>
@@ -426,7 +464,7 @@ export default function SupportPage() {
                     />
                   </div>
 
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={isSubmitting}
                     className="w-full h-11 bg-orange-600 hover:bg-orange-700 text-white"
@@ -475,7 +513,7 @@ export default function SupportPage() {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="cursor-pointer border-gray-200 bg-white text-gray-900 shadow-sm transition-shadow hover:shadow-md"
               onClick={() => setIsAIChatOpen(true)}
             >
@@ -485,7 +523,9 @@ export default function SupportPage() {
                     <Sparkles className="h-5 w-5 text-orange-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">Try AI Assistant</h3>
+                    <h3 className="font-medium text-gray-900">
+                      Try AI Assistant
+                    </h3>
                     <p className="mt-1 text-sm text-gray-500">
                       Get instant answers to common questions.
                     </p>
@@ -503,8 +543,15 @@ export default function SupportPage() {
                   <div>
                     <h3 className="font-medium text-gray-900">Response Time</h3>
                     <p className="mt-1 text-sm text-gray-500">
-                      {statsLoading ? 'Loading...' : (
-                        <>Typically within <span className="font-medium text-orange-600">{stats.responseTimeDisplay}</span></>
+                      {statsLoading ? (
+                        "Loading..."
+                      ) : (
+                        <>
+                          Typically within{" "}
+                          <span className="font-medium text-orange-600">
+                            {stats.responseTimeDisplay}
+                          </span>
+                        </>
                       )}
                     </p>
                   </div>
@@ -520,11 +567,18 @@ export default function SupportPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900">
-                      {statsLoading ? 'Loading...' : <>{stats.articleCount}+ Articles</>}
+                      {statsLoading ? (
+                        "Loading..."
+                      ) : (
+                        <>{stats.articleCount}+ Articles</>
+                      )}
                     </h3>
                     <p className="mt-1 text-sm text-gray-500">
-                      Check our{' '}
-                      <Link href="/kb" className="text-orange-600 hover:underline">
+                      Check our{" "}
+                      <Link
+                        href="/kb"
+                        className="text-orange-600 hover:underline"
+                      >
                         Knowledge Base
                       </Link>
                     </p>
@@ -532,7 +586,6 @@ export default function SupportPage() {
                 </div>
               </CardContent>
             </Card>
-
           </div>
         </div>
       </main>
@@ -545,10 +598,16 @@ export default function SupportPage() {
               © {new Date().getFullYear()} AGR Networks. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <Link href="/kb" className="text-sm text-gray-500 hover:text-gray-900">
+              <Link
+                href="/kb"
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
                 Knowledge Base
               </Link>
-              <Link href="/login" className="text-sm text-gray-500 hover:text-gray-900">
+              <Link
+                href="/login"
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
                 Login
               </Link>
             </div>
@@ -578,8 +637,8 @@ export default function SupportPage() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setIsAIChatOpen(false)}
             >
@@ -590,13 +649,13 @@ export default function SupportPage() {
             {chatMessages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    msg.type === 'user'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                    msg.type === "user"
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-900"
                   }`}
                 >
                   <div className="prose prose-sm max-w-none">
@@ -625,7 +684,7 @@ export default function SupportPage() {
                   onChange={(e) => setAiInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (
-                      e.key === 'Enter' &&
+                      e.key === "Enter" &&
                       !e.shiftKey &&
                       !e.altKey &&
                       !e.ctrlKey &&

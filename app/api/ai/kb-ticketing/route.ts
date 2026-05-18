@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { kbTicketingAPI, isTechnologyRelated, filterTechnologyContent, withTechFilter } from '@/lib/ai/baseten-api';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import {
+  kbTicketingAPI,
+  isTechnologyRelated,
+  filterTechnologyContent,
+  withTechFilter,
+} from "@/lib/ai/baseten-api";
+import { z } from "zod";
 
 // Request validation schemas
 const kbGenerateSchema = z.object({
@@ -36,14 +41,20 @@ function errorResponse(message: string, status: number = 400) {
 // Technology validation helper
 function validateTechnologyContent(content: string, field: string) {
   if (!isTechnologyRelated(content)) {
-    return errorResponse(`${field} must be technology-related (networking, servers, software, IT support, etc.)`, 400);
+    return errorResponse(
+      `${field} must be technology-related (networking, servers, software, IT support, etc.)`,
+      400,
+    );
   }
-  
+
   const validation = filterTechnologyContent(content);
   if (!validation.isValid) {
-    return errorResponse(validation.reason || `${field} contains inappropriate content`, 400);
+    return errorResponse(
+      validation.reason || `${field} contains inappropriate content`,
+      400,
+    );
   }
-  
+
   return null;
 }
 
@@ -52,135 +63,158 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return errorResponse('Authentication required', 401);
+      return errorResponse("Authentication required", 401);
     }
 
     const body = await req.json();
     const { type } = body;
 
     switch (type) {
-      case 'generate_kb': {
+      case "generate_kb": {
         const validation = kbGenerateSchema.safeParse(body);
         if (!validation.success) {
-          return errorResponse(`Invalid request: ${validation.error.message}`, 400);
+          return errorResponse(
+            `Invalid request: ${validation.error.message}`,
+            400,
+          );
         }
 
         const { ticketContent, ticketResolution, orgId } = validation.data;
-        
+
         // Validate technology content
-        const techValidation = validateTechnologyContent(ticketContent, 'Ticket content');
+        const techValidation = validateTechnologyContent(
+          ticketContent,
+          "Ticket content",
+        );
         if (techValidation) return techValidation;
 
-        const kbArticle = await withTechFilter(kbTicketingAPI.generateKBArticle)(
-          ticketContent,
-          ticketResolution
-        );
+        const kbArticle = await withTechFilter(
+          kbTicketingAPI.generateKBArticle,
+        )(ticketContent, ticketResolution);
 
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           article: kbArticle,
           metadata: {
             generatedAt: new Date().toISOString(),
             orgId,
-            ticketLength: ticketContent.length
-          }
+            ticketLength: ticketContent.length,
+          },
         });
       }
 
-      case 'analyze_ticket': {
+      case "analyze_ticket": {
         const validation = ticketAnalyzeSchema.safeParse(body);
         if (!validation.success) {
-          return errorResponse(`Invalid request: ${validation.error.message}`, 400);
+          return errorResponse(
+            `Invalid request: ${validation.error.message}`,
+            400,
+          );
         }
 
         const { ticketContent, ticketSubject, orgId } = validation.data;
-        
+
         // Validate technology content
-        const contentValidation = validateTechnologyContent(ticketContent, 'Ticket content');
+        const contentValidation = validateTechnologyContent(
+          ticketContent,
+          "Ticket content",
+        );
         if (contentValidation) return contentValidation;
-        
-        const subjectValidation = validateTechnologyContent(ticketSubject, 'Ticket subject');
+
+        const subjectValidation = validateTechnologyContent(
+          ticketSubject,
+          "Ticket subject",
+        );
         if (subjectValidation) return subjectValidation;
 
         const analysis = await withTechFilter(kbTicketingAPI.analyzeTicket)(
           ticketContent,
-          ticketSubject
+          ticketSubject,
         );
 
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           analysis,
           metadata: {
             analyzedAt: new Date().toISOString(),
-            orgId
-          }
+            orgId,
+          },
         });
       }
 
-      case 'generate_response': {
+      case "generate_response": {
         const validation = responseGenerateSchema.safeParse(body);
         if (!validation.success) {
-          return errorResponse(`Invalid request: ${validation.error.message}`, 400);
+          return errorResponse(
+            `Invalid request: ${validation.error.message}`,
+            400,
+          );
         }
 
         const { ticketContent, context, orgId } = validation.data;
-        
+
         // Validate technology content
-        const techValidation = validateTechnologyContent(ticketContent, 'Ticket content');
+        const techValidation = validateTechnologyContent(
+          ticketContent,
+          "Ticket content",
+        );
         if (techValidation) return techValidation;
 
         const response = await withTechFilter(kbTicketingAPI.generateResponse)(
           ticketContent,
-          context
+          context,
         );
 
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           response,
           metadata: {
             generatedAt: new Date().toISOString(),
             orgId,
-            hasContext: !!context
-          }
+            hasContext: !!context,
+          },
         });
       }
 
-      case 'search_kb': {
+      case "search_kb": {
         const validation = kbSearchSchema.safeParse(body);
         if (!validation.success) {
-          return errorResponse(`Invalid request: ${validation.error.message}`, 400);
+          return errorResponse(
+            `Invalid request: ${validation.error.message}`,
+            400,
+          );
         }
 
         const { query, maxResults, orgId } = validation.data;
-        
+
         // Validate technology content
-        const techValidation = validateTechnologyContent(query, 'Search query');
+        const techValidation = validateTechnologyContent(query, "Search query");
         if (techValidation) return techValidation;
 
-        const results = await withTechFilter(kbTicketingAPI.searchKB)(
+        const results = (await withTechFilter(kbTicketingAPI.searchKB)(
           query,
-          String(maxResults)
-        ) as string[];
+          String(maxResults),
+        )) as string[];
 
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           results,
           metadata: {
             searchedAt: new Date().toISOString(),
             orgId,
-            resultCount: results.length
-          }
+            resultCount: results.length,
+          },
         });
       }
 
       default:
-        return errorResponse('Invalid API type', 400);
+        return errorResponse("Invalid API type", 400);
     }
   } catch (error) {
-    console.error('KB/Ticketing API Error:', error);
+    console.error("KB/Ticketing API Error:", error);
     return errorResponse(
-      error instanceof Error ? error.message : 'Internal server error',
-      500
+      error instanceof Error ? error.message : "Internal server error",
+      500,
     );
   }
 }
@@ -188,25 +222,25 @@ export async function POST(req: NextRequest) {
 // GET endpoint for health check and available operations
 export async function GET() {
   return NextResponse.json({
-    service: 'KB & Ticketing AI API',
-    version: '1.0.0',
-    status: 'operational',
+    service: "KB & Ticketing AI API",
+    version: "1.0.0",
+    status: "operational",
     endpoints: [
-      'POST /api/ai/kb-ticketing - Main API endpoint',
-      'GET /api/ai/kb-ticketing - Health check'
+      "POST /api/ai/kb-ticketing - Main API endpoint",
+      "GET /api/ai/kb-ticketing - Health check",
     ],
     features: [
-      'KB Article Generation',
-      'Ticket Analysis & Classification',
-      'Response Generation',
-      'KB Search',
-      'Technology Content Filtering'
+      "KB Article Generation",
+      "Ticket Analysis & Classification",
+      "Response Generation",
+      "KB Search",
+      "Technology Content Filtering",
     ],
     restrictions: [
-      'Technology-related content only',
-      'Authentication required',
-      'Content filtering enforced',
-      'Rate limiting applied'
-    ]
+      "Technology-related content only",
+      "Authentication required",
+      "Content filtering enforced",
+      "Rate limiting applied",
+    ],
   });
 }

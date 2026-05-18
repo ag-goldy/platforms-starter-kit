@@ -1,10 +1,13 @@
-import { db } from '@/db';
-import { memberships } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { db } from "@/db";
+import { memberships } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
-export async function getDefaultRedirectUrl(userId: string, isInternal: boolean): Promise<string> {
+export async function getDefaultRedirectUrl(
+  userId: string,
+  isInternal: boolean,
+): Promise<string> {
   if (isInternal) {
-    return '/app';
+    return "/app";
   }
 
   // For customer users, redirect to their org's subdomain portal
@@ -22,5 +25,5 @@ export async function getDefaultRedirectUrl(userId: string, isInternal: boolean)
   }
 
   // Fallback if no org found
-  return '/login?error=No organization access';
+  return "/login?error=No organization access";
 }

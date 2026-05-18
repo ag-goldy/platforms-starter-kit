@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, ArrowLeft, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, ArrowLeft, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { ArticleEditor } from '@/components/kb/article-editor';
-import { useToast } from '@/components/ui/toast';
+} from "@/components/ui/select";
+import { ArticleEditor } from "@/components/kb/article-editor";
+import { useToast } from "@/components/ui/toast";
 
 type Org = { id: string; subdomain: string; name: string; slug: string };
 type Category = { id: string; name: string };
@@ -26,8 +26,8 @@ type Article = {
   content: string;
   contentType: string;
   categoryId: string | null;
-  status: 'draft' | 'published' | 'archived' | 'pending_review';
-  visibility: 'public' | 'org_only' | 'internal' | 'agents_only';
+  status: "draft" | "published" | "archived" | "pending_review";
+  visibility: "public" | "org_only" | "internal" | "agents_only";
 };
 
 export default function PortalKBEditArticlePage() {
@@ -45,14 +45,14 @@ export default function PortalKBEditArticlePage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const isAdmin = role === 'CUSTOMER_ADMIN';
+  const isAdmin = role === "CUSTOMER_ADMIN";
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const orgRes = await fetch(`/api/org/${subdomain}`);
-        if (!orgRes.ok) throw new Error('Org not found');
+        if (!orgRes.ok) throw new Error("Org not found");
         const orgData = (await orgRes.json()) as Org;
         setOrg(orgData);
 
@@ -90,7 +90,14 @@ export default function PortalKBEditArticlePage() {
   }, [subdomain, articleId]);
 
   const canSave = useMemo(() => {
-    return !!org && !!article && isAdmin && !saving && article.title.trim().length > 2 && article.content.trim().length > 10;
+    return (
+      !!org &&
+      !!article &&
+      isAdmin &&
+      !saving &&
+      article.title.trim().length > 2 &&
+      article.content.trim().length > 10
+    );
   }, [org, article, isAdmin, saving]);
 
   async function handleSave() {
@@ -98,8 +105,8 @@ export default function PortalKBEditArticlePage() {
     setSaving(true);
     try {
       const res = await fetch(`/api/kb/articles/${article.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: article.title,
           content: article.content,
@@ -112,13 +119,13 @@ export default function PortalKBEditArticlePage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to save article');
+        throw new Error(data.error || "Failed to save article");
       }
 
-      success('Article updated');
+      success("Article updated");
       router.push(`/s/${subdomain}/kb/admin`);
     } catch (e) {
-      showError(e instanceof Error ? e.message : 'Failed to save article');
+      showError(e instanceof Error ? e.message : "Failed to save article");
     } finally {
       setSaving(false);
     }
@@ -128,15 +135,17 @@ export default function PortalKBEditArticlePage() {
     if (!article) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/kb/articles/${article.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/kb/articles/${article.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to delete article');
+        throw new Error(data.error || "Failed to delete article");
       }
-      success('Article deleted');
+      success("Article deleted");
       router.push(`/s/${subdomain}/kb/admin`);
     } catch (e) {
-      showError(e instanceof Error ? e.message : 'Failed to delete article');
+      showError(e instanceof Error ? e.message : "Failed to delete article");
     } finally {
       setDeleting(false);
     }
@@ -156,7 +165,9 @@ export default function PortalKBEditArticlePage() {
         <CardHeader>
           <CardTitle>Edit Article</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-stone-600">Admin access required.</CardContent>
+        <CardContent className="text-sm text-stone-600">
+          Admin access required.
+        </CardContent>
       </Card>
     );
   }
@@ -174,8 +185,16 @@ export default function PortalKBEditArticlePage() {
           <h1 className="text-2xl font-bold text-stone-900">Edit Article</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Trash2 className="h-4 w-4 mr-2" />
+            )}
             Delete
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>
@@ -192,7 +211,9 @@ export default function PortalKBEditArticlePage() {
             <Input
               id="title"
               value={article.title}
-              onChange={(e) => setArticle({ ...article, title: e.target.value })}
+              onChange={(e) =>
+                setArticle({ ...article, title: e.target.value })
+              }
             />
           </div>
 
@@ -200,8 +221,13 @@ export default function PortalKBEditArticlePage() {
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                value={article.categoryId || 'none'}
-                onValueChange={(v) => setArticle({ ...article, categoryId: v === 'none' ? null : v })}
+                value={article.categoryId || "none"}
+                onValueChange={(v) =>
+                  setArticle({
+                    ...article,
+                    categoryId: v === "none" ? null : v,
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -221,7 +247,9 @@ export default function PortalKBEditArticlePage() {
               <Label>Status</Label>
               <Select
                 value={article.status}
-                onValueChange={(v) => setArticle({ ...article, status: v as Article['status'] })}
+                onValueChange={(v) =>
+                  setArticle({ ...article, status: v as Article["status"] })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -238,7 +266,12 @@ export default function PortalKBEditArticlePage() {
               <Label>Visibility</Label>
               <Select
                 value={article.visibility}
-                onValueChange={(v) => setArticle({ ...article, visibility: v as Article['visibility'] })}
+                onValueChange={(v) =>
+                  setArticle({
+                    ...article,
+                    visibility: v as Article["visibility"],
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -255,8 +288,10 @@ export default function PortalKBEditArticlePage() {
           <div className="space-y-2">
             <Label>Content</Label>
             <ArticleEditor
-              content={article.contentType === 'html' ? article.content : ''}
-              onChange={(value) => setArticle({ ...article, contentType: 'html', content: value })}
+              content={article.contentType === "html" ? article.content : ""}
+              onChange={(value) =>
+                setArticle({ ...article, contentType: "html", content: value })
+              }
             />
           </div>
         </CardContent>
@@ -264,4 +299,3 @@ export default function PortalKBEditArticlePage() {
     </div>
   );
 }
-

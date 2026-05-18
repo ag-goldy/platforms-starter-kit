@@ -1,10 +1,13 @@
-import { consumeTicketToken, createTicketToken } from '@/lib/tickets/magic-links';
-import { getTicketById } from '@/lib/tickets/queries';
-import { notFound } from 'next/navigation';
-import { PublicTicketView } from '@/components/public/ticket-view';
-import { headers } from 'next/headers';
-import { getClientIP } from '@/lib/rate-limit';
-import { type Ticket, type TicketComment, type Attachment } from '@/db/schema';
+import {
+  consumeTicketToken,
+  createTicketToken,
+} from "@/lib/tickets/magic-links";
+import { getTicketById } from "@/lib/tickets/queries";
+import { notFound } from "next/navigation";
+import { PublicTicketView } from "@/components/public/ticket-view";
+import { headers } from "next/headers";
+import { getClientIP } from "@/lib/rate-limit";
+import { type Ticket, type TicketComment, type Attachment } from "@/db/schema";
 
 export default async function PublicTicketPage({
   params,
@@ -18,7 +21,7 @@ export default async function PublicTicketPage({
   // Validate token
   const tokenData = await consumeTicketToken({
     token,
-    purpose: 'VIEW',
+    purpose: "VIEW",
     usedIp: ip,
   });
 
@@ -41,28 +44,32 @@ export default async function PublicTicketPage({
   const viewToken = await createTicketToken({
     ticketId: ticket.id,
     email: tokenData.email,
-    purpose: 'VIEW',
+    purpose: "VIEW",
     createdIp: ip,
   });
 
   const replyToken = await createTicketToken({
     ticketId: ticket.id,
     email: tokenData.email,
-    purpose: 'REPLY',
+    purpose: "REPLY",
     createdIp: ip,
   });
 
-  const attachments = ('attachments' in ticket && Array.isArray(ticket.attachments) ? ticket.attachments : []) as Attachment[];
+  const attachments = (
+    "attachments" in ticket && Array.isArray(ticket.attachments)
+      ? ticket.attachments
+      : []
+  ) as Attachment[];
   const downloadTokenEntries = await Promise.all(
     attachments.map(async (attachment: Attachment) => [
       attachment.id,
       await createTicketToken({
         ticketId: ticket.id,
         email: tokenData.email,
-        purpose: 'VIEW',
+        purpose: "VIEW",
         createdIp: ip,
       }),
-    ])
+    ]),
   );
   const downloadTokens = Object.fromEntries(downloadTokenEntries);
 
@@ -70,15 +77,17 @@ export default async function PublicTicketPage({
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-4xl space-y-6">
         <PublicTicketView
-          ticket={ticket as unknown as Ticket & {
-            organization: { name: string } | null;
-            requester: { name: string | null; email: string } | null;
-            assignee: { name: string | null; email: string } | null;
-            comments: (TicketComment & {
-              user: { name: string | null; email: string } | null;
-            })[];
-            attachments: Attachment[];
-          }}
+          ticket={
+            ticket as unknown as Ticket & {
+              organization: { name: string } | null;
+              requester: { name: string | null; email: string } | null;
+              assignee: { name: string | null; email: string } | null;
+              comments: (TicketComment & {
+                user: { name: string | null; email: string } | null;
+              })[];
+              attachments: Attachment[];
+            }
+          }
           replyToken={replyToken}
           viewToken={viewToken}
           downloadTokens={downloadTokens}

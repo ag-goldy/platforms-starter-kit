@@ -1,16 +1,19 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { ticketTags, ticketTagAssignments } from '@/db/schema';
-import { requireInternalRole, canViewTicket } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { revalidatePath } from 'next/cache';
-import { eq, and } from 'drizzle-orm';
-import { z } from 'zod';
+import { db } from "@/db";
+import { ticketTags, ticketTagAssignments } from "@/db/schema";
+import { requireInternalRole, canViewTicket } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { revalidatePath } from "next/cache";
+import { eq, and } from "drizzle-orm";
+import { z } from "zod";
 
 const tagSchema = z.object({
   name: z.string().min(1).max(50),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 export async function createTagAction(data: { name: string; color?: string }) {
@@ -21,22 +24,25 @@ export async function createTagAction(data: { name: string; color?: string }) {
     .insert(ticketTags)
     .values({
       name: validated.name.trim(),
-      color: validated.color || '#3b82f6',
+      color: validated.color || "#3b82f6",
     })
     .returning();
 
   await logAudit({
     actorId: session.user.id,
-    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({ tagId: tag.id, action: 'TAG_CREATED' }),
+    actorKind: session.platformAdmin ? "platform_admin" : "user",
+    action: "TICKET_UPDATED",
+    details: JSON.stringify({ tagId: tag.id, action: "TAG_CREATED" }),
   });
 
-  revalidatePath('/app/tags');
+  revalidatePath("/app/tags");
   return { tagId: tag.id, error: null };
 }
 
-export async function updateTagAction(tagId: string, data: { name: string; color?: string }) {
+export async function updateTagAction(
+  tagId: string,
+  data: { name: string; color?: string },
+) {
   const session = await requireInternalRole();
   const validated = tagSchema.parse(data);
 
@@ -44,19 +50,19 @@ export async function updateTagAction(tagId: string, data: { name: string; color
     .update(ticketTags)
     .set({
       name: validated.name.trim(),
-      color: validated.color || '#3b82f6',
+      color: validated.color || "#3b82f6",
       // Note: updatedAt would need to be added to schema if we want to track it
     })
     .where(eq(ticketTags.id, tagId));
 
   await logAudit({
     actorId: session.user.id,
-    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({ tagId, action: 'TAG_UPDATED' }),
+    actorKind: session.platformAdmin ? "platform_admin" : "user",
+    action: "TICKET_UPDATED",
+    details: JSON.stringify({ tagId, action: "TAG_UPDATED" }),
   });
 
-  revalidatePath('/app/tags');
+  revalidatePath("/app/tags");
   return { error: null };
 }
 
@@ -67,12 +73,12 @@ export async function deleteTagAction(tagId: string) {
 
   await logAudit({
     actorId: session.user.id,
-    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({ tagId, action: 'TAG_DELETED' }),
+    actorKind: session.platformAdmin ? "platform_admin" : "user",
+    action: "TICKET_UPDATED",
+    details: JSON.stringify({ tagId, action: "TAG_DELETED" }),
   });
 
-  revalidatePath('/app/tags');
+  revalidatePath("/app/tags");
   return { error: null };
 }
 
@@ -80,14 +86,14 @@ export async function assignTagToTicketAction(ticketId: string, tagId: string) {
   const session = await requireInternalRole();
   const { ticket } = await canViewTicket(ticketId);
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
 
   // Check if tag is already assigned
   const existing = await db.query.ticketTagAssignments.findFirst({
     where: and(
       eq(ticketTagAssignments.ticketId, ticketId),
-      eq(ticketTagAssignments.tagId, tagId)
+      eq(ticketTagAssignments.tagId, tagId),
     ),
   });
 
@@ -103,10 +109,10 @@ export async function assignTagToTicketAction(ticketId: string, tagId: string) {
 
   await logAudit({
     actorId: session.user.id,
-    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
+    actorKind: session.platformAdmin ? "platform_admin" : "user",
     orgId: ticket.orgId ?? undefined,
     ticketId,
-    action: 'TICKET_TAG_ADDED',
+    action: "TICKET_TAG_ADDED",
     details: JSON.stringify({ tagId }),
   });
 
@@ -114,11 +120,14 @@ export async function assignTagToTicketAction(ticketId: string, tagId: string) {
   return { error: null };
 }
 
-export async function removeTagFromTicketAction(ticketId: string, tagId: string) {
+export async function removeTagFromTicketAction(
+  ticketId: string,
+  tagId: string,
+) {
   const session = await requireInternalRole();
   const { ticket } = await canViewTicket(ticketId);
   if (!ticket) {
-    throw new Error('Ticket not found');
+    throw new Error("Ticket not found");
   }
 
   await db
@@ -126,16 +135,16 @@ export async function removeTagFromTicketAction(ticketId: string, tagId: string)
     .where(
       and(
         eq(ticketTagAssignments.ticketId, ticketId),
-        eq(ticketTagAssignments.tagId, tagId)
-      )
+        eq(ticketTagAssignments.tagId, tagId),
+      ),
     );
 
   await logAudit({
     actorId: session.user.id,
-    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
+    actorKind: session.platformAdmin ? "platform_admin" : "user",
     orgId: ticket.orgId ?? undefined,
     ticketId,
-    action: 'TICKET_TAG_REMOVED',
+    action: "TICKET_TAG_REMOVED",
     details: JSON.stringify({ tagId }),
   });
 

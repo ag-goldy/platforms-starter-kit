@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { signIn } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PublicSiteHeader } from '@/components/public/site-header';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PublicSiteHeader } from "@/components/public/site-header";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -22,22 +22,22 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        setError("Invalid email or password");
         setLoading(false);
         return;
       }
 
-      router.push('/app');
+      router.push("/app");
       router.refresh();
     } catch {
-      setError('Unable to reach the sign-in service. Please try again.');
+      setError("Unable to reach the sign-in service. Please try again.");
       setLoading(false);
     }
   };
@@ -48,7 +48,9 @@ export default function LoginPage() {
       <div className="flex px-4 py-12">
         <div className="mx-auto w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
           <div className="text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Sign in to Atlas</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+              Sign in to Atlas
+            </h2>
           </div>
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -60,7 +62,9 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="email" className="text-gray-900">Email address</Label>
+                <Label htmlFor="email" className="text-gray-900">
+                  Email address
+                </Label>
                 <Input
                   id="email"
                   name="email"
@@ -73,7 +77,9 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <Label htmlFor="password" className="text-gray-900">Password</Label>
+                <Label htmlFor="password" className="text-gray-900">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   name="password"
@@ -88,14 +94,21 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between">
               <div className="text-sm">
-                <Link href="/forgot-password" className="font-medium text-orange-600 hover:text-orange-500">
+                <Link
+                  href="/forgot-password"
+                  className="font-medium text-orange-600 hover:text-orange-500"
+                >
                   Forgot your password?
                 </Link>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-orange-600 text-white hover:bg-orange-700" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
+            <Button
+              type="submit"
+              className="w-full bg-orange-600 text-white hover:bg-orange-700"
+              disabled={loading}
+            >
+              {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </div>

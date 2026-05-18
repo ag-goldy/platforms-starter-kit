@@ -1,23 +1,34 @@
 /**
  * Statuspage.io Individual Incident API
- * 
+ *
  * GET    - Get incident details
  * PATCH  - Update incident
  * DELETE - Delete incident
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createStatuspageClient } from '@/lib/integrations/statuspage/client';
-import { canManageOrgSettings, canManageTickets } from '@/lib/auth/permissions';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { createStatuspageClient } from "@/lib/integrations/statuspage/client";
+import { canManageOrgSettings, canManageTickets } from "@/lib/auth/permissions";
+import { z } from "zod";
 
 const updateIncidentSchema = z.object({
-  status: z.enum(['investigating', 'identified', 'monitoring', 'resolved']).optional(),
+  status: z
+    .enum(["investigating", "identified", "monitoring", "resolved"])
+    .optional(),
   body: z.string().optional(),
-  impact: z.enum(['none', 'minor', 'major', 'critical']).optional(),
+  impact: z.enum(["none", "minor", "major", "critical"]).optional(),
   componentIds: z.array(z.string()).optional(),
-  componentStatuses: z.record(z.enum(['operational', 'degraded_performance', 'partial_outage', 'major_outage'])).optional(),
+  componentStatuses: z
+    .record(
+      z.enum([
+        "operational",
+        "degraded_performance",
+        "partial_outage",
+        "major_outage",
+      ]),
+    )
+    .optional(),
 });
 
 interface RouteParams {
@@ -30,29 +41,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const session = await auth();
     if (!session?.user?.orgId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const canManage = await canManageOrgSettings(session.user.id, session.user.orgId);
+    const canManage = await canManageOrgSettings(
+      session.user.id,
+      session.user.orgId,
+    );
     if (!canManage) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const client = await createStatuspageClient(session.user.orgId);
     if (!client) {
       return NextResponse.json(
-        { error: 'Statuspage not configured for this organization' },
-        { status: 404 }
+        { error: "Statuspage not configured for this organization" },
+        { status: 404 },
       );
     }
 
     const incident = await client.getIncident(id);
     return NextResponse.json({ incident });
   } catch (error) {
-    console.error('Error fetching statuspage incident:', error);
+    console.error("Error fetching statuspage incident:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -63,12 +77,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const session = await auth();
     if (!session?.user?.orgId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const canManage = await canManageTickets(session.user.id, session.user.orgId);
+    const canManage = await canManageTickets(
+      session.user.id,
+      session.user.orgId,
+    );
     if (!canManage) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -76,20 +93,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (!validated.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: validated.error.flatten() },
-        { status: 400 }
+        { error: "Invalid input", details: validated.error.flatten() },
+        { status: 400 },
       );
     }
 
     const client = await createStatuspageClient(session.user.orgId);
     if (!client) {
       return NextResponse.json(
-        { error: 'Statuspage not configured for this organization' },
-        { status: 404 }
+        { error: "Statuspage not configured for this organization" },
+        { status: 404 },
       );
     }
 
-    const { status, body: incidentBody, impact, componentIds, componentStatuses } = validated.data;
+    const {
+      status,
+      body: incidentBody,
+      impact,
+      componentIds,
+      componentStatuses,
+    } = validated.data;
 
     const incident = await client.updateIncident(id, {
       status,
@@ -101,10 +124,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ incident });
   } catch (error) {
-    console.error('Error updating statuspage incident:', error);
+    console.error("Error updating statuspage incident:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -115,29 +138,32 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const session = await auth();
     if (!session?.user?.orgId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const canManage = await canManageOrgSettings(session.user.id, session.user.orgId);
+    const canManage = await canManageOrgSettings(
+      session.user.id,
+      session.user.orgId,
+    );
     if (!canManage) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const client = await createStatuspageClient(session.user.orgId);
     if (!client) {
       return NextResponse.json(
-        { error: 'Statuspage not configured for this organization' },
-        { status: 404 }
+        { error: "Statuspage not configured for this organization" },
+        { status: 404 },
       );
     }
 
     await client.deleteIncident(id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting statuspage incident:', error);
+    console.error("Error deleting statuspage incident:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

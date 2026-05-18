@@ -1,21 +1,32 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { organizations } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { notFound } from 'next/navigation';
-import { OrganizationTeamManager } from '@/components/organizations/organization-team-manager';
-import { Organization2FAPolicy } from '@/components/organizations/organization-2fa-policy';
-import { OrganizationSLAPolicy } from '@/components/organizations/organization-sla-policy';
-import { OrgDangerZone } from '@/components/organizations/org-danger-zone';
-import { getPendingInvitations } from '@/lib/users/invitations';
-import { getOrganizationMembersAction } from '@/app/app/actions/users';
-import { updateOrganizationCustomerIdAction } from '@/app/app/actions/organizations';
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Settings, Workflow, FileText, Layers, MapPin, Server, Bell, Users, Mail, Sparkles } from 'lucide-react';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import { OrganizationTeamManager } from "@/components/organizations/organization-team-manager";
+import { Organization2FAPolicy } from "@/components/organizations/organization-2fa-policy";
+import { OrganizationSLAPolicy } from "@/components/organizations/organization-sla-policy";
+import { OrgDangerZone } from "@/components/organizations/org-danger-zone";
+import { getPendingInvitations } from "@/lib/users/invitations";
+import { getOrganizationMembersAction } from "@/app/app/actions/users";
+import { updateOrganizationCustomerIdAction } from "@/app/app/actions/organizations";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Settings,
+  Workflow,
+  FileText,
+  Layers,
+  MapPin,
+  Server,
+  Bell,
+  Users,
+  Mail,
+  Sparkles,
+} from "lucide-react";
 
 export default async function OrganizationDetailPage({
   params,
@@ -38,8 +49,8 @@ export default async function OrganizationDetailPage({
   }
 
   async function updateCustomerId(formData: FormData) {
-    'use server';
-    const customerId = String(formData.get('customerId') || '');
+    "use server";
+    const customerId = String(formData.get("customerId") || "");
     await updateOrganizationCustomerIdAction(orgId, customerId);
   }
 
@@ -51,15 +62,19 @@ export default async function OrganizationDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/app/organizations" className="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block">
+        <Link
+          href="/app/organizations"
+          className="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block"
+        >
           ← Back to organizations
         </Link>
         <h1 className="text-2xl font-bold">{org.name}</h1>
         <p className="text-sm text-gray-600">
-          {org.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'}
+          {org.subdomain}.
+          {process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000"}
         </p>
         <p className="text-sm text-gray-600">
-          Customer ID: {org.customerId || 'Not set'}
+          Customer ID: {org.customerId || "Not set"}
         </p>
       </div>
 
@@ -68,13 +83,16 @@ export default async function OrganizationDetailPage({
           <CardTitle>Internal Customer ID</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updateCustomerId} className="flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end">
+          <form
+            action={updateCustomerId}
+            className="flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+          >
             <div className="flex-1 space-y-2">
               <Label htmlFor="customerId">Customer ID</Label>
               <Input
                 id="customerId"
                 name="customerId"
-                defaultValue={org.customerId || ''}
+                defaultValue={org.customerId || ""}
                 placeholder="ACME"
                 pattern="[A-Za-z0-9]+"
               />
@@ -194,7 +212,10 @@ export default async function OrganizationDetailPage({
             </Link>
           </nav>
           <div className="mt-4 pt-4 border-t">
-            <Organization2FAPolicy orgId={orgId} requireTwoFactor={org.requireTwoFactor || false} />
+            <Organization2FAPolicy
+              orgId={orgId}
+              requireTwoFactor={org.requireTwoFactor || false}
+            />
           </div>
         </CardContent>
       </Card>

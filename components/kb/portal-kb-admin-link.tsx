@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function PortalKBAdminLink(props: { orgId: string; subdomain: string }) {
   const { orgId, subdomain } = props;
@@ -22,7 +22,7 @@ export function PortalKBAdminLink(props: { orgId: string; subdomain: string }) {
     load();
   }, [orgId]);
 
-  if (role !== 'CUSTOMER_ADMIN') return null;
+  if (role !== "CUSTOMER_ADMIN") return null;
 
   return (
     <Link href={`/s/${subdomain}/kb/admin`}>
@@ -30,4 +30,3 @@ export function PortalKBAdminLink(props: { orgId: string; subdomain: string }) {
     </Link>
   );
 }
-

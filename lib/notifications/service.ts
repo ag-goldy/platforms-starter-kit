@@ -1,8 +1,8 @@
-import { db } from '@/db';
-import { notifications } from '@/db/schema';
-import { redis } from '@/lib/redis';
-import { NotificationType } from './types';
-import { sendPushNotification } from './push';
+import { db } from "@/db";
+import { notifications } from "@/db/schema";
+import { redis } from "@/lib/redis";
+import { NotificationType } from "./types";
+import { sendPushNotification } from "./push";
 
 interface CreateNotificationParams {
   userId: string;
@@ -19,7 +19,7 @@ interface CreateNotificationParams {
 async function publishNotification(userId: string, notification: unknown) {
   const channel = `notifications:${userId}`;
   const message = JSON.stringify({
-    type: 'notification',
+    type: "notification",
     notification,
   });
   try {
@@ -35,7 +35,7 @@ async function publishNotification(userId: string, notification: unknown) {
       }
     }
   } catch (error) {
-    console.error('[NotificationService] Failed to publish to Redis:', error);
+    console.error("[NotificationService] Failed to publish to Redis:", error);
   }
 }
 
@@ -79,7 +79,7 @@ export async function createNotification({
  * Create multiple notifications at once
  */
 export async function createBulkNotifications(
-  params: CreateNotificationParams[]
+  params: CreateNotificationParams[],
 ) {
   if (params.length === 0) return [];
 
@@ -93,15 +93,15 @@ export async function createBulkNotifications(
         message: p.message,
         data: p.data,
         link: p.link,
-      }))
+      })),
     )
     .returning();
 
   // Publish each notification to Redis for real-time delivery
   await Promise.all(
     notificationsList.map((notification) =>
-      publishNotification(notification.userId, notification)
-    )
+      publishNotification(notification.userId, notification),
+    ),
   );
 
   return notificationsList;

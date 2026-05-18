@@ -1,21 +1,24 @@
 /**
  * Cache Invalidation Helpers
- * 
+ *
  * Centralized cache invalidation for server actions.
  * Import and call these after successful DB mutations.
  */
 
-import { 
-  invalidate, 
-  invalidateOrgCaches, 
+import {
+  invalidate,
+  invalidateOrgCaches,
   invalidateKBCaches,
-  CACHE_KEYS 
-} from '@/lib/redis/cache';
+  CACHE_KEYS,
+} from "@/lib/redis/cache";
 
 /**
  * Invalidate a specific ticket cache
  */
-export async function invalidateTicketCache(orgId: string, ticketId: string): Promise<void> {
+export async function invalidateTicketCache(
+  orgId: string,
+  ticketId: string,
+): Promise<void> {
   await Promise.all([
     invalidate(`ticket:${ticketId}`),
     invalidateStatusSummary(orgId),
@@ -108,7 +111,7 @@ export async function invalidateOrgAll(orgId: string): Promise<void> {
 
 /**
  * Wrapper for actions that automatically invalidates cache on success
- * 
+ *
  * Usage:
  * ```ts
  * export const updateOrgAction = withCacheInvalidation(
@@ -119,17 +122,17 @@ export async function invalidateOrgAll(orgId: string): Promise<void> {
  */
 export function withCacheInvalidation<T extends unknown[], R>(
   action: (...args: T) => Promise<R>,
-  invalidator: (...args: T) => Promise<void>
+  invalidator: (...args: T) => Promise<void>,
 ): (...args: T) => Promise<R> {
   return async (...args: T): Promise<R> => {
     const result = await action(...args);
-    
+
     // Invalidate cache after successful action
     // Fire and forget - don't block on cache invalidation
-    invalidator(...args).catch(err => {
-      console.warn('[Cache] Invalidation failed:', err);
+    invalidator(...args).catch((err) => {
+      console.warn("[Cache] Invalidation failed:", err);
     });
-    
+
     return result;
   };
 }

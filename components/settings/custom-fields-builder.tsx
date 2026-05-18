@@ -1,37 +1,37 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, X } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, X } from "lucide-react";
 import {
   createCustomField,
   updateCustomField,
   deleteCustomField,
   getFieldTypeLabel,
   type CustomFieldInput,
-} from '@/app/app/actions/custom-fields';
-import type { customFields } from '@/db/schema';
+} from "@/app/app/actions/custom-fields";
+import type { customFields } from "@/db/schema";
 
 type Field = typeof customFields.$inferSelect;
 
@@ -41,13 +41,16 @@ interface CustomFieldsBuilderProps {
 }
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
-  ticket: 'Tickets',
-  asset: 'Assets',
-  user: 'Users',
-  organization: 'Organization',
+  ticket: "Tickets",
+  asset: "Assets",
+  user: "Users",
+  organization: "Organization",
 };
 
-export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilderProps) {
+export function CustomFieldsBuilder({
+  orgId,
+  initialFields,
+}: CustomFieldsBuilderProps) {
   const router = useRouter();
   const [fields] = useState<Field[]>(initialFields);
   const [isOpen, setIsOpen] = useState(false);
@@ -55,32 +58,32 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<CustomFieldInput>({
-    name: '',
-    label: '',
-    description: '',
-    entityType: 'ticket',
-    fieldType: 'text',
+    name: "",
+    label: "",
+    description: "",
+    entityType: "ticket",
+    fieldType: "text",
     isRequired: false,
     options: [],
     sortOrder: 0,
     isActive: true,
   });
 
-  const [newOption, setNewOption] = useState({ label: '', value: '' });
+  const [newOption, setNewOption] = useState({ label: "", value: "" });
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      label: '',
-      description: '',
-      entityType: 'ticket',
-      fieldType: 'text',
+      name: "",
+      label: "",
+      description: "",
+      entityType: "ticket",
+      fieldType: "text",
       isRequired: false,
       options: [],
       sortOrder: 0,
       isActive: true,
     });
-    setNewOption({ label: '', value: '' });
+    setNewOption({ label: "", value: "" });
     setEditingField(null);
   };
 
@@ -96,20 +99,20 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
       setIsOpen(false);
       resetForm();
     } catch (error) {
-      console.error('Failed to save field:', error);
+      console.error("Failed to save field:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async (fieldId: string) => {
-    if (!confirm('Are you sure you want to delete this field?')) return;
-    
+    if (!confirm("Are you sure you want to delete this field?")) return;
+
     try {
       await deleteCustomField(orgId, fieldId);
       router.refresh();
     } catch (error) {
-      console.error('Failed to delete field:', error);
+      console.error("Failed to delete field:", error);
     }
   };
 
@@ -118,11 +121,11 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
     setFormData({
       name: field.name,
       label: field.label,
-      description: field.description || '',
-      entityType: field.entityType as CustomFieldInput['entityType'],
-      fieldType: field.fieldType as CustomFieldInput['fieldType'],
+      description: field.description || "",
+      entityType: field.entityType as CustomFieldInput["entityType"],
+      fieldType: field.fieldType as CustomFieldInput["fieldType"],
       isRequired: field.isRequired,
-      options: (field.options as CustomFieldInput['options']) || [],
+      options: (field.options as CustomFieldInput["options"]) || [],
       validationRegex: field.validationRegex || undefined,
       validationMessage: field.validationMessage || undefined,
       minValue: field.minValue || undefined,
@@ -143,7 +146,7 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
       ...formData,
       options: [...(formData.options || []), newOption],
     });
-    setNewOption({ label: '', value: '' });
+    setNewOption({ label: "", value: "" });
   };
 
   const removeOption = (index: number) => {
@@ -153,7 +156,7 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
     });
   };
 
-  const needsOptions = ['select', 'multi_select'].includes(formData.fieldType);
+  const needsOptions = ["select", "multi_select"].includes(formData.fieldType);
 
   return (
     <div className="space-y-4">
@@ -174,7 +177,7 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingField ? 'Edit Custom Field' : 'Create Custom Field'}
+                {editingField ? "Edit Custom Field" : "Create Custom Field"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -183,18 +186,24 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                   <Label>Field Name (Internal)</Label>
                   <Input
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="e.g., department_code"
                     disabled={!!editingField}
                   />
-                  <p className="text-xs text-gray-500">Lowercase with underscores</p>
+                  <p className="text-xs text-gray-500">
+                    Lowercase with underscores
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Display Label</Label>
                   <Input
                     value={formData.label}
-                    onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, label: e.target.value })
+                    }
                     placeholder="e.g., Department Code"
                   />
                 </div>
@@ -204,7 +213,9 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                 <Label>Description</Label>
                 <Textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Help text shown to users"
                 />
               </div>
@@ -214,7 +225,12 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                   <Label>Applies To</Label>
                   <Select
                     value={formData.entityType}
-                    onValueChange={(v) => setFormData({ ...formData, entityType: v as CustomFieldInput['entityType'] })}
+                    onValueChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        entityType: v as CustomFieldInput["entityType"],
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -232,7 +248,12 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                   <Label>Field Type</Label>
                   <Select
                     value={formData.fieldType}
-                    onValueChange={(v) => setFormData({ ...formData, fieldType: v as CustomFieldInput['fieldType'] })}
+                    onValueChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        fieldType: v as CustomFieldInput["fieldType"],
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -258,12 +279,16 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                     <Input
                       placeholder="Label"
                       value={newOption.label}
-                      onChange={(e) => setNewOption({ ...newOption, label: e.target.value })}
+                      onChange={(e) =>
+                        setNewOption({ ...newOption, label: e.target.value })
+                      }
                     />
                     <Input
                       placeholder="Value"
                       value={newOption.value}
-                      onChange={(e) => setNewOption({ ...newOption, value: e.target.value })}
+                      onChange={(e) =>
+                        setNewOption({ ...newOption, value: e.target.value })
+                      }
                     />
                     <Button type="button" onClick={addOption}>
                       Add
@@ -271,7 +296,11 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {formData.options?.map((opt, idx) => (
-                      <Badge key={idx} variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        key={idx}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
                         {opt.label}
                         <X
                           className="h-3 w-3 cursor-pointer"
@@ -287,7 +316,9 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                 <Label>Placeholder</Label>
                 <Input
                   value={formData.placeholder}
-                  onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, placeholder: e.target.value })
+                  }
                   placeholder="Shown when field is empty"
                 />
               </div>
@@ -296,49 +327,71 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                 <Label>Default Value</Label>
                 <Input
                   value={formData.defaultValue}
-                  onChange={(e) => setFormData({ ...formData, defaultValue: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, defaultValue: e.target.value })
+                  }
                   placeholder="Default value for new records"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {formData.fieldType === 'text' && (
+                {formData.fieldType === "text" && (
                   <>
                     <div className="space-y-2">
                       <Label>Min Length</Label>
                       <Input
                         type="number"
-                        value={formData.minLength || ''}
-                        onChange={(e) => setFormData({ ...formData, minLength: parseInt(e.target.value) || undefined })}
+                        value={formData.minLength || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            minLength: parseInt(e.target.value) || undefined,
+                          })
+                        }
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Max Length</Label>
                       <Input
                         type="number"
-                        value={formData.maxLength || ''}
-                        onChange={(e) => setFormData({ ...formData, maxLength: parseInt(e.target.value) || undefined })}
+                        value={formData.maxLength || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maxLength: parseInt(e.target.value) || undefined,
+                          })
+                        }
                       />
                     </div>
                   </>
                 )}
 
-                {formData.fieldType === 'number' && (
+                {formData.fieldType === "number" && (
                   <>
                     <div className="space-y-2">
                       <Label>Min Value</Label>
                       <Input
                         type="number"
-                        value={formData.minValue || ''}
-                        onChange={(e) => setFormData({ ...formData, minValue: parseInt(e.target.value) || undefined })}
+                        value={formData.minValue || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            minValue: parseInt(e.target.value) || undefined,
+                          })
+                        }
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Max Value</Label>
                       <Input
                         type="number"
-                        value={formData.maxValue || ''}
-                        onChange={(e) => setFormData({ ...formData, maxValue: parseInt(e.target.value) || undefined })}
+                        value={formData.maxValue || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maxValue: parseInt(e.target.value) || undefined,
+                          })
+                        }
                       />
                     </div>
                   </>
@@ -348,7 +401,9 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isRequired}
-                  onCheckedChange={(v) => setFormData({ ...formData, isRequired: v })}
+                  onCheckedChange={(v) =>
+                    setFormData({ ...formData, isRequired: v })
+                  }
                 />
                 <Label>Required Field</Label>
               </div>
@@ -358,7 +413,7 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                   Cancel
                 </Button>
                 <Button onClick={handleSubmit} disabled={isLoading}>
-                  {isLoading ? 'Saving...' : editingField ? 'Update' : 'Create'}
+                  {isLoading ? "Saving..." : editingField ? "Update" : "Create"}
                 </Button>
               </div>
             </div>
@@ -374,10 +429,14 @@ export function CustomFieldsBuilder({ orgId, initialFields }: CustomFieldsBuilde
                 <div className="space-y-1">
                   <div className="font-medium">{field.label}</div>
                   {field.description && (
-                    <div className="text-sm text-gray-500">{field.description}</div>
+                    <div className="text-sm text-gray-500">
+                      {field.description}
+                    </div>
                   )}
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">{field.name}</code>
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                      {field.name}
+                    </code>
                     <span>•</span>
                     <span>{getFieldTypeLabel(field.fieldType)}</span>
                     <span>•</span>

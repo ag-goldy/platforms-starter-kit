@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Users, UserPlus, Ticket, MessageSquare, Clock } from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import { Users, UserPlus, Ticket, MessageSquare, Clock } from "lucide-react";
+import { useCustomerPortal } from "@/components/customer/CustomerPortalContext";
 
 interface TeamActivityWidgetProps {
   subdomain: string;
@@ -12,7 +12,7 @@ interface TeamActivityWidgetProps {
 
 interface Activity {
   id: string;
-  type: 'user_joined' | 'ticket_created' | 'ticket_resolved' | 'comment_added';
+  type: "user_joined" | "ticket_created" | "ticket_resolved" | "comment_added";
   user: {
     name: string;
     avatar?: string;
@@ -43,7 +43,7 @@ export function TeamActivityWidget({ subdomain }: TeamActivityWidgetProps) {
         setOnlineMembers(data.onlineMembers || []);
       }
     } catch (error) {
-      console.error('Failed to fetch activity:', error);
+      console.error("Failed to fetch activity:", error);
     } finally {
       setLoading(false);
     }
@@ -55,15 +55,15 @@ export function TeamActivityWidget({ subdomain }: TeamActivityWidgetProps) {
     return () => clearInterval(interval);
   }, [fetchActivityData]);
 
-  const getActivityIcon = (type: Activity['type']) => {
+  const getActivityIcon = (type: Activity["type"]) => {
     switch (type) {
-      case 'user_joined':
+      case "user_joined":
         return <UserPlus className="w-3.5 h-3.5 text-emerald-500" />;
-      case 'ticket_created':
+      case "ticket_created":
         return <Ticket className="w-3.5 h-3.5 text-blue-500" />;
-      case 'ticket_resolved':
+      case "ticket_resolved":
         return <Ticket className="w-3.5 h-3.5 text-emerald-500" />;
-      case 'comment_added':
+      case "comment_added":
         return <MessageSquare className="w-3.5 h-3.5 text-amber-500" />;
       default:
         return <Clock className="w-3.5 h-3.5 text-stone-400" />;
@@ -78,7 +78,7 @@ export function TeamActivityWidget({ subdomain }: TeamActivityWidgetProps) {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Just now';
+    if (minutes < 1) return "Just now";
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     return `${days}d ago`;
@@ -93,7 +93,7 @@ export function TeamActivityWidget({ subdomain }: TeamActivityWidgetProps) {
           <h3 className="font-semibold text-stone-900">Team Activity</h3>
         </div>
         <button
-          onClick={() => openSlideOver('team')}
+          onClick={() => openSlideOver("team")}
           className="text-xs text-brand-600 hover:text-brand-700 font-medium"
         >
           View all
@@ -163,7 +163,9 @@ export function TeamActivityWidget({ subdomain }: TeamActivityWidgetProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-stone-700">
-                    <span className="font-medium text-stone-900">{activity.user.name}</span>{' '}
+                    <span className="font-medium text-stone-900">
+                      {activity.user.name}
+                    </span>{" "}
                     {activity.details}
                   </p>
                   <p className="text-[10px] text-stone-400 mt-0.5">

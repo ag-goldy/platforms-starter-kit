@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Play, Pause, Plus, Trash2, DollarSign } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import { formatDuration } from '@/lib/utils/date';
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Clock, Play, Pause, Plus, Trash2, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { formatDuration } from "@/lib/utils/date";
 
 interface TimeEntry {
   id: string;
@@ -56,9 +56,9 @@ export function TimeTracking({
   const [isTimerRunning, setIsTimerRunning] = useState(!!activeTimer);
   const [elapsed, setElapsed] = useState(0);
   const [newEntry, setNewEntry] = useState({
-    hours: '',
-    minutes: '',
-    description: '',
+    hours: "",
+    minutes: "",
+    description: "",
     isBillable: true,
   });
 
@@ -84,7 +84,7 @@ export function TimeTracking({
       await onStartTimer();
       setIsTimerRunning(true);
     } catch (e) {
-      console.error('Failed to start timer:', e);
+      console.error("Failed to start timer:", e);
     }
   };
 
@@ -94,7 +94,7 @@ export function TimeTracking({
       setIsTimerRunning(false);
       setElapsed(0);
     } catch (e) {
-      console.error('Failed to stop timer:', e);
+      console.error("Failed to stop timer:", e);
     }
   };
 
@@ -112,19 +112,27 @@ export function TimeTracking({
         isBillable: newEntry.isBillable,
       });
       setIsAdding(false);
-      setNewEntry({ hours: '', minutes: '', description: '', isBillable: true });
+      setNewEntry({
+        hours: "",
+        minutes: "",
+        description: "",
+        isBillable: true,
+      });
     } catch (e) {
-      console.error('Failed to add entry:', e);
+      console.error("Failed to add entry:", e);
     }
   };
 
-  const totalMinutes = entries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+  const totalMinutes = entries.reduce(
+    (sum, e) => sum + (e.durationMinutes || 0),
+    0,
+  );
   const billableMinutes = entries
     .filter((e) => e.isBillable)
     .reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
 
   return (
-    <div className={cn('border rounded-lg p-4', className)}>
+    <div className={cn("border rounded-lg p-4", className)}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-gray-500" />
@@ -132,12 +140,12 @@ export function TimeTracking({
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant={isTimerRunning ? 'destructive' : 'default'}
+            variant={isTimerRunning ? "destructive" : "default"}
             size="sm"
             onClick={isTimerRunning ? handleStopTimer : handleStartTimer}
             className={cn(
-              'gap-2',
-              isTimerRunning && 'bg-red-600 hover:bg-red-700'
+              "gap-2",
+              isTimerRunning && "bg-red-600 hover:bg-red-700",
             )}
           >
             {isTimerRunning ? (
@@ -167,7 +175,9 @@ export function TimeTracking({
       <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <div>
           <div className="text-xs text-gray-500">Total Time</div>
-          <div className="text-lg font-semibold">{formatDuration(totalMinutes)}</div>
+          <div className="text-lg font-semibold">
+            {formatDuration(totalMinutes)}
+          </div>
         </div>
         <div>
           <div className="text-xs text-gray-500">Billable</div>
@@ -182,7 +192,7 @@ export function TimeTracking({
         {isAdding && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="mb-4 p-3 border rounded-lg space-y-3"
           >
@@ -193,7 +203,9 @@ export function TimeTracking({
                   type="number"
                   min="0"
                   value={newEntry.hours}
-                  onChange={(e) => setNewEntry({ ...newEntry, hours: e.target.value })}
+                  onChange={(e) =>
+                    setNewEntry({ ...newEntry, hours: e.target.value })
+                  }
                   placeholder="0"
                 />
               </div>
@@ -204,16 +216,22 @@ export function TimeTracking({
                   min="0"
                   max="59"
                   value={newEntry.minutes}
-                  onChange={(e) => setNewEntry({ ...newEntry, minutes: e.target.value })}
+                  onChange={(e) =>
+                    setNewEntry({ ...newEntry, minutes: e.target.value })
+                  }
                   placeholder="0"
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-500">Description (optional)</label>
+              <label className="text-xs text-gray-500">
+                Description (optional)
+              </label>
               <Input
                 value={newEntry.description}
-                onChange={(e) => setNewEntry({ ...newEntry, description: e.target.value })}
+                onChange={(e) =>
+                  setNewEntry({ ...newEntry, description: e.target.value })
+                }
                 placeholder="What did you work on?"
               />
             </div>
@@ -222,10 +240,15 @@ export function TimeTracking({
                 type="checkbox"
                 id="billable"
                 checked={newEntry.isBillable}
-                onChange={(e) => setNewEntry({ ...newEntry, isBillable: e.target.checked })}
+                onChange={(e) =>
+                  setNewEntry({ ...newEntry, isBillable: e.target.checked })
+                }
                 className="rounded"
               />
-              <label htmlFor="billable" className="text-sm flex items-center gap-1">
+              <label
+                htmlFor="billable"
+                className="text-sm flex items-center gap-1"
+              >
                 <DollarSign className="w-3 h-3" />
                 Billable
               </label>
@@ -234,7 +257,11 @@ export function TimeTracking({
               <Button size="sm" onClick={handleAddEntry}>
                 Add Entry
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsAdding(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -268,10 +295,13 @@ export function TimeTracking({
                   )}
                 </div>
                 {entry.description && (
-                  <div className="text-sm text-gray-500 truncate">{entry.description}</div>
+                  <div className="text-sm text-gray-500 truncate">
+                    {entry.description}
+                  </div>
                 )}
                 <div className="text-xs text-gray-400">
-                  {entry.user.name} • {new Date(entry.startedAt).toLocaleDateString()}
+                  {entry.user.name} •{" "}
+                  {new Date(entry.startedAt).toLocaleDateString()}
                 </div>
               </div>
               {entry.user.id === currentUserId && (
@@ -297,9 +327,8 @@ function TimerDisplay({ seconds }: { seconds: number }) {
 
   return (
     <span className="font-mono">
-      {hours.toString().padStart(2, '0')}:
-      {minutes.toString().padStart(2, '0')}:
-      {secs.toString().padStart(2, '0')}
+      {hours.toString().padStart(2, "0")}:{minutes.toString().padStart(2, "0")}:
+      {secs.toString().padStart(2, "0")}
     </span>
   );
 }

@@ -1,10 +1,10 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { tickets, organizations } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { db } from "@/db";
+import { tickets, organizations } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 /**
  * Assign a ticket to an organization
@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
  */
 export async function assignTicketToOrgAction(
   ticketId: string,
-  orgId: string
+  orgId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const user = await requireInternalRole();
@@ -23,7 +23,7 @@ export async function assignTicketToOrgAction(
     });
 
     if (!org) {
-      return { success: false, error: 'Organization not found' };
+      return { success: false, error: "Organization not found" };
     }
 
     // Update the ticket
@@ -36,21 +36,22 @@ export async function assignTicketToOrgAction(
       .where(eq(tickets.id, ticketId));
 
     // Log the assignment
-    const { logAudit } = await import('@/lib/audit/log');
+    const { logAudit } = await import("@/lib/audit/log");
     await logAudit({
       userId: user.id,
       ticketId,
-      action: 'TICKET_ASSIGNED',
+      action: "TICKET_ASSIGNED",
       details: JSON.stringify({ orgId: org.id, orgName: org.name }),
     });
 
     revalidatePath(`/app/tickets/${ticketId}`);
-    revalidatePath('/app/tickets');
+    revalidatePath("/app/tickets");
 
     return { success: true };
   } catch (error) {
-    console.error('[Assign Ticket to Org] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("[Assign Ticket to Org] Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return { success: false, error: errorMessage };
   }
 }

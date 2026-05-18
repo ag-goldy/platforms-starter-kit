@@ -23,22 +23,23 @@ Carrying forward from the existing system: the platform/tenant separation princi
 
 ## 0. Locked Decisions
 
-| Area | Decision |
-|---|---|
-| Stack | Next.js 15 App Router, React 19, TypeScript strict, PostgreSQL 16 (Neon) |
-| Hosting | Vercel for web, single 2GB VPS (Hetzner CX21, Singapore region) for workers, Socket.io, Redis |
-| Multi-tenancy | Path-based: `atlas.agrnetworks.com/{slug}/...` (no more wildcard subdomains) |
-| Auth | Better Auth: credentials + TOTP 2FA + passkeys + magic links |
-| Real-time | Socket.io on VPS, broadcast triggered from Vercel via signed HTTP API |
-| Background jobs | BullMQ on VPS, single queue system, no fallback path |
-| Email | Resend (transactional), Microsoft Graph (tenant-bound inbound + outbound) |
-| Files | Vercel Blob, signed URLs only, never direct |
-| Cache + queue store | Redis on VPS, localhost bound, never exposed |
-| ORM | Drizzle, single schema directory, split by domain |
-| UI library | shadcn/ui primitives + Radix, Tailwind CSS v4 |
-| Product scope | Tickets, KB, customer portal, multi-tenant, asset management. No PDF generation anywhere. |
+| Area                | Decision                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| Stack               | Next.js 15 App Router, React 19, TypeScript strict, PostgreSQL 16 (Neon)                      |
+| Hosting             | Vercel for web, single 2GB VPS (Hetzner CX21, Singapore region) for workers, Socket.io, Redis |
+| Multi-tenancy       | Path-based: `atlas.agrnetworks.com/{slug}/...` (no more wildcard subdomains)                  |
+| Auth                | Better Auth: credentials + TOTP 2FA + passkeys + magic links                                  |
+| Real-time           | Socket.io on VPS, broadcast triggered from Vercel via signed HTTP API                         |
+| Background jobs     | BullMQ on VPS, single queue system, no fallback path                                          |
+| Email               | Resend (transactional), Microsoft Graph (tenant-bound inbound + outbound)                     |
+| Files               | Vercel Blob, signed URLs only, never direct                                                   |
+| Cache + queue store | Redis on VPS, localhost bound, never exposed                                                  |
+| ORM                 | Drizzle, single schema directory, split by domain                                             |
+| UI library          | shadcn/ui primitives + Radix, Tailwind CSS v4                                                 |
+| Product scope       | Tickets, KB, customer portal, multi-tenant, asset management. No PDF generation anywhere.     |
 
 Hard rules carried over:
+
 - Append-only audit log with row-level HMAC signing.
 - PII redaction on every AI surface.
 - WCAG 2.2 AA target on every screen.
@@ -73,15 +74,15 @@ DECIDE later: optional vanity domains (`help.acme.com` mapped to `/{acme}`). Kee
 
 Per-tenant roles:
 
-| Role | Scope | Can |
-|---|---|---|
-| `owner` | tenant | everything including billing and deletion |
-| `admin` | tenant | configure SLA, automations, KB publish, user roles, asset edit |
-| `agent_lead` | tenant | assign across teams, edit any ticket SLA, approve KB |
-| `agent` | own team's tickets | reply, internal notes, status, time, link assets |
-| `analyst` | tenant | read-only across tickets/assets/KB/reports, export |
-| `end_user` | own tickets | create, view, comment on own tickets, view org KB |
-| `system` | bot | tagged in audit log; automations, AI, webhooks |
+| Role         | Scope              | Can                                                            |
+| ------------ | ------------------ | -------------------------------------------------------------- |
+| `owner`      | tenant             | everything including billing and deletion                      |
+| `admin`      | tenant             | configure SLA, automations, KB publish, user roles, asset edit |
+| `agent_lead` | tenant             | assign across teams, edit any ticket SLA, approve KB           |
+| `agent`      | own team's tickets | reply, internal notes, status, time, link assets               |
+| `analyst`    | tenant             | read-only across tickets/assets/KB/reports, export             |
+| `end_user`   | own tickets        | create, view, comment on own tickets, view org KB              |
+| `system`     | bot                | tagged in audit log; automations, AI, webhooks                 |
 
 Platform roles (never visible to tenants): `platform_super_admin`, `platform_admin`, `platform_support`.
 
@@ -181,11 +182,11 @@ TENANT (under /{slug})
 
 ### 2.2 Three audiences, three navigations
 
-| Audience | Default route | Top-level nav |
-|---|---|---|
-| Platform admin | `/admin` | Tenants, Users, Audit, System, Billing, Flags, Incidents |
-| Tenant agent/admin | `/{slug}/inbox` | Inbox, Tickets, KB, Assets, Reports, Settings |
-| End user | `/{slug}/portal` | Home, My tickets, New ticket, Knowledge, My assets, Profile |
+| Audience           | Default route    | Top-level nav                                               |
+| ------------------ | ---------------- | ----------------------------------------------------------- |
+| Platform admin     | `/admin`         | Tenants, Users, Audit, System, Billing, Flags, Incidents    |
+| Tenant agent/admin | `/{slug}/inbox`  | Inbox, Tickets, KB, Assets, Reports, Settings               |
+| End user           | `/{slug}/portal` | Home, My tickets, New ticket, Knowledge, My assets, Profile |
 
 Portal navigation is feature-flag aware. If org disables KB, the nav item disappears. If assets are disabled, `/assets` returns 404.
 
@@ -448,6 +449,7 @@ escalation_rules (
 Current system has real production data. Migration is one-shot ETL per domain, idempotent, resumable.
 
 Order:
+
 1. `organizations` + `org_settings` (status mapped from `is_active` + `deleted_at`)
 2. `platform_admins` (already separated, direct copy)
 3. `users` (drop internal flag, add to memberships separately)
@@ -471,6 +473,7 @@ Each workflow specified as: trigger, preconditions, steps, side effects, failure
 **Trigger**: end-user clicks `New ticket` in `/{slug}/portal`.
 
 **Steps**:
+
 1. Form opens. Required: subject, description. Optional: type, related asset, attachments, custom fields.
 2. Client validates with Zod schema. Same schema runs on server.
 3. Submit posts to `POST /api/{slug}/tickets` with CSRF token. Server resolves org from path, requester from session.
@@ -485,6 +488,7 @@ Each workflow specified as: trigger, preconditions, steps, side effects, failure
 **Side effects**: audit log entry; AI categorization job enqueued if enabled; SLA timer running.
 
 **Failures**:
+
 - Rate limit hit: 429 with retry-after.
 - Validation fails: 400 with field errors.
 - DB write fails: 500, no partial state (transactional).
@@ -495,6 +499,7 @@ Each workflow specified as: trigger, preconditions, steps, side effects, failure
 Two paths: Microsoft Graph webhook (preferred) or generic SMTP forward.
 
 **Graph webhook flow**:
+
 1. Microsoft sends notification to `POST /api/webhooks/graph`.
 2. Verify validation token on first call.
 3. Verify signature on subsequent calls.
@@ -502,6 +507,7 @@ Two paths: Microsoft Graph webhook (preferred) or generic SMTP forward.
 5. Hand off to inbound processor.
 
 **Inbound processor**:
+
 1. Resolve target org by recipient email (mailbox-to-org mapping in `org_settings.email_mappings`).
 2. Parse `In-Reply-To` and `References` headers.
 3. If matched to existing ticket message: append as reply (visibility=public, channel=email).
@@ -512,6 +518,7 @@ Two paths: Microsoft Graph webhook (preferred) or generic SMTP forward.
 8. Broadcast.
 
 **Failures**:
+
 - Unknown recipient: bounce with friendly message.
 - Spam: drop with audit entry, no bounce.
 - Malformed: dead letter queue, alert on-call after 3 failures.
@@ -519,6 +526,7 @@ Two paths: Microsoft Graph webhook (preferred) or generic SMTP forward.
 ### 4.3 SLA + escalation
 
 **SLA computation**:
+
 - `response_due_at` = `created_at` + `policy.response_minutes` (adjusted for business hours if policy uses them).
 - `resolution_due_at` = `created_at` + `policy.resolution_minutes`.
 - When ticket enters a paused status (`pending`, `on_hold`), set `paused_at`. When it leaves, increment `paused_total_seconds`. Recompute `_due_at` by adding pause delta.
@@ -547,6 +555,7 @@ Editor UI: visual rule builder. Live preview against last 10 tickets. Test mode 
 Three surfaces, three audit profiles, one client.
 
 **Surfaces**:
+
 - Public KB chat (`/api/ai/kb-chat`): answers from public KB only. Cannot reference tickets, users, or internal data.
 - Customer AI (`/api/{slug}/ai/chat`): scoped to authenticated org via session. Can reference tickets the user has permission to see, public KB, and assets if `ai_data_access.assets = true`. Internal notes excluded unless `ai_data_access.internal_notes = true` (admin opt-in only).
 - Admin AI (`/api/{slug}/ai/admin`): full org access for agents/admins. Audit-logged with PII flags.
@@ -554,6 +563,7 @@ Three surfaces, three audit profiles, one client.
 **Tenant isolation**: `orgId` always derived server-side from session and path slug. Never accepted from request body. This is the boundary; if it can be spoofed, multi-tenancy is broken.
 
 **Defenses** (defense in depth, regex alone is insufficient):
+
 1. Input length cap (4000 chars).
 2. Heuristic injection score (regex + simple classifier): keywords like "ignore previous", "system prompt", base64-looking blocks, role-claiming phrases. Score 0-100. >70 blocks; 40-70 logs and tags response with caveat.
 3. PII redaction on input (NRIC, credit cards, phone numbers, emails not in current org).
@@ -599,6 +609,7 @@ Three surfaces, three audit profiles, one client.
 **Quiet hours**: per user, default 22:00-08:00 SGT for non-urgent (urgent: P1, SLA breach, mention).
 
 **Real-time pipeline**:
+
 1. Vercel server action makes a DB write.
 2. After commit, Vercel calls `POST https://vps.atlas.../broadcast` with HMAC-signed payload `{ org_id, channel, event, data }`.
 3. VPS Socket.io server validates HMAC, broadcasts to room `org:{org_id}:{channel}` (e.g., `org:abc:tickets`).
@@ -668,6 +679,7 @@ Exports: GDPR/PDPA-compliant tenant data export. Job runs on VPS, writes ZIP to 
 **Dark mode**: full parity, not an afterthought. Toggle in user settings, plus system-preference auto. Tested at every step.
 
 **Color usage rules**:
+
 - Status indicators use color + icon + text label (never color alone, accessibility rule).
 - Priority shown as colored chip + label: P1 red, P2 orange, P3 blue, P4 gray.
 - Status: new (gray), open (blue), pending (amber), on_hold (gray-amber), resolved (green), closed (neutral), merged (purple).
@@ -693,6 +705,7 @@ The inbox is the workhorse. Must be fast and dense. Layout: three columns on >=1
 **Detail** (right): tabs: Conversation, Activity (events timeline), Properties (status, priority, type, assignee, team, custom fields), Linked (assets, related tickets, products), Time (entries + active timer), Files. Reply composer pinned to bottom; toggle internal note vs public reply via button or `Cmd+/`.
 
 **Speed-of-light targets**:
+
 - Inbox initial load: <600ms TTI on a fast connection.
 - Open ticket from list: <100ms perceived (optimistic, then real data).
 - Send reply: <200ms perceived (optimistic).
@@ -727,6 +740,7 @@ Different visual language to make impersonation/cross-tenant context unmissable.
 Top bar shows: "PLATFORM ADMIN" badge, current admin email, environment indicator (PROD/STAGING). When impersonating, full-width amber banner: "Acting as {user.email} in {org.name}. Exits in 14:32 [Exit now]".
 
 Pages:
+
 - **Tenants**: table with slug, name, plan, status, users, tickets, last activity, created. Row actions: view, suspend, schedule delete, impersonate.
 - **Tenant detail**: read-only metadata, members list, recent activity, billing info, feature flags. Action panel for suspend/delete/impersonate.
 - **System**: real-time charts: queue depth, request latency p50/p95/p99, error rate per route, DB pool, Redis ops/sec, active Socket.io connections. Manual job runners for migrations, cleanup, recompute.
@@ -812,6 +826,7 @@ Eight layers. Each is necessary, none sufficient on its own.
 ### 6.7 AI safety
 
 Already covered in 4.5; security highlights:
+
 - System prompts loaded from immutable code, never templated.
 - Org ID server-derived, never client-provided.
 - Multi-layer injection detection.
@@ -882,18 +897,18 @@ Not a polish item. Built in from primitive level.
 
 ### 8.1 Cost (monthly, SGD)
 
-| Line | Service | Cost |
-|---|---|---|
-| Web hosting | Vercel Pro (cron <1hr, more bandwidth) | ~30 |
-| DB | Neon Launch | ~25 |
-| VPS | Hetzner CX21 (2 vCPU, 4GB RAM) Singapore | ~7 |
-| Email | Resend (50k emails) | ~25 |
-| Files | Vercel Blob (variable) | ~15 |
-| AI | Baseten / OpenAI (variable) | 30-100 |
-| Monitoring | Sentry + Better Stack free tiers | 0 |
-| Domain + DNS | Cloudflare | 1 |
-| Backups | S3 (cross-region) | 5 |
-| **Total** | | **~140-220** |
+| Line         | Service                                  | Cost         |
+| ------------ | ---------------------------------------- | ------------ |
+| Web hosting  | Vercel Pro (cron <1hr, more bandwidth)   | ~30          |
+| DB           | Neon Launch                              | ~25          |
+| VPS          | Hetzner CX21 (2 vCPU, 4GB RAM) Singapore | ~7           |
+| Email        | Resend (50k emails)                      | ~25          |
+| Files        | Vercel Blob (variable)                   | ~15          |
+| AI           | Baseten / OpenAI (variable)              | 30-100       |
+| Monitoring   | Sentry + Better Stack free tiers         | 0            |
+| Domain + DNS | Cloudflare                               | 1            |
+| Backups      | S3 (cross-region)                        | 5            |
+| **Total**    |                                          | **~140-220** |
 
 VPS could be even smaller (CX11, 2GB) at ~SGD 5 if BullMQ workload stays light. CX21 gives headroom.
 
@@ -921,19 +936,20 @@ Vercel Pro covers the web layer through ~5,000 tenants if average activity stays
 
 ### 8.4 Risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
+| Risk                             | Mitigation                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | VPS down → no real-time, no jobs | Health check from Vercel, fallback: clients poll every 30s when Socket disconnected; jobs queue in DB and replay when VPS returns. Status page banner. |
-| Vercel down | Static `/disabled` page on subdomain via Cloudflare. Postmortem only; rare. |
-| Neon down | Read replica on Neon (paid). For writes, retry with backoff and surface error after 30s. |
-| AI provider down | Per-feature graceful degradation: classification falls back to last known assignment, suggestion features simply unavailable. UI doesn't error. |
-| Email provider down | Outbox holds; retry on backoff. Banner if backlog >500 messages. |
-| Path slug collision | Reserved-words list (`admin`, `api`, `login`, etc.) checked at signup. Case-folded uniqueness in DB. |
-| Migration cutover failure | Migrate to a Neon branch, test, swap connection. Keep old branch read-only 30 days. Rollback = swap connection back. |
+| Vercel down                      | Static `/disabled` page on subdomain via Cloudflare. Postmortem only; rare.                                                                            |
+| Neon down                        | Read replica on Neon (paid). For writes, retry with backoff and surface error after 30s.                                                               |
+| AI provider down                 | Per-feature graceful degradation: classification falls back to last known assignment, suggestion features simply unavailable. UI doesn't error.        |
+| Email provider down              | Outbox holds; retry on backoff. Banner if backlog >500 messages.                                                                                       |
+| Path slug collision              | Reserved-words list (`admin`, `api`, `login`, etc.) checked at signup. Case-folded uniqueness in DB.                                                   |
+| Migration cutover failure        | Migrate to a Neon branch, test, swap connection. Keep old branch read-only 30 days. Rollback = swap connection back.                                   |
 
 ### 8.5 Build feasibility
 
 Solo or small team. Greenfield rebuild reusing knowledge from current system. Cycle time benefits from:
+
 - Drizzle codegen
 - shadcn install commands
 - Better Auth pre-built flows
@@ -942,20 +958,20 @@ Solo or small team. Greenfield rebuild reusing knowledge from current system. Cy
 
 Realistic timeline (single full-time builder using Claude Code + Kimi):
 
-| Phase | Duration | Outputs |
-|---|---|---|
-| 0. Setup + tooling | 1 week | Repo, CI, dev env, Vercel + VPS provisioned, Drizzle skeleton |
-| 1. Auth + tenancy | 1 week | Better Auth, login/signup, path-based middleware, sessions, platform/tenant separation |
-| 2. Core ticket model | 2 weeks | Schema, server actions, ticket CRUD, message thread, basic inbox UI |
-| 3. SLA + escalation | 1 week | Policies, due-time computation, warn/breach jobs, escalation rules |
-| 4. KB + assets | 2 weeks | Article CRUD, search, public pages, asset CRUD, Zabbix sync |
-| 5. Customer portal | 2 weeks | Portal home, new ticket flow, ticket tracking, KB browse, team mgmt |
-| 6. Real-time + notifications | 1 week | Socket.io VPS app, broadcast bridge, in-app + email notifications |
-| 7. Automations + AI | 2 weeks | Rule builder, automation runner, AI surfaces, PII guard |
-| 8. Platform admin | 1 week | Tenants, audit, system, impersonation, failed jobs |
-| 9. Migration + cutover | 1 week | ETL scripts, dry runs, cutover |
-| 10. Hardening | 1 week | Security audit, accessibility audit, performance budget, load test |
-| **Total** | **15 weeks** | |
+| Phase                        | Duration     | Outputs                                                                                |
+| ---------------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| 0. Setup + tooling           | 1 week       | Repo, CI, dev env, Vercel + VPS provisioned, Drizzle skeleton                          |
+| 1. Auth + tenancy            | 1 week       | Better Auth, login/signup, path-based middleware, sessions, platform/tenant separation |
+| 2. Core ticket model         | 2 weeks      | Schema, server actions, ticket CRUD, message thread, basic inbox UI                    |
+| 3. SLA + escalation          | 1 week       | Policies, due-time computation, warn/breach jobs, escalation rules                     |
+| 4. KB + assets               | 2 weeks      | Article CRUD, search, public pages, asset CRUD, Zabbix sync                            |
+| 5. Customer portal           | 2 weeks      | Portal home, new ticket flow, ticket tracking, KB browse, team mgmt                    |
+| 6. Real-time + notifications | 1 week       | Socket.io VPS app, broadcast bridge, in-app + email notifications                      |
+| 7. Automations + AI          | 2 weeks      | Rule builder, automation runner, AI surfaces, PII guard                                |
+| 8. Platform admin            | 1 week       | Tenants, audit, system, impersonation, failed jobs                                     |
+| 9. Migration + cutover       | 1 week       | ETL scripts, dry runs, cutover                                                         |
+| 10. Hardening                | 1 week       | Security audit, accessibility audit, performance budget, load test                     |
+| **Total**                    | **15 weeks** |                                                                                        |
 
 Compresses to ~10 weeks if Kimi handles testing/docs in parallel and Claude Code handles implementation. End of week 10 you have a production-ready system; weeks 11-15 are polish, edge cases, real-user feedback.
 
@@ -968,6 +984,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 0: Foundations (Week 1)
 
 **Outputs**:
+
 - Repo: `atlas-helpdesk`
 - Next.js 15 app, TypeScript strict, ESLint with custom org-scope linter, Prettier, Husky pre-commit
 - Drizzle skeleton with empty domain files
@@ -983,6 +1000,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 1: Auth + tenancy (Week 2)
 
 **Outputs**:
+
 - All identity tables: `platform_admins`, `users`, `sessions`, `passkeys`, `magic_links`, `organizations`, `org_settings`, `memberships`, `teams`
 - Better Auth configured with credentials, magic link, passkey, TOTP
 - Path-based middleware resolving slug, injecting `x-org-id`
@@ -995,6 +1013,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 2: Core ticket model (Weeks 3-4)
 
 **Outputs**:
+
 - Tables: `tickets`, `ticket_messages`, `ticket_events`, `ticket_links`, `ticket_assets`, `ticket_watchers`
 - Server actions for ticket CRUD, message create/edit, status changes
 - Inbox list (virtualized), filters, saved views
@@ -1008,6 +1027,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 3: SLA + escalation (Week 5)
 
 **Outputs**:
+
 - `sla_policies`, `escalation_rules` tables and admin UI
 - Due-time computation respecting business hours and pause states
 - Cron job (every 5 min) for warning + breach detection
@@ -1019,6 +1039,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 4: KB + assets (Weeks 6-7)
 
 **Outputs**:
+
 - KB schema, editor, list, detail, public pages
 - Embeddings job (placeholder until Phase 7's AI is wired)
 - Asset schema, CRUD, bulk import, Zabbix sync (job on VPS)
@@ -1030,6 +1051,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 5: Customer portal (Weeks 8-9)
 
 **Outputs**:
+
 - `/{slug}/portal` layout (different from agent layout)
 - Portal home, new ticket flow, my tickets, KB browse
 - Team management for `customer_admin` role
@@ -1042,6 +1064,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 6: Real-time + notifications (Week 10)
 
 **Outputs**:
+
 - Socket.io app on VPS with HMAC auth
 - Vercel → VPS broadcast bridge (`/broadcast` endpoint)
 - Client-side Socket.io connection, room subscription per page
@@ -1057,6 +1080,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 7: Automations + AI (Weeks 11-12)
 
 **Outputs**:
+
 - `automations`, `automation_runs` tables + rule builder UI
 - Trigger evaluators wired to all relevant events
 - Action executors (status, priority, assignee, tags, message, email, webhook, run_ai)
@@ -1069,6 +1093,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 8: Platform admin (Week 13)
 
 **Outputs**:
+
 - `/admin` layout (distinct visual style)
 - Tenants list, detail, suspend, schedule-delete
 - Cross-tenant audit log search
@@ -1082,6 +1107,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 9: Data migration (Week 14)
 
 **Outputs**:
+
 - ETL scripts per domain (orgs → users → tickets → kb → assets → audit)
 - Dry-run mode against Neon branch
 - Diff and validation reports
@@ -1092,6 +1118,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Phase 10: Hardening (Week 15)
 
 **Outputs**:
+
 - Penetration test (manual + automated: ZAP scan)
 - Accessibility audit with NVDA + VoiceOver passes
 - Performance audit: hit budgets across all routes
@@ -1104,12 +1131,14 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 ### Cutover
 
 **Pre-cutover** (T-7 days):
+
 - Announce maintenance window
 - Migration runbook reviewed
 - Rollback verified
 - DNS TTL reduced to 60s
 
 **Cutover** (Sunday 02:00 SGT):
+
 1. Freeze writes on old system (banner + 503 on POST/PATCH/DELETE)
 2. Run final ETL sync (incremental from last dry-run)
 3. Validate counts and samples
@@ -1119,6 +1148,7 @@ Run phases sequentially. Each phase has a clear definition of done; never start 
 7. Monitor error rates for 4 hours
 
 **Post-cutover** (T+30 days):
+
 - Old system kept read-only for restore-if-needed
 - Decommission old infra after grace period
 

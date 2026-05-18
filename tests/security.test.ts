@@ -1,6 +1,14 @@
-import { afterEach, beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';
-import { randomUUID } from 'crypto';
-import { db } from '@/db';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+  type MockedFunction,
+} from "vitest";
+import { randomUUID } from "crypto";
+import { db } from "@/db";
 import {
   attachments,
   memberships,
@@ -8,22 +16,31 @@ import {
   ticketTokens,
   tickets,
   users,
-} from '@/db/schema';
-import { inArray } from 'drizzle-orm';
-import { canDownloadAttachment, canViewTicket, AuthorizationError } from '@/lib/auth/permissions';
-import { createTicketToken, consumeTicketToken } from '@/lib/tickets/magic-links';
-import { authorizeAttachmentTokenDownload } from '@/lib/attachments/access';
-import { getRequestContext } from '@/lib/auth/context';
+} from "@/db/schema";
+import { inArray } from "drizzle-orm";
+import {
+  canDownloadAttachment,
+  canViewTicket,
+  AuthorizationError,
+} from "@/lib/auth/permissions";
+import {
+  createTicketToken,
+  consumeTicketToken,
+} from "@/lib/tickets/magic-links";
+import { authorizeAttachmentTokenDownload } from "@/lib/attachments/access";
+import { getRequestContext } from "@/lib/auth/context";
 
-vi.mock('@/lib/auth/context', () => ({
+vi.mock("@/lib/auth/context", () => ({
   getRequestContext: vi.fn(),
 }));
 
-const mockGetRequestContext = getRequestContext as MockedFunction<typeof getRequestContext>;
+const mockGetRequestContext = getRequestContext as MockedFunction<
+  typeof getRequestContext
+>;
 
 const run = process.env.DATABASE_URL ? describe : describe.skip;
 
-run('security hardening', () => {
+run("security hardening", () => {
   const created = {
     orgIds: [] as string[],
     userIds: [] as string[],
@@ -33,7 +50,7 @@ run('security hardening', () => {
   };
 
   beforeEach(() => {
-    process.env.TOKEN_PEPPER = process.env.TOKEN_PEPPER || 'test-pepper';
+    process.env.TOKEN_PEPPER = process.env.TOKEN_PEPPER || "test-pepper";
     mockGetRequestContext.mockReset();
   });
 
@@ -47,9 +64,7 @@ run('security hardening', () => {
       await db
         .delete(ticketTokens)
         .where(inArray(ticketTokens.ticketId, created.ticketIds));
-      await db
-        .delete(tickets)
-        .where(inArray(tickets.id, created.ticketIds));
+      await db.delete(tickets).where(inArray(tickets.id, created.ticketIds));
     }
     if (created.membershipIds.length) {
       await db
@@ -77,7 +92,7 @@ run('security hardening', () => {
       .insert(organizations)
       .values({
         name,
-        slug: `${name.toLowerCase().replace(/\s+/g, '-')}-${suffix}`,
+        slug: `${name.toLowerCase().replace(/\s+/g, "-")}-${suffix}`,
         subdomain: `${name.toLowerCase()}-${suffix}`,
       })
       .returning();
@@ -103,7 +118,13 @@ run('security hardening', () => {
   async function createMembership(
     userId: string,
     orgId: string,
-    role: 'ADMIN' | 'AGENT' | 'READONLY' | 'CUSTOMER_ADMIN' | 'REQUESTER' | 'VIEWER' = 'REQUESTER'
+    role:
+      | "ADMIN"
+      | "AGENT"
+      | "READONLY"
+      | "CUSTOMER_ADMIN"
+      | "REQUESTER"
+      | "VIEWER" = "REQUESTER",
   ) {
     const [membership] = await db
       .insert(memberships)
@@ -124,11 +145,11 @@ run('security hardening', () => {
       .values({
         key: `TEST-${suffix}`,
         orgId,
-        subject: 'Test ticket',
-        description: 'Test description',
-        status: 'NEW',
-        priority: 'P3',
-        category: 'INCIDENT',
+        subject: "Test ticket",
+        description: "Test description",
+        status: "NEW",
+        priority: "P3",
+        category: "INCIDENT",
         requesterEmail,
       })
       .returning();
@@ -142,8 +163,8 @@ run('security hardening', () => {
       .values({
         ticketId,
         orgId,
-        filename: 'evidence.txt',
-        contentType: 'text/plain',
+        filename: "evidence.txt",
+        contentType: "text/plain",
         size: 12,
         blobPathname: `tickets/${ticketId}/evidence.txt`,
         storageKey: `https://example.com/${ticketId}/evidence.txt`,
@@ -153,11 +174,11 @@ run('security hardening', () => {
     return attachment;
   }
 
-  test('org isolation: customer cannot view another org ticket', async () => {
-    const orgA = await createOrg('Acme');
-    const orgB = await createOrg('Beta');
-    const userA = await createUser('customer');
-    const membershipA = await createMembership(userA.id, orgA.id, 'REQUESTER');
+  test("org isolation: customer cannot view another org ticket", async () => {
+    const orgA = await createOrg("Acme");
+    const orgB = await createOrg("Beta");
+    const userA = await createUser("customer");
+    const membershipA = await createMembership(userA.id, orgA.id, "REQUESTER");
     const ticketB = await createTicket(orgB.id, null);
 
     mockGetRequestContext.mockResolvedValue({
@@ -167,64 +188,68 @@ run('security hardening', () => {
       orgId: orgA.id,
       membership: membershipA,
       subdomain: orgA.subdomain,
-      ip: '127.0.0.1',
+      ip: "127.0.0.1",
     });
 
     await expect(canViewTicket(ticketB.id)).rejects.toThrow(AuthorizationError);
   });
 
-  test('magic link tokens are single-use and expire', async () => {
+  test("magic link tokens are single-use and expire", async () => {
     // Skip probe - schema is confirmed to have token_hash column
     // Just clean up any existing test data
     try {
-      await db.delete(ticketTokens).where(inArray(ticketTokens.email, ['probe@example.com']));
+      await db
+        .delete(ticketTokens)
+        .where(inArray(ticketTokens.email, ["probe@example.com"]));
     } catch {
       // Ignore cleanup errors
     }
-    const org = await createOrg('TokenOrg');
-    const ticket = await createTicket(org.id, 'token@example.com');
+    const org = await createOrg("TokenOrg");
+    const ticket = await createTicket(org.id, "token@example.com");
 
     const token = await createTicketToken({
       ticketId: ticket.id,
-      email: 'token@example.com',
-      purpose: 'VIEW',
+      email: "token@example.com",
+      purpose: "VIEW",
     });
 
-    const firstUse = await consumeTicketToken({ token, purpose: 'VIEW' });
+    const firstUse = await consumeTicketToken({ token, purpose: "VIEW" });
     expect(firstUse).not.toBeNull();
 
-    const secondUse = await consumeTicketToken({ token, purpose: 'VIEW' });
+    const secondUse = await consumeTicketToken({ token, purpose: "VIEW" });
     expect(secondUse).toBeNull();
 
     const expiredToken = await createTicketToken({
       ticketId: ticket.id,
-      email: 'token@example.com',
-      purpose: 'VIEW',
+      email: "token@example.com",
+      purpose: "VIEW",
       expiresInDays: -1,
     });
 
     const expiredUse = await consumeTicketToken({
       token: expiredToken,
-      purpose: 'VIEW',
+      purpose: "VIEW",
     });
     expect(expiredUse).toBeNull();
   });
 
-  test('attachments are blocked across orgs and tokens only access matching tickets', async () => {
+  test("attachments are blocked across orgs and tokens only access matching tickets", async () => {
     // Skip probe - schema is confirmed to have token_hash column
     // Just clean up any existing test data
     try {
-      await db.delete(ticketTokens).where(inArray(ticketTokens.email, ['probe2@example.com']));
+      await db
+        .delete(ticketTokens)
+        .where(inArray(ticketTokens.email, ["probe2@example.com"]));
     } catch {
       // Ignore cleanup errors
     }
-    const orgA = await createOrg('Gamma');
-    const orgB = await createOrg('Delta');
-    const userA = await createUser('customer');
-    const membershipA = await createMembership(userA.id, orgA.id, 'REQUESTER');
+    const orgA = await createOrg("Gamma");
+    const orgB = await createOrg("Delta");
+    const userA = await createUser("customer");
+    const membershipA = await createMembership(userA.id, orgA.id, "REQUESTER");
 
     const ticketA = await createTicket(orgA.id, userA.email);
-    const ticketB = await createTicket(orgB.id, 'other@example.com');
+    const ticketB = await createTicket(orgB.id, "other@example.com");
 
     const attachmentB = await createAttachment(ticketB.id, orgB.id);
 
@@ -235,15 +260,17 @@ run('security hardening', () => {
       orgId: orgA.id,
       membership: membershipA,
       subdomain: orgA.subdomain,
-      ip: '127.0.0.1',
+      ip: "127.0.0.1",
     });
 
-    await expect(canDownloadAttachment(attachmentB.id)).rejects.toThrow(AuthorizationError);
+    await expect(canDownloadAttachment(attachmentB.id)).rejects.toThrow(
+      AuthorizationError,
+    );
 
     const tokenA = await createTicketToken({
       ticketId: ticketA.id,
       email: userA.email,
-      purpose: 'VIEW',
+      purpose: "VIEW",
     });
 
     const tokenMismatch = await authorizeAttachmentTokenDownload({
@@ -256,7 +283,7 @@ run('security hardening', () => {
     const tokenA2 = await createTicketToken({
       ticketId: ticketA.id,
       email: userA.email,
-      purpose: 'VIEW',
+      purpose: "VIEW",
     });
 
     const tokenMatch = await authorizeAttachmentTokenDownload({

@@ -1,9 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { io, type Socket } from 'socket.io-client';
+import { useEffect, useRef, useState } from "react";
+import { io, type Socket } from "socket.io-client";
 
-type ConnectionStatus = 'connecting' | 'connected' | 'fallback' | 'disconnected' | 'error';
+type ConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "fallback"
+  | "disconnected"
+  | "error";
 
 export function useSocketRealtime<TPayload = Record<string, unknown>>({
   orgId,
@@ -16,7 +21,7 @@ export function useSocketRealtime<TPayload = Record<string, unknown>>({
   events: string[];
   onEvent: (event: string, payload: TPayload) => void;
 }) {
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const socketRef = useRef<Socket | null>(null);
   const callbackRef = useRef(onEvent);
 
@@ -29,13 +34,19 @@ export function useSocketRealtime<TPayload = Record<string, unknown>>({
 
     const socketUrl = process.env.NEXT_PUBLIC_REALTIME_URL;
     if (!socketUrl) {
-      setStatus('fallback');
-      const source = new EventSource(`/api/realtime?orgId=${encodeURIComponent(orgId)}&channel=${encodeURIComponent(channel)}`);
+      setStatus("fallback");
+      const source = new EventSource(
+        `/api/realtime?orgId=${encodeURIComponent(orgId)}&channel=${encodeURIComponent(channel)}`,
+      );
 
       source.onmessage = (message) => {
         try {
           const parsed = JSON.parse(message.data);
-          if (parsed.event && parsed.event !== 'connected' && parsed.event !== 'timeout') {
+          if (
+            parsed.event &&
+            parsed.event !== "connected" &&
+            parsed.event !== "timeout"
+          ) {
             callbackRef.current(parsed.event, parsed as TPayload);
           }
         } catch {}
@@ -43,29 +54,31 @@ export function useSocketRealtime<TPayload = Record<string, unknown>>({
 
       source.onerror = () => {
         source.close();
-        setStatus('error');
+        setStatus("error");
       };
 
       return () => source.close();
     }
 
-    setStatus('connecting');
+    setStatus("connecting");
     const socket = io(socketUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
       withCredentials: true,
     });
     socketRef.current = socket;
 
-    socket.on('connect', () => {
-      setStatus('connected');
-      socket.emit('subscribe', { orgId, channel });
+    socket.on("connect", () => {
+      setStatus("connected");
+      socket.emit("subscribe", { orgId, channel });
     });
 
-    socket.on('disconnect', () => setStatus('disconnected'));
-    socket.on('connect_error', () => setStatus('error'));
+    socket.on("disconnect", () => setStatus("disconnected"));
+    socket.on("connect_error", () => setStatus("error"));
 
     for (const eventName of events) {
-      socket.on(eventName, (payload: TPayload) => callbackRef.current(eventName, payload));
+      socket.on(eventName, (payload: TPayload) =>
+        callbackRef.current(eventName, payload),
+      );
     }
 
     return () => {

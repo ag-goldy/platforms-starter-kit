@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FolderTree, Pencil } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Plus, FolderTree, Pencil } from "lucide-react";
 
 type Org = { id: string; subdomain: string; name: string; slug: string };
 
@@ -28,14 +28,14 @@ export default function PortalKBAdminPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isAdmin = role === 'CUSTOMER_ADMIN';
+  const isAdmin = role === "CUSTOMER_ADMIN";
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const orgRes = await fetch(`/api/org/${subdomain}`);
-        if (!orgRes.ok) throw new Error('Org not found');
+        if (!orgRes.ok) throw new Error("Org not found");
         const orgData = (await orgRes.json()) as Org;
         setOrg(orgData);
 
@@ -48,7 +48,7 @@ export default function PortalKBAdminPage() {
         }
 
         const listRes = await fetch(
-          `/api/kb/articles?org=${subdomain}&includeInternal=true&status=all&visibility=all&sortBy=updatedAt&sortOrder=desc`
+          `/api/kb/articles?org=${subdomain}&includeInternal=true&status=all&visibility=all&sortBy=updatedAt&sortOrder=desc`,
         );
         if (listRes.ok) {
           const data = await listRes.json();
@@ -65,10 +65,10 @@ export default function PortalKBAdminPage() {
 
   const statusColors = useMemo(() => {
     return {
-      draft: 'bg-stone-100 text-stone-700',
-      published: 'bg-emerald-100 text-emerald-800',
-      archived: 'bg-red-100 text-red-800',
-      pending_review: 'bg-amber-100 text-amber-800',
+      draft: "bg-stone-100 text-stone-700",
+      published: "bg-emerald-100 text-emerald-800",
+      archived: "bg-red-100 text-red-800",
+      pending_review: "bg-amber-100 text-amber-800",
     } as Record<string, string>;
   }, []);
 
@@ -97,7 +97,9 @@ export default function PortalKBAdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">Knowledge Base Admin</h1>
+          <h1 className="text-2xl font-bold text-stone-900">
+            Knowledge Base Admin
+          </h1>
           <p className="mt-1 text-sm text-stone-600">{org.name}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -132,13 +134,22 @@ export default function PortalKBAdminPage() {
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <div className="font-medium text-stone-900 truncate">{a.title}</div>
-                      <Badge className={statusColors[a.status] || 'bg-stone-100 text-stone-700'}>
+                      <div className="font-medium text-stone-900 truncate">
+                        {a.title}
+                      </div>
+                      <Badge
+                        className={
+                          statusColors[a.status] ||
+                          "bg-stone-100 text-stone-700"
+                        }
+                      >
                         {a.status}
                       </Badge>
                       <Badge variant="outline">{a.visibility}</Badge>
                     </div>
-                    <div className="text-xs text-stone-500 truncate">{a.slug}</div>
+                    <div className="text-xs text-stone-500 truncate">
+                      {a.slug}
+                    </div>
                   </div>
                   <Link href={`/s/${subdomain}/kb/admin/articles/${a.id}`}>
                     <Button variant="ghost" size="sm">
@@ -155,4 +166,3 @@ export default function PortalKBAdminPage() {
     </div>
   );
 }
-

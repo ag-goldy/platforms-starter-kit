@@ -1,4 +1,4 @@
-import { escapeHtml, renderBaseTemplate } from './utils';
+import { escapeHtml, renderBaseTemplate } from "./utils";
 
 export function renderTicketResolvedEmail(options: {
   ticketKey: string;
@@ -7,9 +7,10 @@ export function renderTicketResolvedEmail(options: {
   resolutionNotes?: string;
   ticketUrl: string;
 }) {
-  const { ticketKey, subject, resolvedBy, resolutionNotes, ticketUrl } = options;
+  const { ticketKey, subject, resolvedBy, resolutionNotes, ticketUrl } =
+    options;
   const title = `Ticket Resolved: ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -18,11 +19,15 @@ export function renderTicketResolvedEmail(options: {
     <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 20px; margin: 25px 0;">
       <h3 style="margin: 0 0 15px 0; color: #166534; font-size: 16px; border-bottom: 1px solid #bbf7d0; padding-bottom: 10px;">Resolution Details</h3>
       
-      ${resolutionNotes ? `
+      ${
+        resolutionNotes
+          ? `
       <p style="color: #15803d; font-size: 14px; margin: 0 0 15px 0;">
         ${escapeHtml(resolutionNotes)}
       </p>
-      ` : ''}
+      `
+          : ""
+      }
       
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -47,7 +52,7 @@ export function renderTicketResolvedEmail(options: {
 
 Your ticket has been marked as Resolved by ${resolvedBy}.
 
-${resolutionNotes ? `Resolution Notes: ${resolutionNotes}\n` : ''}
+${resolutionNotes ? `Resolution Notes: ${resolutionNotes}\n` : ""}
 
 Ticket: ${ticketKey}
 Subject: ${subject}
@@ -60,7 +65,7 @@ View Ticket: ${ticketUrl}
   return {
     subject: `Ticket ${ticketKey} Resolved`,
     html: renderBaseTemplate({
-      title: 'Ticket Resolved',
+      title: "Ticket Resolved",
       preheader: `Ticket ${ticketKey} has been resolved`,
       bodyHtml,
     }),

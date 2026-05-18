@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { ticketComments, tickets, memberships } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { assertTicketMutable, reopenTicket } from '@/lib/tickets/lifecycle';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { ticketComments, tickets, memberships } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { assertTicketMutable, reopenTicket } from "@/lib/tickets/lifecycle";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -21,8 +21,8 @@ export async function POST(
 
     if (!content?.trim()) {
       return NextResponse.json(
-        { error: 'Comment content required' },
-        { status: 400 }
+        { error: "Comment content required" },
+        { status: 400 },
       );
     }
 
@@ -32,10 +32,13 @@ export async function POST(
     });
 
     if (!ticket) {
-      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
     if (!ticket.orgId) {
-      return NextResponse.json({ error: 'Public tickets cannot be commented through this endpoint' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Public tickets cannot be commented through this endpoint" },
+        { status: 400 },
+      );
     }
 
     assertTicketMutable(ticket);
@@ -45,37 +48,43 @@ export async function POST(
       where: and(
         eq(memberships.userId, session.user.id),
         eq(memberships.orgId, ticket.orgId),
-        eq(memberships.isActive, true)
+        eq(memberships.isActive, true),
       ),
     });
 
     if (!membership) {
-      return NextResponse.json({ error: 'Not a member' }, { status: 403 });
+      return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
 
-    if (!session.user.isInternal && (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED')) {
+    if (
+      !session.user.isInternal &&
+      (ticket.status === "RESOLVED" || ticket.status === "CLOSED")
+    ) {
       await reopenTicket({
         ticketId: id,
         orgId: ticket.orgId,
-        actor: { type: 'customer', userId: session.user.id },
-        reason: 'Customer replied after resolution.',
+        actor: { type: "customer", userId: session.user.id },
+        reason: "Customer replied after resolution.",
       });
     }
 
     // Create comment
-    const [comment] = await db.insert(ticketComments).values({
-      ticketId: id,
-      userId: session.user.id,
-      content: content.trim(),
-      isInternal,
-    }).returning();
+    const [comment] = await db
+      .insert(ticketComments)
+      .values({
+        ticketId: id,
+        userId: session.user.id,
+        content: content.trim(),
+        isInternal,
+      })
+      .returning();
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {
-    console.error('Error creating comment:', error);
+    console.error("Error creating comment:", error);
     return NextResponse.json(
-      { error: 'Failed to create comment' },
-      { status: 500 }
+      { error: "Failed to create comment" },
+      { status: 500 },
     );
   }
 }

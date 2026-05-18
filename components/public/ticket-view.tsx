@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { addPublicTicketCommentAction } from '@/app/ticket/[token]/actions';
-import { Ticket, Attachment } from '@/db/schema';
-import { Separator } from '@/components/ui/separator';
-import { AttachmentList } from '@/components/tickets/attachment-list';
-import { useRouter } from 'next/navigation';
-import { formatDateTime } from '@/lib/utils/date';
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { addPublicTicketCommentAction } from "@/app/ticket/[token]/actions";
+import { Ticket, Attachment } from "@/db/schema";
+import { Separator } from "@/components/ui/separator";
+import { AttachmentList } from "@/components/tickets/attachment-list";
+import { useRouter } from "next/navigation";
+import { formatDateTime } from "@/lib/utils/date";
 
 interface PublicTicketViewProps {
   ticket: Ticket & {
@@ -39,33 +39,33 @@ type TicketComment = {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'NEW':
-      return 'bg-blue-100 text-blue-800';
-    case 'OPEN':
-      return 'bg-green-100 text-green-800';
-    case 'IN_PROGRESS':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'RESOLVED':
-      return 'bg-gray-100 text-gray-800';
-    case 'CLOSED':
-      return 'bg-gray-200 text-gray-900';
+    case "NEW":
+      return "bg-blue-100 text-blue-800";
+    case "OPEN":
+      return "bg-green-100 text-green-800";
+    case "IN_PROGRESS":
+      return "bg-yellow-100 text-yellow-800";
+    case "RESOLVED":
+      return "bg-gray-100 text-gray-800";
+    case "CLOSED":
+      return "bg-gray-200 text-gray-900";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'P1':
-      return 'bg-red-100 text-red-800';
-    case 'P2':
-      return 'bg-orange-100 text-orange-800';
-    case 'P3':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'P4':
-      return 'bg-gray-100 text-gray-800';
+    case "P1":
+      return "bg-red-100 text-red-800";
+    case "P2":
+      return "bg-orange-100 text-orange-800";
+    case "P3":
+      return "bg-yellow-100 text-yellow-800";
+    case "P4":
+      return "bg-gray-100 text-gray-800";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
@@ -76,7 +76,7 @@ export function PublicTicketView({
   downloadTokens,
 }: PublicTicketViewProps) {
   const router = useRouter();
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentReplyToken, setCurrentReplyToken] = useState(replyToken);
 
@@ -84,7 +84,7 @@ export function PublicTicketView({
     if (!viewToken) return;
     const nextUrl = `/ticket/${viewToken}`;
     if (window.location.pathname !== nextUrl) {
-      window.history.replaceState({}, '', nextUrl);
+      window.history.replaceState({}, "", nextUrl);
     }
   }, [viewToken]);
 
@@ -94,9 +94,9 @@ export function PublicTicketView({
     try {
       const result = await addPublicTicketCommentAction(
         currentReplyToken,
-        comment
+        comment,
       );
-      setComment('');
+      setComment("");
       if (result?.replyToken) {
         setCurrentReplyToken(result.replyToken);
       }
@@ -107,7 +107,9 @@ export function PublicTicketView({
   }
 
   // Only show public comments (filter out internal notes)
-  const publicComments = ticket.comments.filter((c: { isInternal: boolean }) => !c.isInternal);
+  const publicComments = ticket.comments.filter(
+    (c: { isInternal: boolean }) => !c.isInternal,
+  );
 
   return (
     <div className="space-y-6">
@@ -119,8 +121,12 @@ export function PublicTicketView({
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
-          <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
+          <Badge className={getStatusColor(ticket.status)}>
+            {ticket.status}
+          </Badge>
+          <Badge className={getPriorityColor(ticket.priority)}>
+            {ticket.priority}
+          </Badge>
         </div>
       </div>
 
@@ -157,7 +163,8 @@ export function PublicTicketView({
             </p>
             {ticket.assignee && (
               <p>
-                <strong>Assigned to:</strong> {ticket.assignee.name || ticket.assignee.email}
+                <strong>Assigned to:</strong>{" "}
+                {ticket.assignee.name || ticket.assignee.email}
               </p>
             )}
             <p>
@@ -172,27 +179,36 @@ export function PublicTicketView({
           <CardTitle>Conversation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {publicComments.map((comment: { id: string; content: string; isInternal: boolean; createdAt: Date; user?: { name: string | null; email: string } | null; authorEmail?: string | null }) => (
-            <div key={comment.id} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <strong className="text-sm">
-                    {comment.user?.name ||
-                      comment.authorEmail ||
-                      comment.user?.email ||
-                      'Support Team'}
-                  </strong>
-                  <span className="text-xs text-gray-500">
-                    {formatDateTime(comment.createdAt)}
-                  </span>
+          {publicComments.map(
+            (comment: {
+              id: string;
+              content: string;
+              isInternal: boolean;
+              createdAt: Date;
+              user?: { name: string | null; email: string } | null;
+              authorEmail?: string | null;
+            }) => (
+              <div key={comment.id} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-sm">
+                      {comment.user?.name ||
+                        comment.authorEmail ||
+                        comment.user?.email ||
+                        "Support Team"}
+                    </strong>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(comment.createdAt)}
+                    </span>
+                  </div>
                 </div>
+                <p className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded-md">
+                  {comment.content}
+                </p>
+                <Separator />
               </div>
-              <p className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded-md">
-                {comment.content}
-              </p>
-              <Separator />
-            </div>
-          ))}
+            ),
+          )}
 
           {publicComments.length === 0 && (
             <p className="text-sm text-gray-500">No replies yet.</p>
@@ -211,7 +227,7 @@ export function PublicTicketView({
               onClick={handleAddComment}
               disabled={!comment.trim() || isSubmitting}
             >
-              {isSubmitting ? 'Sending...' : 'Send Reply'}
+              {isSubmitting ? "Sending..." : "Send Reply"}
             </Button>
           </div>
         </CardContent>

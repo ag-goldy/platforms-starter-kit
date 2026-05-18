@@ -1,11 +1,11 @@
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { getOrganizations } from '@/lib/organizations/queries';
-import { getInternalUsers } from '@/lib/users/queries';
-import { ReportBuilder } from '@/components/reports/report-builder';
-import { StandardReports } from '@/components/reports/standard-reports';
-import { db } from '@/db';
-import { organizations } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { getOrganizations } from "@/lib/organizations/queries";
+import { getInternalUsers } from "@/lib/users/queries";
+import { ReportBuilder } from "@/components/reports/report-builder";
+import { StandardReports } from "@/components/reports/standard-reports";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 interface SearchParams {
   orgId?: string;
@@ -45,7 +45,10 @@ export default async function ReportsPage({
       {/* Custom Report Builder */}
       <section>
         <h2 className="text-lg font-semibold mb-4">Custom Report Builder</h2>
-        <ReportBuilder organizations={organizationsList} internalUsers={internalUsers} />
+        <ReportBuilder
+          organizations={organizationsList}
+          internalUsers={internalUsers}
+        />
       </section>
     </div>
   );

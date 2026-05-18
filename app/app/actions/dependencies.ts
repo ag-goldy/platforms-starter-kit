@@ -1,10 +1,10 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { ticketDependencies, tickets } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { requireAuth } from '@/lib/auth/permissions';
+import { db } from "@/db";
+import { ticketDependencies, tickets } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { requireAuth } from "@/lib/auth/permissions";
 
 export async function getTicketDependenciesAction(ticketId: string) {
   // Get forward dependencies (this ticket depends on others)
@@ -38,12 +38,14 @@ export async function getTicketDependenciesAction(ticketId: string) {
   });
 
   return {
-    blocks: forwardDeps.filter(d => d.dependencyType === 'blocks'),
-    blockedBy: forwardDeps.filter(d => d.dependencyType === 'blocked_by'),
-    relatesTo: forwardDeps.filter(d => d.dependencyType === 'relates_to'),
-    blockedByReverse: reverseDeps.filter(d => d.dependencyType === 'blocks'),
-    blocksReverse: reverseDeps.filter(d => d.dependencyType === 'blocked_by'),
-    relatedReverse: reverseDeps.filter(d => d.dependencyType === 'relates_to'),
+    blocks: forwardDeps.filter((d) => d.dependencyType === "blocks"),
+    blockedBy: forwardDeps.filter((d) => d.dependencyType === "blocked_by"),
+    relatesTo: forwardDeps.filter((d) => d.dependencyType === "relates_to"),
+    blockedByReverse: reverseDeps.filter((d) => d.dependencyType === "blocks"),
+    blocksReverse: reverseDeps.filter((d) => d.dependencyType === "blocked_by"),
+    relatedReverse: reverseDeps.filter(
+      (d) => d.dependencyType === "relates_to",
+    ),
   };
 }
 
@@ -51,21 +53,24 @@ export async function addDependencyAction(
   ticketId: string,
   data: {
     dependsOnTicketId: string;
-    dependencyType: 'blocks' | 'blocked_by' | 'relates_to';
-  }
+    dependencyType: "blocks" | "blocked_by" | "relates_to";
+  },
 ) {
   const user = await requireAuth();
 
   // Prevent self-dependency
   if (data.dependsOnTicketId === ticketId) {
-    throw new Error('Cannot create dependency on self');
+    throw new Error("Cannot create dependency on self");
   }
 
   // Check for circular dependencies
-  if (data.dependencyType === 'blocks') {
-    const circularCheck = await checkCircularDependency(ticketId, data.dependsOnTicketId);
+  if (data.dependencyType === "blocks") {
+    const circularCheck = await checkCircularDependency(
+      ticketId,
+      data.dependsOnTicketId,
+    );
     if (circularCheck) {
-      throw new Error('Circular dependency detected');
+      throw new Error("Circular dependency detected");
     }
   }
 
@@ -83,7 +88,10 @@ export async function addDependencyAction(
   return dependency;
 }
 
-export async function removeDependencyAction(ticketId: string, dependencyId: string) {
+export async function removeDependencyAction(
+  ticketId: string,
+  dependencyId: string,
+) {
   await requireAuth();
 
   await db
@@ -91,8 +99,8 @@ export async function removeDependencyAction(ticketId: string, dependencyId: str
     .where(
       and(
         eq(ticketDependencies.id, dependencyId),
-        eq(ticketDependencies.ticketId, ticketId)
-      )
+        eq(ticketDependencies.ticketId, ticketId),
+      ),
     );
 
   revalidatePath(`/app/tickets/${ticketId}`);
@@ -100,7 +108,7 @@ export async function removeDependencyAction(ticketId: string, dependencyId: str
 
 export async function getAvailableTicketsForDependency(
   ticketId: string,
-  orgId: string | null
+  orgId: string | null,
 ) {
   const allTickets = await db.query.tickets.findMany({
     where: orgId ? eq(tickets.orgId, orgId) : undefined,
@@ -120,19 +128,19 @@ export async function getAvailableTicketsForDependency(
     },
   });
 
-  const linkedIds = new Set(existingDeps.map(d => d.dependsOnTicketId));
+  const linkedIds = new Set(existingDeps.map((d) => d.dependsOnTicketId));
   linkedIds.add(ticketId);
 
-  return allTickets.filter(t => !linkedIds.has(t.id));
+  return allTickets.filter((t) => !linkedIds.has(t.id));
 }
 
 async function checkCircularDependency(
   sourceTicketId: string,
-  targetTicketId: string
+  targetTicketId: string,
 ): Promise<boolean> {
   // Check if target ticket already depends on source ticket (directly or indirectly)
   const visited = new Set<string>();
-  
+
   async function hasPathTo(currentId: string): Promise<boolean> {
     if (currentId === sourceTicketId) return true;
     if (visited.has(currentId)) return false;
@@ -162,7 +170,7 @@ export async function checkBlockedStatus(ticketId: string): Promise<boolean> {
   const blockedBy = await db.query.ticketDependencies.findMany({
     where: and(
       eq(ticketDependencies.ticketId, ticketId),
-      eq(ticketDependencies.dependencyType, 'blocked_by')
+      eq(ticketDependencies.dependencyType, "blocked_by"),
     ),
     with: {
       dependsOnTicket: {
@@ -177,7 +185,7 @@ export async function checkBlockedStatus(ticketId: string): Promise<boolean> {
   const reverseBlocks = await db.query.ticketDependencies.findMany({
     where: and(
       eq(ticketDependencies.dependsOnTicketId, ticketId),
-      eq(ticketDependencies.dependencyType, 'blocks')
+      eq(ticketDependencies.dependencyType, "blocks"),
     ),
     with: {
       ticket: {
@@ -189,11 +197,11 @@ export async function checkBlockedStatus(ticketId: string): Promise<boolean> {
   });
 
   const allBlocking = [
-    ...blockedBy.map(d => d.dependsOnTicket),
-    ...reverseBlocks.map(d => d.ticket),
+    ...blockedBy.map((d) => d.dependsOnTicket),
+    ...reverseBlocks.map((d) => d.ticket),
   ];
 
   return allBlocking.some(
-    t => t && !['RESOLVED', 'CLOSED'].includes(t.status)
+    (t) => t && !["RESOLVED", "CLOSED"].includes(t.status),
   );
 }

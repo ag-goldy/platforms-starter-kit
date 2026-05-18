@@ -1,38 +1,38 @@
-import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
-import { db } from '@/db';
-import { users, memberships, organizations } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
+import { db } from "@/db";
+import { users, memberships, organizations } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ".env.local" });
 
-const DEFAULT_PASSWORD = 'ChangeMe123!';
+const DEFAULT_PASSWORD = "ChangeMe123!";
 
 interface UserFix {
   email: string;
   name: string;
   isInternal: boolean;
-  role: 'ADMIN' | 'AGENT' | 'REQUESTER';
+  role: "ADMIN" | "AGENT" | "REQUESTER";
 }
 
 const usersToFix: UserFix[] = [
   {
-    email: 'ag@agrnetworks.com',
-    name: 'AG Administrator',
+    email: "ag@agrnetworks.com",
+    name: "AG Administrator",
     isInternal: true,
-    role: 'ADMIN',
+    role: "ADMIN",
   },
   {
-    email: 'help@agrnetworks.com',
-    name: 'Help Desk Agent',
+    email: "help@agrnetworks.com",
+    name: "Help Desk Agent",
     isInternal: true,
-    role: 'AGENT',
+    role: "AGENT",
   },
   {
-    email: 'agisthegoat49@gmail.com',
-    name: 'Customer User',
+    email: "agisthegoat49@gmail.com",
+    name: "Customer User",
     isInternal: false,
-    role: 'REQUESTER',
+    role: "REQUESTER",
   },
 ];
 
@@ -41,24 +41,24 @@ async function fixUsers() {
 
   // Get or create AGR Networks organization
   let org = await db.query.organizations.findFirst({
-    where: eq(organizations.name, 'AGR Networks'),
+    where: eq(organizations.name, "AGR Networks"),
   });
 
   if (!org) {
     const [newOrg] = await db
       .insert(organizations)
       .values({
-        name: 'AGR Networks',
-        slug: 'agr-networks',
-        subdomain: 'agr',
+        name: "AGR Networks",
+        slug: "agr-networks",
+        subdomain: "agr",
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
     org = newOrg;
-    console.log('✅ Created organization: AGR Networks');
+    console.log("✅ Created organization: AGR Networks");
   } else {
-    console.log('✅ Found organization: AGR Networks');
+    console.log("✅ Found organization: AGR Networks");
   }
 
   for (const userData of usersToFix) {
@@ -112,7 +112,7 @@ async function fixUsers() {
       const existingMembership = await db.query.memberships.findFirst({
         where: and(
           eq(memberships.userId, user.id),
-          eq(memberships.orgId, org.id)
+          eq(memberships.orgId, org.id),
         ),
       });
 
@@ -134,10 +134,9 @@ async function fixUsers() {
         await db
           .update(memberships)
           .set({ role: userData.role, isActive: true })
-          .where(and(
-            eq(memberships.userId, user.id),
-            eq(memberships.orgId, org.id)
-          ));
+          .where(
+            and(eq(memberships.userId, user.id), eq(memberships.orgId, org.id)),
+          );
         console.log(`   └─ Updated role to ${userData.role}`);
       }
     } catch (error) {
@@ -145,7 +144,7 @@ async function fixUsers() {
     }
   }
 
-  console.log('\n✨ All users fixed!');
+  console.log("\n✨ All users fixed!");
   console.log(`\nLogin credentials:`);
   console.log(`- Administrator: ag@agrnetworks.com / ${DEFAULT_PASSWORD}`);
   console.log(`- Agent: help@agrnetworks.com / ${DEFAULT_PASSWORD}`);
@@ -155,6 +154,6 @@ async function fixUsers() {
 fixUsers()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error('Failed:', error);
+    console.error("Failed:", error);
     process.exit(1);
   });

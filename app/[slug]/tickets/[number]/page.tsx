@@ -1,13 +1,18 @@
-import { db } from '@/db';
-import { tickets, ticketMessages, ticketEvents, organizations } from '@/db/schema';
-import { eq, and, asc } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/permissions';
-import { notFound } from 'next/navigation';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { addCustomerComment } from '@/app/actions/tickets';
-import { ReplyComposer } from '@/components/tickets/reply-composer';
-import { TicketPropertiesOptimistic } from '@/components/tickets/ticket-properties-optimistic';
+import { db } from "@/db";
+import {
+  tickets,
+  ticketMessages,
+  ticketEvents,
+  organizations,
+} from "@/db/schema";
+import { eq, and, asc } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/permissions";
+import { notFound } from "next/navigation";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { addCustomerComment } from "@/app/actions/tickets";
+import { ReplyComposer } from "@/components/tickets/reply-composer";
+import { TicketPropertiesOptimistic } from "@/components/tickets/ticket-properties-optimistic";
 
 export default async function TicketDetailPage({
   params,
@@ -59,14 +64,17 @@ export default async function TicketDetailPage({
           <div className="space-y-4">
             <h3 className="text-xl font-semibold">Conversation</h3>
             {messages.map((msg) => (
-              <Card key={msg.id} className={`p-4 ${msg.visibility === 'internal' ? 'bg-amber-50 border-amber-200' : ''}`}>
+              <Card
+                key={msg.id}
+                className={`p-4 ${msg.visibility === "internal" ? "bg-amber-50 border-amber-200" : ""}`}
+              >
                 <div className="flex justify-between text-sm mb-2 text-muted-foreground">
-                  <span className="font-medium text-foreground">{msg.authorKind === 'user' ? 'User' : 'System'}</span>
+                  <span className="font-medium text-foreground">
+                    {msg.authorKind === "user" ? "User" : "System"}
+                  </span>
                   <span>{msg.createdAt?.toLocaleString()}</span>
                 </div>
-                <div className="prose max-w-none">
-                  {msg.bodyMd}
-                </div>
+                <div className="prose max-w-none">{msg.bodyMd}</div>
               </Card>
             ))}
           </div>
@@ -93,9 +101,13 @@ export default async function TicketDetailPage({
             <ul className="space-y-3 text-sm">
               {events.map((ev) => (
                 <li key={ev.id} className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{ev.eventType}</span>
+                  <span className="font-medium text-foreground">
+                    {ev.eventType}
+                  </span>
                   <br />
-                  <span className="text-xs">{ev.createdAt?.toLocaleString()}</span>
+                  <span className="text-xs">
+                    {ev.createdAt?.toLocaleString()}
+                  </span>
                 </li>
               ))}
             </ul>

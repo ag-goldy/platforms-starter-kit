@@ -1,17 +1,31 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useToast } from '@/components/ui/toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
-import { Loader2, Sparkles, Shield, Users, BookOpen, Ticket, Server } from 'lucide-react';
-import { updateOrgAIConfigAction } from '@/app/app/actions/ai-settings';
-import type { OrgAIConfig } from '@/db/schema';
+import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import {
+  Loader2,
+  Sparkles,
+  Shield,
+  Users,
+  BookOpen,
+  Ticket,
+  Server,
+} from "lucide-react";
+import { updateOrgAIConfigAction } from "@/app/app/actions/ai-settings";
+import type { OrgAIConfig } from "@/db/schema";
 
 interface AISettingsFormProps {
   orgId: string;
@@ -38,9 +52,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
         customerRateLimit: config.customerRateLimit ?? undefined,
         systemInstructions: config.systemInstructions ?? undefined,
       });
-      success('AI settings saved successfully');
+      success("AI settings saved successfully");
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Failed to save settings');
+      error(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +88,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
             </div>
             <Switch
               checked={config.aiEnabled}
-              onCheckedChange={(checked) => setConfig({ ...config, aiEnabled: checked })}
+              onCheckedChange={(checked) =>
+                setConfig({ ...config, aiEnabled: checked })
+              }
             />
           </div>
 
@@ -90,7 +106,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
             </div>
             <Switch
               checked={config.customerAIEnabled}
-              onCheckedChange={(checked) => setConfig({ ...config, customerAIEnabled: checked })}
+              onCheckedChange={(checked) =>
+                setConfig({ ...config, customerAIEnabled: checked })
+              }
               disabled={!config.aiEnabled}
             />
           </div>
@@ -117,7 +135,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               </div>
               <Switch
                 checked={config.allowKBAccess}
-                onCheckedChange={(checked) => setConfig({ ...config, allowKBAccess: checked })}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, allowKBAccess: checked })
+                }
                 disabled={!config.aiEnabled}
               />
             </div>
@@ -134,7 +154,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               </div>
               <Switch
                 checked={config.allowTicketSummaries}
-                onCheckedChange={(checked) => setConfig({ ...config, allowTicketSummaries: checked })}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, allowTicketSummaries: checked })
+                }
                 disabled={!config.aiEnabled}
               />
             </div>
@@ -151,7 +173,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               </div>
               <Switch
                 checked={config.allowServiceStatus}
-                onCheckedChange={(checked) => setConfig({ ...config, allowServiceStatus: checked })}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, allowServiceStatus: checked })
+                }
                 disabled={!config.aiEnabled}
               />
             </div>
@@ -168,7 +192,9 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               </div>
               <Switch
                 checked={config.blockPIIInResponses}
-                onCheckedChange={(checked) => setConfig({ ...config, blockPIIInResponses: checked })}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, blockPIIInResponses: checked })
+                }
                 disabled={!config.aiEnabled}
               />
             </div>
@@ -187,7 +213,12 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
                 id="rateLimit"
                 type="number"
                 value={config.customerRateLimit ?? 50}
-                onChange={(e) => setConfig({ ...config, customerRateLimit: parseInt(e.target.value) || 50 })}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    customerRateLimit: parseInt(e.target.value) || 50,
+                  })
+                }
                 min={10}
                 max={500}
                 disabled={!config.aiEnabled}
@@ -199,7 +230,12 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
                 id="maxTokens"
                 type="number"
                 value={config.maxResponseTokens ?? 1000}
-                onChange={(e) => setConfig({ ...config, maxResponseTokens: parseInt(e.target.value) || 1000 })}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    maxResponseTokens: parseInt(e.target.value) || 1000,
+                  })
+                }
                 min={100}
                 max={4000}
                 disabled={!config.aiEnabled}
@@ -218,8 +254,10 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
           </p>
           <Textarea
             id="instructions"
-            value={config.systemInstructions || ''}
-            onChange={(e) => setConfig({ ...config, systemInstructions: e.target.value })}
+            value={config.systemInstructions || ""}
+            onChange={(e) =>
+              setConfig({ ...config, systemInstructions: e.target.value })
+            }
             placeholder="e.g., Always greet customers by name. When discussing billing, direct them to accounts@company.com."
             rows={4}
             disabled={!config.aiEnabled}
@@ -235,7 +273,7 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
                 Saving...
               </>
             ) : (
-              'Save Changes'
+              "Save Changes"
             )}
           </Button>
         </div>

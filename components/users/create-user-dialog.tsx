@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,21 +9,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { createUserAction } from '@/app/app/actions/users';
-import { useToast } from '@/components/ui/toast';
-import { Loader2, Plus, Copy, Check } from 'lucide-react';
-import type { CustomerRole } from '@/lib/auth/roles';
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { createUserAction } from "@/app/app/actions/users";
+import { useToast } from "@/components/ui/toast";
+import { Loader2, Plus, Copy, Check } from "lucide-react";
+import type { CustomerRole } from "@/lib/auth/roles";
 
 interface Organization {
   id: string;
@@ -37,18 +37,21 @@ interface CreateUserDialogProps {
 export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [createdUser, setCreatedUser] = useState<{ email: string; password: string } | null>(null);
+  const [createdUser, setCreatedUser] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const { success, error } = useToast();
 
   const [formData, setFormData] = useState({
-    email: '',
-    name: '',
-    password: '',
+    email: "",
+    name: "",
+    password: "",
     isInternal: false,
     assignToOrg: false,
-    orgId: '',
-    role: 'REQUESTER' as CustomerRole,
+    orgId: "",
+    role: "REQUESTER" as CustomerRole,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,12 +73,10 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
           email: result.email,
           password: formData.password,
         });
-        success('User created successfully');
+        success("User created successfully");
       }
     } catch (err) {
-      error(
-        err instanceof Error ? err.message : 'Failed to create user'
-      );
+      error(err instanceof Error ? err.message : "Failed to create user");
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
   const handleCopyCredentials = () => {
     if (createdUser) {
       navigator.clipboard.writeText(
-        `Email: ${createdUser.email}\nPassword: ${createdUser.password}`
+        `Email: ${createdUser.email}\nPassword: ${createdUser.password}`,
       );
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -97,13 +98,13 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
     setTimeout(() => {
       setCreatedUser(null);
       setFormData({
-        email: '',
-        name: '',
-        password: '',
+        email: "",
+        name: "",
+        password: "",
         isInternal: false,
         assignToOrg: false,
-        orgId: '',
-        role: 'REQUESTER',
+        orgId: "",
+        role: "REQUESTER",
       });
     }, 200);
   };
@@ -115,18 +116,25 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
           <DialogHeader>
             <DialogTitle>User Created Successfully</DialogTitle>
             <DialogDescription>
-              The user has been created. Please copy and share these credentials securely.
+              The user has been created. Please copy and share these credentials
+              securely.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-amber-900">Email:</span>
-                <span className="text-sm text-amber-800">{createdUser.email}</span>
+                <span className="text-sm font-medium text-amber-900">
+                  Email:
+                </span>
+                <span className="text-sm text-amber-800">
+                  {createdUser.email}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-amber-900">Password:</span>
+                <span className="text-sm font-medium text-amber-900">
+                  Password:
+                </span>
                 <span className="text-sm text-amber-800 font-mono">
                   {createdUser.password}
                 </span>
@@ -172,7 +180,8 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
         <DialogHeader>
           <DialogTitle>Create New User</DialogTitle>
           <DialogDescription>
-            Create a new user account directly. The user will be able to log in immediately.
+            Create a new user account directly. The user will be able to log in
+            immediately.
           </DialogDescription>
         </DialogHeader>
 
@@ -315,7 +324,7 @@ export function CreateUserDialog({ organizations }: CreateUserDialogProps) {
                   Creating...
                 </>
               ) : (
-                'Create User'
+                "Create User"
               )}
             </Button>
           </div>

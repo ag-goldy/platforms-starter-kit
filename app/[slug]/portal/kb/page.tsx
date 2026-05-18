@@ -1,4 +1,4 @@
-import { redirectLegacyPortal } from '@/lib/portal/legacy-redirect';
+import { redirectLegacyPortal } from "@/lib/portal/legacy-redirect";
 
 export default async function LegacyPortalKb({
   params,
@@ -6,5 +6,5 @@ export default async function LegacyPortalKb({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  await redirectLegacyPortal(slug, 'kb');
+  await redirectLegacyPortal(slug, "kb");
 }

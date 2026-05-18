@@ -3,12 +3,12 @@
  * All AI requests go through this centralized client
  */
 
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 // Initialize OpenAI client for Baseten
 const client = new OpenAI({
-  apiKey: process.env.BASETEN_API_KEY || '',
-  baseURL: process.env.BASETEN_BASE_URL || 'https://inference.baseten.co/v1',
+  apiKey: process.env.BASETEN_API_KEY || "",
+  baseURL: process.env.BASETEN_BASE_URL || "https://inference.baseten.co/v1",
 });
 
 interface AIResponseOptions {
@@ -22,13 +22,13 @@ interface AIResponseOptions {
  * This is the single point of contact for all AI completions
  */
 export async function getAIResponse(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
-  options: AIResponseOptions = {}
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  options: AIResponseOptions = {},
 ) {
   const {
     temperature = 0.3,
     max_tokens = 1000,
-    model = 'deepseek-ai/DeepSeek-V3.1',
+    model = "deepseek-ai/DeepSeek-V3.1",
   } = options;
 
   const completion = await client.chat.completions.create({
@@ -47,7 +47,7 @@ export async function getAIResponse(
  */
 export async function getEmbedding(text: string): Promise<number[]> {
   const response = await client.embeddings.create({
-    model: 'text-embedding-3-small',
+    model: "text-embedding-3-small",
     input: text,
   });
 
@@ -70,8 +70,8 @@ export function truncateToTokens(text: string, maxTokens: number): string {
   if (estimatedTokens <= maxTokens) {
     return text;
   }
-  
+
   // Rough approximation: 4 chars per token
   const maxChars = maxTokens * 4;
-  return text.slice(0, maxChars) + '...';
+  return text.slice(0, maxChars) + "...";
 }

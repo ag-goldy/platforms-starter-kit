@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/toast';
-import { requestOrgExportAction } from '@/app/s/[subdomain]/actions/exports';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
+import { requestOrgExportAction } from "@/app/s/[subdomain]/actions/exports";
 
 interface ExportRequestItem {
   id: string;
@@ -25,7 +25,10 @@ interface CustomerExportManagerProps {
   requests: ExportRequestItem[];
 }
 
-export function CustomerExportManager({ orgId, requests }: CustomerExportManagerProps) {
+export function CustomerExportManager({
+  orgId,
+  requests,
+}: CustomerExportManagerProps) {
   const router = useRouter();
   const { success, error: showError } = useToast();
   const [isRequesting, setIsRequesting] = useState(false);
@@ -34,10 +37,12 @@ export function CustomerExportManager({ orgId, requests }: CustomerExportManager
     setIsRequesting(true);
     try {
       await requestOrgExportAction(orgId);
-      success('Export request submitted');
+      success("Export request submitted");
       router.refresh();
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to request export');
+      showError(
+        err instanceof Error ? err.message : "Failed to request export",
+      );
     } finally {
       setIsRequesting(false);
     }
@@ -51,10 +56,11 @@ export function CustomerExportManager({ orgId, requests }: CustomerExportManager
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-600">
-            Generate a full JSON export of your organization data. Links expire after 24 hours.
+            Generate a full JSON export of your organization data. Links expire
+            after 24 hours.
           </p>
           <Button onClick={handleRequest} disabled={isRequesting}>
-            {isRequesting ? 'Requesting...' : 'Request Export'}
+            {isRequesting ? "Requesting..." : "Request Export"}
           </Button>
         </CardContent>
       </Card>
@@ -73,19 +79,26 @@ export function CustomerExportManager({ orgId, requests }: CustomerExportManager
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">
-                        {request.filename || 'Organization Export'}
+                        {request.filename || "Organization Export"}
                       </p>
                       <p className="text-xs text-gray-500">
                         Requested {new Date(request.createdAt).toLocaleString()}
                       </p>
                     </div>
-                    <Badge variant={request.status === 'FAILED' ? 'destructive' : 'outline'}>
+                    <Badge
+                      variant={
+                        request.status === "FAILED" ? "destructive" : "outline"
+                      }
+                    >
                       {request.status}
                     </Badge>
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                     {request.completedAt && (
-                      <span>Completed {new Date(request.completedAt).toLocaleString()}</span>
+                      <span>
+                        Completed{" "}
+                        {new Date(request.completedAt).toLocaleString()}
+                      </span>
                     )}
                     {request.isExpired && <span>Expired</span>}
                   </div>
@@ -99,7 +112,9 @@ export function CustomerExportManager({ orgId, requests }: CustomerExportManager
                       </a>
                     ) : (
                       <span className="text-sm text-gray-500">
-                        {request.status === 'COMPLETED' ? 'Export expired' : 'Export not ready'}
+                        {request.status === "COMPLETED"
+                          ? "Export expired"
+                          : "Export not ready"}
                       </span>
                     )}
                   </div>

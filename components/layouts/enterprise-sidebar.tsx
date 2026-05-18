@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart3,
@@ -29,12 +29,12 @@ import {
   Users,
   Workflow,
   type LucideIcon,
-} from 'lucide-react';
+} from "lucide-react";
 import type {
   AdminNavSection,
   CustomerNavItem,
   EnterpriseIconName,
-} from '@/lib/navigation/enterprise';
+} from "@/lib/navigation/enterprise";
 
 const icons: Record<EnterpriseIconName, LucideIcon> = {
   activity: Activity,
@@ -65,7 +65,7 @@ const icons: Record<EnterpriseIconName, LucideIcon> = {
 };
 
 function isActive(pathname: string, href: string, exact?: boolean) {
-  const [path] = href.split('?');
+  const [path] = href.split("?");
   if (exact) return pathname === path;
   return pathname === path || pathname.startsWith(`${path}/`);
 }
@@ -98,22 +98,26 @@ export function EnterpriseAdminSidebar({
                   href={item.href}
                   title={compact ? item.label : undefined}
                   className={[
-                    'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                     active
-                      ? 'bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
-                    compact ? 'justify-center' : '',
-                  ].join(' ')}
+                      ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
+                    compact ? "justify-center" : "",
+                  ].join(" ")}
                 >
                   <Icon
                     className={[
-                      'h-4 w-4 shrink-0',
-                      active ? 'text-orange-400 dark:text-orange-600' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200',
-                    ].join(' ')}
+                      "h-4 w-4 shrink-0",
+                      active
+                        ? "text-orange-400 dark:text-orange-600"
+                        : "text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200",
+                    ].join(" ")}
                   />
                   {!compact && (
                     <span className="min-w-0">
-                      <span className="block truncate font-medium">{item.label}</span>
+                      <span className="block truncate font-medium">
+                        {item.label}
+                      </span>
                       {item.description && (
                         <span className="block truncate text-[11px] leading-4 opacity-70">
                           {item.description}
@@ -151,9 +155,9 @@ export function CustomerPortalNav({
               key={item.href}
               href={item.href}
               className={[
-                'flex flex-col items-center gap-1 rounded-md px-2 py-1.5 text-xs',
-                active ? 'bg-slate-950 text-white' : 'text-slate-600',
-              ].join(' ')}
+                "flex flex-col items-center gap-1 rounded-md px-2 py-1.5 text-xs",
+                active ? "bg-slate-950 text-white" : "text-slate-600",
+              ].join(" ")}
             >
               <Icon className="h-4 w-4" />
               <span className="max-w-full truncate">{item.label}</span>
@@ -174,15 +178,21 @@ export function CustomerPortalNav({
             key={item.href}
             href={item.href}
             className={[
-              'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+              "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
               item.primary && !active
-                ? 'border border-orange-200 bg-orange-50 text-slate-950 hover:bg-orange-100'
+                ? "border border-orange-200 bg-orange-50 text-slate-950 hover:bg-orange-100"
                 : active
-                  ? 'bg-slate-950 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950',
-            ].join(' ')}
+                  ? "bg-slate-950 text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
+            ].join(" ")}
           >
-            <Icon className={active ? 'h-4 w-4 text-orange-400' : 'h-4 w-4 text-slate-400 group-hover:text-slate-700'} />
+            <Icon
+              className={
+                active
+                  ? "h-4 w-4 text-orange-400"
+                  : "h-4 w-4 text-slate-400 group-hover:text-slate-700"
+              }
+            />
             <span className="min-w-0">
               <span className="block truncate font-medium">{item.label}</span>
               {item.description && (

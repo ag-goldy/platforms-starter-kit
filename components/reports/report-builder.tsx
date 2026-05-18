@@ -1,43 +1,55 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ReportResults } from './report-results';
-import { generateReportAction, exportReportCSVAction, exportReportJSONAction, getExportJobStatusAction } from '@/app/app/actions/reports';
-import { useToast } from '@/components/ui/toast';
-import { Download, FileJson } from 'lucide-react';
-import type { ReportData, ReportFilters } from '@/lib/reports/queries';
-import type { TicketPriority, TicketStatus } from '@/lib/tickets/queries';
-import type { JobStatus } from '@/lib/jobs/types';
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ReportResults } from "./report-results";
+import {
+  generateReportAction,
+  exportReportCSVAction,
+  exportReportJSONAction,
+  getExportJobStatusAction,
+} from "@/app/app/actions/reports";
+import { useToast } from "@/components/ui/toast";
+import { Download, FileJson } from "lucide-react";
+import type { ReportData, ReportFilters } from "@/lib/reports/queries";
+import type { TicketPriority, TicketStatus } from "@/lib/tickets/queries";
+import type { JobStatus } from "@/lib/jobs/types";
 
 interface ReportBuilderProps {
   organizations: { id: string; name: string }[];
   internalUsers: { id: string; name: string | null; email: string }[];
 }
 
-export function ReportBuilder({ organizations, internalUsers }: ReportBuilderProps) {
+export function ReportBuilder({
+  organizations,
+  internalUsers,
+}: ReportBuilderProps) {
   const { success, error } = useToast();
   const [filters, setFilters] = useState<ReportFilters>({
-    sortBy: 'created',
-    sortOrder: 'desc',
+    sortBy: "created",
+    sortOrder: "desc",
   });
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJobId, setExportJobId] = useState<string | null>(null);
-  const [exportStatus, setExportStatus] = useState<JobStatus | 'NOT_FOUND' | null>(null);
-  const [exportDownloadUrl, setExportDownloadUrl] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<
+    JobStatus | "NOT_FOUND" | null
+  >(null);
+  const [exportDownloadUrl, setExportDownloadUrl] = useState<string | null>(
+    null,
+  );
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -46,7 +58,7 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
       setReportData(data);
       success(`Report generated: Found ${data.summary.total} tickets`);
     } catch {
-      error('Failed to generate report');
+      error("Failed to generate report");
     } finally {
       setIsGenerating(false);
     }
@@ -54,7 +66,11 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
 
   // Poll for export job status
   useEffect(() => {
-    if (!exportJobId || exportStatus === 'COMPLETED' || exportStatus === 'FAILED') {
+    if (
+      !exportJobId ||
+      exportStatus === "COMPLETED" ||
+      exportStatus === "FAILED"
+    ) {
       return;
     }
 
@@ -62,45 +78,45 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
       try {
         const status = await getExportJobStatusAction(exportJobId);
         setExportStatus(status.status);
-        
-        if (status.status === 'COMPLETED' && status.downloadUrl) {
+
+        if (status.status === "COMPLETED" && status.downloadUrl) {
           setExportDownloadUrl(status.downloadUrl);
           setIsExporting(false);
-          success('Export ready for download');
+          success("Export ready for download");
           clearInterval(pollInterval);
-        } else if (status.status === 'FAILED') {
+        } else if (status.status === "FAILED") {
           setIsExporting(false);
-          error(status.error || 'Export failed');
+          error(status.error || "Export failed");
           clearInterval(pollInterval);
         }
       } catch (error) {
-        console.error('Failed to check export status:', error);
+        console.error("Failed to check export status:", error);
       }
     }, 2000); // Poll every 2 seconds
 
     return () => clearInterval(pollInterval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exportJobId, exportStatus]);
 
   const handleExportCSV = async () => {
     if (!reportData) return;
 
     setIsExporting(true);
-    setExportStatus('PENDING');
+    setExportStatus("PENDING");
     setExportDownloadUrl(null);
     try {
       const result = await exportReportCSVAction(filters);
       if (result.jobId) {
         setExportJobId(result.jobId);
-        setExportStatus('PENDING');
-        success('Export started. You will be notified when ready.');
+        setExportStatus("PENDING");
+        success("Export started. You will be notified when ready.");
       } else {
-        throw new Error('Failed to start export job');
+        throw new Error("Failed to start export job");
       }
     } catch {
       setIsExporting(false);
       setExportStatus(null);
-      error('Failed to start CSV export');
+      error("Failed to start CSV export");
     }
   };
 
@@ -108,27 +124,27 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
     if (!reportData) return;
 
     setIsExporting(true);
-    setExportStatus('PENDING');
+    setExportStatus("PENDING");
     setExportDownloadUrl(null);
     try {
       const result = await exportReportJSONAction(filters);
       if (result.jobId) {
         setExportJobId(result.jobId);
-        setExportStatus('PENDING');
-        success('Export started. You will be notified when ready.');
+        setExportStatus("PENDING");
+        success("Export started. You will be notified when ready.");
       } else {
-        throw new Error('Failed to start export job');
+        throw new Error("Failed to start export job");
       }
     } catch {
       setIsExporting(false);
       setExportStatus(null);
-      error('Failed to start JSON export');
+      error("Failed to start JSON export");
     }
   };
 
   const handleDownloadExport = () => {
     if (exportDownloadUrl) {
-      window.open(exportDownloadUrl, '_blank');
+      window.open(exportDownloadUrl, "_blank");
       setExportJobId(null);
       setExportStatus(null);
       setExportDownloadUrl(null);
@@ -146,9 +162,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
             <div className="space-y-2">
               <Label htmlFor="orgId">Organization</Label>
               <Select
-                value={filters.orgId || 'all'}
+                value={filters.orgId || "all"}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, orgId: value === 'all' ? undefined : value })
+                  setFilters({
+                    ...filters,
+                    orgId: value === "all" ? undefined : value,
+                  })
                 }
               >
                 <SelectTrigger id="orgId">
@@ -168,11 +187,20 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
             <div className="space-y-2">
               <Label htmlFor="assigneeId">Assignee</Label>
               <Select
-                value={filters.assigneeId === null ? 'unassigned' : filters.assigneeId || 'all'}
+                value={
+                  filters.assigneeId === null
+                    ? "unassigned"
+                    : filters.assigneeId || "all"
+                }
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    assigneeId: value === 'all' ? undefined : value === 'unassigned' ? null : value,
+                    assigneeId:
+                      value === "all"
+                        ? undefined
+                        : value === "unassigned"
+                          ? null
+                          : value,
                   })
                 }
               >
@@ -194,11 +222,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
-                value={filters.status?.[0] || 'all'}
+                value={filters.status?.[0] || "all"}
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    status: value === 'all' ? undefined : [value as TicketStatus],
+                    status:
+                      value === "all" ? undefined : [value as TicketStatus],
                   })
                 }
               >
@@ -210,7 +239,9 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
                   <SelectItem value="NEW">New</SelectItem>
                   <SelectItem value="OPEN">Open</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="WAITING_ON_CUSTOMER">Waiting on Customer</SelectItem>
+                  <SelectItem value="WAITING_ON_CUSTOMER">
+                    Waiting on Customer
+                  </SelectItem>
                   <SelectItem value="RESOLVED">Resolved</SelectItem>
                   <SelectItem value="CLOSED">Closed</SelectItem>
                 </SelectContent>
@@ -220,11 +251,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select
-                value={filters.priority?.[0] || 'all'}
+                value={filters.priority?.[0] || "all"}
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    priority: value === 'all' ? undefined : [value as TicketPriority],
+                    priority:
+                      value === "all" ? undefined : [value as TicketPriority],
                   })
                 }
               >
@@ -248,13 +280,15 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
                 type="date"
                 value={
                   filters.dateFrom
-                    ? filters.dateFrom.toISOString().split('T')[0]
-                    : ''
+                    ? filters.dateFrom.toISOString().split("T")[0]
+                    : ""
                 }
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    dateFrom: e.target.value ? new Date(e.target.value) : undefined,
+                    dateFrom: e.target.value
+                      ? new Date(e.target.value)
+                      : undefined,
                   })
                 }
               />
@@ -267,13 +301,15 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
                 type="date"
                 value={
                   filters.dateTo
-                    ? filters.dateTo.toISOString().split('T')[0]
-                    : ''
+                    ? filters.dateTo.toISOString().split("T")[0]
+                    : ""
                 }
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    dateTo: e.target.value ? new Date(e.target.value) : undefined,
+                    dateTo: e.target.value
+                      ? new Date(e.target.value)
+                      : undefined,
                   })
                 }
               />
@@ -284,9 +320,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
               <Input
                 id="search"
                 placeholder="Search in subject, description, key..."
-                value={filters.search || ''}
+                value={filters.search || ""}
                 onChange={(e) =>
-                  setFilters({ ...filters, search: e.target.value || undefined })
+                  setFilters({
+                    ...filters,
+                    search: e.target.value || undefined,
+                  })
                 }
               />
             </div>
@@ -294,9 +333,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
             <div className="space-y-2">
               <Label htmlFor="sortBy">Sort By</Label>
               <Select
-                value={filters.sortBy || 'created'}
+                value={filters.sortBy || "created"}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, sortBy: value as ReportFilters['sortBy'] })
+                  setFilters({
+                    ...filters,
+                    sortBy: value as ReportFilters["sortBy"],
+                  })
                 }
               >
                 <SelectTrigger id="sortBy">
@@ -314,9 +356,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
             <div className="space-y-2">
               <Label htmlFor="sortOrder">Sort Order</Label>
               <Select
-                value={filters.sortOrder || 'desc'}
+                value={filters.sortOrder || "desc"}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, sortOrder: value as ReportFilters['sortOrder'] })
+                  setFilters({
+                    ...filters,
+                    sortOrder: value as ReportFilters["sortOrder"],
+                  })
                 }
               >
                 <SelectTrigger id="sortOrder">
@@ -345,15 +390,12 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
 
           <div className="flex gap-2">
             <Button onClick={handleGenerate} disabled={isGenerating}>
-              {isGenerating ? 'Generating...' : 'Generate Report'}
+              {isGenerating ? "Generating..." : "Generate Report"}
             </Button>
             {reportData && (
               <>
                 {exportDownloadUrl ? (
-                  <Button
-                    variant="outline"
-                    onClick={handleDownloadExport}
-                  >
+                  <Button variant="outline" onClick={handleDownloadExport}>
                     <Download className="mr-2 h-4 w-4" />
                     Download Export
                   </Button>
@@ -365,7 +407,9 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
                       disabled={isExporting}
                     >
                       <Download className="mr-2 h-4 w-4" />
-                      {isExporting && exportStatus === 'PENDING' ? 'Exporting CSV...' : 'Export CSV'}
+                      {isExporting && exportStatus === "PENDING"
+                        ? "Exporting CSV..."
+                        : "Export CSV"}
                     </Button>
                     <Button
                       variant="outline"
@@ -373,7 +417,9 @@ export function ReportBuilder({ organizations, internalUsers }: ReportBuilderPro
                       disabled={isExporting}
                     >
                       <FileJson className="mr-2 h-4 w-4" />
-                      {isExporting && exportStatus === 'PENDING' ? 'Exporting JSON...' : 'Export JSON'}
+                      {isExporting && exportStatus === "PENDING"
+                        ? "Exporting JSON..."
+                        : "Export JSON"}
                     </Button>
                   </>
                 )}

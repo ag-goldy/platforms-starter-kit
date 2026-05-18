@@ -1,26 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   createBulkOperation,
   getOrgBulkOperations,
   processBulkOperation,
-} from '@/lib/bulk-operations/queries';
-import { requireInternalRole } from '@/lib/auth/permissions';
+} from "@/lib/bulk-operations/queries";
+import { requireInternalRole } from "@/lib/auth/permissions";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const orgId = searchParams.get('orgId');
+    const orgId = searchParams.get("orgId");
 
     if (!orgId) {
       return NextResponse.json(
-        { error: 'Organization ID required' },
-        { status: 400 }
+        { error: "Organization ID required" },
+        { status: 400 },
       );
     }
 
@@ -29,10 +29,10 @@ export async function GET(req: NextRequest) {
     const operations = await getOrgBulkOperations(orgId);
     return NextResponse.json({ operations });
   } catch (error) {
-    console.error('Error fetching bulk operations:', error);
+    console.error("Error fetching bulk operations:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch bulk operations' },
-      { status: 500 }
+      { error: "Failed to fetch bulk operations" },
+      { status: 500 },
     );
   }
 }
@@ -41,27 +41,40 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
     const { orgId, type, ticketIds, data, execute = true } = body;
 
-    if (!orgId || !type || !ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
+    if (
+      !orgId ||
+      !type ||
+      !ticketIds ||
+      !Array.isArray(ticketIds) ||
+      ticketIds.length === 0
+    ) {
       return NextResponse.json(
-        { error: 'Required fields missing' },
-        { status: 400 }
+        { error: "Required fields missing" },
+        { status: 400 },
       );
     }
 
     await requireInternalRole();
 
     // Validate operation type
-    const validTypes = ['assign', 'status_change', 'priority_change', 'add_tags', 'remove_tags', 'close'];
+    const validTypes = [
+      "assign",
+      "status_change",
+      "priority_change",
+      "add_tags",
+      "remove_tags",
+      "close",
+    ];
     if (!validTypes.includes(type)) {
       return NextResponse.json(
-        { error: 'Invalid operation type' },
-        { status: 400 }
+        { error: "Invalid operation type" },
+        { status: 400 },
       );
     }
 
@@ -82,10 +95,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ operation });
   } catch (error) {
-    console.error('Error creating bulk operation:', error);
+    console.error("Error creating bulk operation:", error);
     return NextResponse.json(
-      { error: 'Failed to create bulk operation' },
-      { status: 500 }
+      { error: "Failed to create bulk operation" },
+      { status: 500 },
     );
   }
 }

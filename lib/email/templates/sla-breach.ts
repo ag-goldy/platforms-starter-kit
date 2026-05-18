@@ -1,15 +1,15 @@
-import { escapeHtml, renderBaseTemplate } from './utils';
+import { escapeHtml, renderBaseTemplate } from "./utils";
 
 export function renderSlaBreachEmail(options: {
   ticketKey: string;
   subject: string;
-  slaType: 'Response' | 'Resolution';
+  slaType: "Response" | "Resolution";
   timeOverdue: string;
   ticketUrl: string;
 }) {
   const { ticketKey, subject, slaType, timeOverdue, ticketUrl } = options;
   const title = `SLA Breach Alert: ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p style="color: #ef4444; font-weight: 600;">⚠️ SLA Breach Detected</p>
     
@@ -57,7 +57,7 @@ View Ticket: ${ticketUrl}
   return {
     subject: `[SLA BREACH] Ticket ${ticketKey}`,
     html: renderBaseTemplate({
-      title: 'SLA Breach Alert',
+      title: "SLA Breach Alert",
       preheader: `SLA Breach detected for ticket ${ticketKey}`,
       bodyHtml,
     }),

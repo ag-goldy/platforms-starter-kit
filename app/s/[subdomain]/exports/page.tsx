@@ -1,11 +1,11 @@
-import { notFound } from 'next/navigation';
-import { getOrgBySubdomain } from '@/lib/subdomains/org-lookup';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { CustomerExportManager } from '@/components/customer/export-manager';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getOrgExportRequestsAction } from '@/app/s/[subdomain]/actions/exports';
-import { Download, Shield } from 'lucide-react';
-import type { ExportRequest } from '@/db/schema';
+import { notFound } from "next/navigation";
+import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { CustomerExportManager } from "@/components/customer/export-manager";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getOrgExportRequestsAction } from "@/app/s/[subdomain]/actions/exports";
+import { Download, Shield } from "lucide-react";
+import type { ExportRequest } from "@/db/schema";
 
 export default async function CustomerExportsPage({
   params,
@@ -20,7 +20,7 @@ export default async function CustomerExportsPage({
   }
 
   try {
-    await requireOrgMemberRole(org.id, ['CUSTOMER_ADMIN']);
+    await requireOrgMemberRole(org.id, ["CUSTOMER_ADMIN"]);
     const requests = await getOrgExportRequestsAction(org.id);
 
     return (
@@ -31,14 +31,19 @@ export default async function CustomerExportsPage({
             <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
               <Download className="w-6 h-6 text-orange-500" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Data Exports</h1>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+              Data Exports
+            </h1>
           </div>
           <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
             Request and download organization data exports
           </p>
         </div>
 
-        <CustomerExportManager orgId={org.id} requests={requests as ExportRequest[]} />
+        <CustomerExportManager
+          orgId={org.id}
+          requests={requests as ExportRequest[]}
+        />
       </div>
     );
   } catch {
@@ -49,10 +54,14 @@ export default async function CustomerExportsPage({
             <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Shield className="w-8 h-8 text-orange-500" />
             </div>
-            <CardTitle className="text-xl font-bold text-gray-900">Access Required</CardTitle>
+            <CardTitle className="text-xl font-bold text-gray-900">
+              Access Required
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-gray-500 text-center mb-4">Customer admins can request data exports.</p>
+            <p className="text-gray-500 text-center mb-4">
+              Customer admins can request data exports.
+            </p>
           </CardContent>
         </Card>
       </div>

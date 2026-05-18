@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, ArrowLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { ArticleEditor } from '@/components/kb/article-editor';
-import { useToast } from '@/components/ui/toast';
+} from "@/components/ui/select";
+import { ArticleEditor } from "@/components/kb/article-editor";
+import { useToast } from "@/components/ui/toast";
 
 type Org = { id: string; subdomain: string; name: string; slug: string };
 type Category = { id: string; name: string };
@@ -33,20 +33,22 @@ export default function PortalKBNewArticlePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [title, setTitle] = useState('');
-  const [categoryId, setCategoryId] = useState<string>('none');
-  const [status, setStatus] = useState<'draft' | 'published'>('draft');
-  const [visibility, setVisibility] = useState<'public' | 'org_only' | 'internal'>('public');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState("");
+  const [categoryId, setCategoryId] = useState<string>("none");
+  const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [visibility, setVisibility] = useState<
+    "public" | "org_only" | "internal"
+  >("public");
+  const [content, setContent] = useState("");
 
-  const isAdmin = role === 'CUSTOMER_ADMIN';
+  const isAdmin = role === "CUSTOMER_ADMIN";
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const orgRes = await fetch(`/api/org/${subdomain}`);
-        if (!orgRes.ok) throw new Error('Org not found');
+        if (!orgRes.ok) throw new Error("Org not found");
         const orgData = (await orgRes.json()) as Org;
         setOrg(orgData);
 
@@ -58,7 +60,9 @@ export default function PortalKBNewArticlePage() {
           setRole(null);
         }
 
-        const catRes = await fetch(`/api/kb/categories?orgId=${orgData.id}&includeInternal=true`);
+        const catRes = await fetch(
+          `/api/kb/categories?orgId=${orgData.id}&includeInternal=true`,
+        );
         if (catRes.ok) {
           const data = await catRes.json();
           setCategories((data.categories || []) as Category[]);
@@ -73,22 +77,28 @@ export default function PortalKBNewArticlePage() {
   }, [subdomain]);
 
   const canSubmit = useMemo(() => {
-    return title.trim().length > 2 && content.trim().length > 10 && !!org && isAdmin && !saving;
+    return (
+      title.trim().length > 2 &&
+      content.trim().length > 10 &&
+      !!org &&
+      isAdmin &&
+      !saving
+    );
   }, [title, content, org, isAdmin, saving]);
 
   async function handleSave() {
     if (!org) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/kb/articles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/kb/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgId: org.id,
           title,
           content,
-          contentType: 'html',
-          categoryId: categoryId === 'none' ? null : categoryId,
+          contentType: "html",
+          categoryId: categoryId === "none" ? null : categoryId,
           status,
           visibility,
           tags: [],
@@ -97,13 +107,13 @@ export default function PortalKBNewArticlePage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to create article');
+        throw new Error(data.error || "Failed to create article");
       }
 
-      success('Article created');
+      success("Article created");
       router.push(`/s/${subdomain}/kb/admin`);
     } catch (e) {
-      showError(e instanceof Error ? e.message : 'Failed to create article');
+      showError(e instanceof Error ? e.message : "Failed to create article");
     } finally {
       setSaving(false);
     }
@@ -123,7 +133,9 @@ export default function PortalKBNewArticlePage() {
         <CardHeader>
           <CardTitle>New Article</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-stone-600">Admin access required.</CardContent>
+        <CardContent className="text-sm text-stone-600">
+          Admin access required.
+        </CardContent>
       </Card>
     );
   }
@@ -178,7 +190,10 @@ export default function PortalKBNewArticlePage() {
 
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as 'draft' | 'published')}>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as "draft" | "published")}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -193,7 +208,9 @@ export default function PortalKBNewArticlePage() {
               <Label>Visibility</Label>
               <Select
                 value={visibility}
-                onValueChange={(v) => setVisibility(v as 'public' | 'org_only' | 'internal')}
+                onValueChange={(v) =>
+                  setVisibility(v as "public" | "org_only" | "internal")
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -216,4 +233,3 @@ export default function PortalKBNewArticlePage() {
     </div>
   );
 }
-

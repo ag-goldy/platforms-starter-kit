@@ -1,25 +1,30 @@
 /**
  * Database Connection
- * 
+ *
  * Supports two drivers:
  * 1. @neondatabase/serverless (default) - Optimized for serverless/edge environments
  * 2. postgres-js - Traditional PostgreSQL driver
- * 
+ *
  * Use DB_DRIVER=neon (default) or DB_DRIVER=postgres in environment
  */
 
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { drizzle as drizzleNeon, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import postgres from 'postgres';
-import { neon } from '@neondatabase/serverless';
-import * as schema from './schema';
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import {
+  drizzle as drizzleNeon,
+  type NeonHttpDatabase,
+} from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { neon } from "@neondatabase/serverless";
+import * as schema from "./schema";
 
 // Determine which driver to use
-const DRIVER = process.env.DB_DRIVER || 'neon';
-const useNeon = DRIVER === 'neon';
+const DRIVER = process.env.DB_DRIVER || "neon";
+const useNeon = DRIVER === "neon";
 
 // Type for the database client
-type DbClient = PostgresJsDatabase<typeof schema> | NeonHttpDatabase<typeof schema>;
+type DbClient =
+  | PostgresJsDatabase<typeof schema>
+  | NeonHttpDatabase<typeof schema>;
 
 // Singleton instances
 let postgresClient: postgres.Sql | null = null;
@@ -32,7 +37,7 @@ let dbInstance: DbClient | null = null;
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    throw new Error("DATABASE_URL environment variable is not set");
   }
   return url;
 }
@@ -42,7 +47,7 @@ function getDatabaseUrl(): string {
  */
 function createPostgresClient(): postgres.Sql {
   const url = getDatabaseUrl();
-  
+
   return postgres(url, {
     max: 10, // Connection pool size
     idle_timeout: 20, // Close idle connections after 20s
@@ -66,38 +71,41 @@ function getDbClient(): DbClient {
   if (dbInstance) {
     return dbInstance;
   }
-  
+
   if (useNeon) {
     // Use Neon serverless driver
     if (!neonClient) {
       neonClient = createNeonClient();
-      console.log('[DB] Using Neon serverless driver');
+      console.log("[DB] Using Neon serverless driver");
     }
     dbInstance = drizzleNeon(neonClient, { schema });
   } else {
     // Use postgres-js driver
     if (!postgresClient) {
       postgresClient = createPostgresClient();
-      console.log('[DB] Using postgres-js driver');
+      console.log("[DB] Using postgres-js driver");
     }
     dbInstance = drizzle(postgresClient, { schema });
   }
-  
+
   return dbInstance;
 }
 
 /**
  * Test database connection
  */
-export async function testConnection(): Promise<{ success: boolean; error?: string }> {
+export async function testConnection(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
     const db = getDbClient();
     // Simple query to test connection
-    await db.execute('SELECT 1 as test');
+    await db.execute("SELECT 1 as test");
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[DB] Connection test failed:', message);
+    console.error("[DB] Connection test failed:", message);
     return { success: false, error: message };
   }
 }
@@ -109,7 +117,7 @@ export async function closeConnection(): Promise<void> {
   if (postgresClient) {
     await postgresClient.end();
     postgresClient = null;
-    console.log('[DB] postgres-js connection closed');
+    console.log("[DB] postgres-js connection closed");
   }
   // Neon client doesn't need explicit closing
   neonClient = null;
@@ -124,7 +132,7 @@ export function getConnectionInfo(): {
   configured: boolean;
 } {
   return {
-    driver: useNeon ? 'neon' : 'postgres-js',
+    driver: useNeon ? "neon" : "postgres-js",
     configured: !!process.env.DATABASE_URL,
   };
 }

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Ticket,
   Plus,
@@ -12,8 +12,8 @@ import {
   ChevronRight,
   Inbox,
   Bug,
-} from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+} from "lucide-react";
+import { useCustomerPortal } from "@/components/customer/CustomerPortalContext";
 
 interface TicketInboxWidgetProps {
   subdomain: string;
@@ -42,7 +42,7 @@ interface TicketItem {
   isUnread?: boolean;
 }
 
-type FilterTab = 'all' | 'mine' | 'waiting' | 'resolved';
+type FilterTab = "all" | "mine" | "waiting" | "resolved";
 
 interface DiagnosticData {
   user?: {
@@ -66,9 +66,11 @@ interface DiagnosticData {
 export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [diagnosticData, setDiagnosticData] = useState<DiagnosticData | null>(null);
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [diagnosticData, setDiagnosticData] = useState<DiagnosticData | null>(
+    null,
+  );
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const { openSlideOver } = useCustomerPortal();
 
@@ -78,40 +80,40 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
       const data = await res.json();
       setDiagnosticData(data);
       setShowDiagnostic(true);
-      console.log('Diagnostic data:', data);
+      console.log("Diagnostic data:", data);
     } catch (error) {
-      console.error('Diagnostic failed:', error);
+      console.error("Diagnostic failed:", error);
     }
   };
 
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       if (!org?.id) {
-        console.error('No org ID available');
+        console.error("No org ID available");
         return;
       }
-      
-      const params = new URLSearchParams();
-      params.set('orgId', org.id);
-      params.set('filter', activeTab);
-      if (searchQuery) params.set('q', searchQuery);
 
-      console.log('Fetching tickets for org:', org.id, 'subdomain:', subdomain);
-      
+      const params = new URLSearchParams();
+      params.set("orgId", org.id);
+      params.set("filter", activeTab);
+      if (searchQuery) params.set("q", searchQuery);
+
+      console.log("Fetching tickets for org:", org.id, "subdomain:", subdomain);
+
       const res = await fetch(`/api/tickets?${params.toString()}`);
       const data = await res.json();
-      
+
       if (res.ok) {
-        console.log('Tickets fetched:', data.tickets?.length || 0);
+        console.log("Tickets fetched:", data.tickets?.length || 0);
         setTickets(data.tickets || []);
       } else {
-        console.error('Failed to fetch tickets:', data.error, res.status);
+        console.error("Failed to fetch tickets:", data.error, res.status);
         setTickets([]);
       }
     } catch (error) {
-      console.error('Failed to fetch tickets:', error);
+      console.error("Failed to fetch tickets:", error);
       setTickets([]);
     } finally {
       setLoading(false);
@@ -125,40 +127,40 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
   }, [fetchTickets]);
 
   const handleTicketClick = (ticket: TicketItem) => {
-    openSlideOver('ticket', { ticketId: ticket.id });
+    openSlideOver("ticket", { ticketId: ticket.id });
   };
 
   const handleCreateTicket = () => {
-    openSlideOver('ticket', { mode: 'create' });
+    openSlideOver("ticket", { mode: "create" });
   };
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      P1: 'bg-red-500',
-      P2: 'bg-orange-500',
-      P3: 'bg-blue-500',
-      P4: 'bg-stone-400',
+      P1: "bg-red-500",
+      P2: "bg-orange-500",
+      P3: "bg-blue-500",
+      P4: "bg-stone-400",
     };
-    return colors[priority] || 'bg-stone-400';
+    return colors[priority] || "bg-stone-400";
   };
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      NEW: 'text-amber-600 bg-amber-50',
-      OPEN: 'text-orange-600 bg-orange-50',
-      IN_PROGRESS: 'text-blue-600 bg-blue-50',
-      WAITING_ON_CUSTOMER: 'text-purple-600 bg-purple-50',
-      RESOLVED: 'text-emerald-600 bg-emerald-50',
-      CLOSED: 'text-stone-600 bg-stone-50',
+      NEW: "text-amber-600 bg-amber-50",
+      OPEN: "text-orange-600 bg-orange-50",
+      IN_PROGRESS: "text-blue-600 bg-blue-50",
+      WAITING_ON_CUSTOMER: "text-purple-600 bg-purple-50",
+      RESOLVED: "text-emerald-600 bg-emerald-50",
+      CLOSED: "text-stone-600 bg-stone-50",
     };
-    return colors[status] || 'text-stone-600 bg-stone-50';
+    return colors[status] || "text-stone-600 bg-stone-50";
   };
 
   const tabs: { id: FilterTab; label: string; count?: number }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'mine', label: 'Mine' },
-    { id: 'waiting', label: 'Waiting' },
-    { id: 'resolved', label: 'Resolved' },
+    { id: "all", label: "All" },
+    { id: "mine", label: "Mine" },
+    { id: "waiting", label: "Waiting" },
+    { id: "resolved", label: "Resolved" },
   ];
 
   return (
@@ -194,7 +196,9 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
       {showDiagnostic && diagnosticData && (
         <div className="px-4 py-3 border-b border-stone-100 bg-amber-50">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-sm text-amber-900">Diagnostic Results</h4>
+            <h4 className="font-medium text-sm text-amber-900">
+              Diagnostic Results
+            </h4>
             <button
               onClick={() => setShowDiagnostic(false)}
               className="text-xs text-amber-700 hover:text-amber-900"
@@ -203,16 +207,29 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
             </button>
           </div>
           <div className="text-xs space-y-1 text-amber-800">
-            <p><strong>User:</strong> {diagnosticData.user?.email || 'Not logged in'}</p>
-            <p><strong>Org:</strong> {diagnosticData.organization?.name || 'Not found'}</p>
-            <p><strong>Membership:</strong> {diagnosticData.membership?.role || 'Not a member'}</p>
-            <p><strong>Tickets found:</strong> {diagnosticData.ticketCount || 0}</p>
+            <p>
+              <strong>User:</strong>{" "}
+              {diagnosticData.user?.email || "Not logged in"}
+            </p>
+            <p>
+              <strong>Org:</strong>{" "}
+              {diagnosticData.organization?.name || "Not found"}
+            </p>
+            <p>
+              <strong>Membership:</strong>{" "}
+              {diagnosticData.membership?.role || "Not a member"}
+            </p>
+            <p>
+              <strong>Tickets found:</strong> {diagnosticData.ticketCount || 0}
+            </p>
             {diagnosticData.allUserOrganizations?.length > 0 && (
               <div className="mt-2">
                 <p className="font-medium">Your organizations:</p>
                 <ul className="list-disc list-inside pl-2">
                   {diagnosticData.allUserOrganizations.map((o) => (
-                    <li key={o.orgId}>{o.name} ({o.subdomain}) - {o.role}</li>
+                    <li key={o.orgId}>
+                      {o.name} ({o.subdomain}) - {o.role}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -229,8 +246,8 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
             onClick={() => setActiveTab(tab.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
               activeTab === tab.id
-                ? 'bg-stone-900 text-white'
-                : 'text-stone-600 hover:bg-stone-100'
+                ? "bg-stone-900 text-white"
+                : "text-stone-600 hover:bg-stone-100"
             }`}
           >
             {tab.label}
@@ -281,12 +298,16 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors text-left group"
               >
                 {/* Priority Indicator */}
-                <div className={`w-1 h-10 rounded-full ${getPriorityColor(ticket.priority)}`} />
+                <div
+                  className={`w-1 h-10 rounded-full ${getPriorityColor(ticket.priority)}`}
+                />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-mono text-xs text-stone-400">{ticket.key}</span>
+                    <span className="font-mono text-xs text-stone-400">
+                      {ticket.key}
+                    </span>
                     {ticket.isUnread && (
                       <span className="w-2 h-2 bg-brand-500 rounded-full" />
                     )}
@@ -297,10 +318,10 @@ export function TicketInboxWidget({ subdomain, org }: TicketInboxWidgetProps) {
                   <div className="flex items-center gap-3 mt-1">
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(
-                        ticket.status
+                        ticket.status,
                       )}`}
                     >
-                      {ticket.status.replace(/_/g, ' ')}
+                      {ticket.status.replace(/_/g, " ")}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-stone-400">
                       <Clock className="w-3 h-3" />

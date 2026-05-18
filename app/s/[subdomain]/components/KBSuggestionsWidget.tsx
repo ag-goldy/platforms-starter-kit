@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, ArrowRight, Clock, Eye, Sparkles } from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import { BookOpen, ArrowRight, Clock, Eye, Sparkles } from "lucide-react";
+import { useCustomerPortal } from "@/components/customer/CustomerPortalContext";
 
 interface KBSuggestionsWidgetProps {
   subdomain: string;
@@ -21,7 +21,10 @@ interface Article {
   isRecommended?: boolean;
 }
 
-export function KBSuggestionsWidget({ subdomain, org: _org }: KBSuggestionsWidgetProps) {
+export function KBSuggestionsWidget({
+  subdomain,
+  org: _org,
+}: KBSuggestionsWidgetProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const { openSlideOver } = useCustomerPortal();
@@ -32,14 +35,16 @@ export function KBSuggestionsWidget({ subdomain, org: _org }: KBSuggestionsWidge
       if (res.ok) {
         const data = await res.json();
         // Mark first 2 as recommended based on recent tickets
-        const articlesWithRecs = (data.articles || []).map((a: Article, i: number) => ({
-          ...a,
-          isRecommended: i < 2,
-        }));
+        const articlesWithRecs = (data.articles || []).map(
+          (a: Article, i: number) => ({
+            ...a,
+            isRecommended: i < 2,
+          }),
+        );
         setArticles(articlesWithRecs);
       }
     } catch (error) {
-      console.error('Failed to fetch articles:', error);
+      console.error("Failed to fetch articles:", error);
     } finally {
       setLoading(false);
     }
@@ -50,7 +55,7 @@ export function KBSuggestionsWidget({ subdomain, org: _org }: KBSuggestionsWidge
   }, [fetchArticles]);
 
   const handleArticleClick = (article: Article) => {
-    openSlideOver('kb', { articleSlug: article.slug });
+    openSlideOver("kb", { articleSlug: article.slug });
   };
 
   return (
@@ -62,7 +67,7 @@ export function KBSuggestionsWidget({ subdomain, org: _org }: KBSuggestionsWidge
           <h3 className="font-semibold text-stone-900">Knowledge Base</h3>
         </div>
         <button
-          onClick={() => openSlideOver('kb')}
+          onClick={() => openSlideOver("kb")}
           className="text-xs text-brand-600 hover:text-brand-700 font-medium"
         >
           View all

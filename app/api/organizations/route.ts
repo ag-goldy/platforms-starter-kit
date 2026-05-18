@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { organizations } from '@/db/schema';
-import { asc } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
+import { asc } from "drizzle-orm";
+import { auth } from "@/auth";
 
 // GET /api/organizations - List all organizations
 export async function GET(_: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const orgs = await db
@@ -24,10 +24,10 @@ export async function GET(_: NextRequest) {
 
     return NextResponse.json({ organizations: orgs });
   } catch (error) {
-    console.error('Failed to fetch organizations:', error);
+    console.error("Failed to fetch organizations:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch organizations' },
-      { status: 500 }
+      { error: "Failed to fetch organizations" },
+      { status: 500 },
     );
   }
 }

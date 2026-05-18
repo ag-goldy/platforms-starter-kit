@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Ticket,
   Clock,
@@ -16,14 +16,14 @@ import {
   Server,
   Plus,
   Unlink,
-} from 'lucide-react';
-import { useParams } from 'next/navigation';
-import { AssetSelector } from './AssetSelector';
+} from "lucide-react";
+import { useParams } from "next/navigation";
+import { AssetSelector } from "./AssetSelector";
 
 interface TicketSlideOverProps {
   data: {
     ticketId?: string;
-    mode?: 'view' | 'create';
+    mode?: "view" | "create";
   } | null;
   onClose: () => void;
 }
@@ -82,13 +82,13 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
   const subdomain = params?.subdomain as string;
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [replyText, setReplyText] = useState('');
-  const [isCreating, setIsCreating] = useState(data?.mode === 'create');
+  const [replyText, setReplyText] = useState("");
+  const [isCreating, setIsCreating] = useState(data?.mode === "create");
   const [newTicketForm, setNewTicketForm] = useState({
-    subject: '',
-    description: '',
-    priority: 'P3',
-    category: 'INCIDENT',
+    subject: "",
+    description: "",
+    priority: "P3",
+    category: "INCIDENT",
     subdomain,
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -109,28 +109,32 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
   // Scroll to bottom of comments
   useEffect(() => {
     if (ticket?.comments) {
-      commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [ticket?.comments]);
 
   const fetchTicket = async (ticketId: string) => {
     setLoading(true);
     try {
-      console.log('Fetching ticket:', ticketId);
+      console.log("Fetching ticket:", ticketId);
       const res = await fetch(`/api/tickets/${ticketId}`);
       const responseData = await res.json();
-      
+
       if (res.ok) {
-        console.log('Ticket fetched successfully:', responseData.key);
+        console.log("Ticket fetched successfully:", responseData.key);
         setTicket(responseData);
         // Also fetch linked assets
         fetchLinkedAssets(ticketId);
       } else {
-        console.error('Failed to fetch ticket:', responseData.error, res.status);
+        console.error(
+          "Failed to fetch ticket:",
+          responseData.error,
+          res.status,
+        );
         setTicket(null);
       }
     } catch (error) {
-      console.error('Failed to fetch ticket:', error);
+      console.error("Failed to fetch ticket:", error);
       setTicket(null);
     } finally {
       setLoading(false);
@@ -145,7 +149,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
         setLinkedAssets(responseData.assets || []);
       }
     } catch (error) {
-      console.error('Failed to fetch linked assets:', error);
+      console.error("Failed to fetch linked assets:", error);
     }
   };
 
@@ -153,29 +157,32 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     if (!ticket) return;
     try {
       const res = await fetch(`/api/tickets/${ticket.id}/assets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assetId: asset.id }),
       });
       if (res.ok) {
         setLinkedAssets((prev) => [...prev, asset]);
       }
     } catch (error) {
-      console.error('Failed to link asset:', error);
+      console.error("Failed to link asset:", error);
     }
   };
 
   const handleUnlinkAsset = async (assetId: string) => {
     if (!ticket) return;
     try {
-      const res = await fetch(`/api/tickets/${ticket.id}/assets?assetId=${assetId}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(
+        `/api/tickets/${ticket.id}/assets?assetId=${assetId}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         setLinkedAssets((prev) => prev.filter((a) => a.id !== assetId));
       }
     } catch (error) {
-      console.error('Failed to unlink asset:', error);
+      console.error("Failed to unlink asset:", error);
     }
   };
 
@@ -184,8 +191,8 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
 
     // Optimistic update
     const newComment: Comment = {
-      id: 'temp-' + Date.now(),
-      author: 'You',
+      id: "temp-" + Date.now(),
+      author: "You",
       content: replyText,
       isInternal: false,
       createdAt: new Date().toISOString(),
@@ -197,29 +204,30 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
             ...prev,
             comments: [...prev.comments, newComment],
           }
-        : null
+        : null,
     );
-    setReplyText('');
+    setReplyText("");
 
     // Actual API call
     try {
       await fetch(`/api/tickets/${ticket.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: replyText }),
       });
     } catch (error) {
-      console.error('Failed to submit reply:', error);
+      console.error("Failed to submit reply:", error);
     }
   };
 
   const handleCreateTicket = async () => {
-    if (!newTicketForm.subject.trim() || !newTicketForm.description.trim()) return;
+    if (!newTicketForm.subject.trim() || !newTicketForm.description.trim())
+      return;
 
     try {
       const res = await fetch(`/api/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTicketForm),
       });
 
@@ -229,7 +237,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
         fetchTicket(created.id);
       }
     } catch (error) {
-      console.error('Failed to create ticket:', error);
+      console.error("Failed to create ticket:", error);
     }
   };
 
@@ -242,16 +250,16 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     setIsUpdating(true);
     try {
       const res = await fetch(`/api/tickets/${ticket.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'RESOLVED' }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "RESOLVED" }),
       });
 
       if (res.ok) {
         fetchTicket(ticket.id);
       }
     } catch (error) {
-      console.error('Failed to resolve ticket:', error);
+      console.error("Failed to resolve ticket:", error);
     } finally {
       setIsUpdating(false);
     }
@@ -262,10 +270,10 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     setIsUpdating(true);
     try {
       const res = await fetch(`/api/tickets/${ticket.id}/escalate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          reason: 'Customer escalated',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: "Customer escalated",
         }),
       });
 
@@ -273,7 +281,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
         fetchTicket(ticket.id);
       }
     } catch (error) {
-      console.error('Failed to escalate ticket:', error);
+      console.error("Failed to escalate ticket:", error);
     } finally {
       setIsUpdating(false);
     }
@@ -289,22 +297,22 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      NEW: 'bg-amber-500',
-      OPEN: 'bg-orange-500',
-      IN_PROGRESS: 'bg-blue-500',
-      WAITING_ON_CUSTOMER: 'bg-purple-500',
-      RESOLVED: 'bg-emerald-500',
-      CLOSED: 'bg-stone-400',
+      NEW: "bg-amber-500",
+      OPEN: "bg-orange-500",
+      IN_PROGRESS: "bg-blue-500",
+      WAITING_ON_CUSTOMER: "bg-purple-500",
+      RESOLVED: "bg-emerald-500",
+      CLOSED: "bg-stone-400",
     };
-    return colors[status] || 'bg-stone-400';
+    return colors[status] || "bg-stone-400";
   };
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      P1: 'text-red-600 bg-red-50',
-      P2: 'text-orange-600 bg-orange-50',
-      P3: 'text-blue-600 bg-blue-50',
-      P4: 'text-stone-600 bg-stone-50',
+      P1: "text-red-600 bg-red-50",
+      P2: "text-orange-600 bg-orange-50",
+      P3: "text-blue-600 bg-blue-50",
+      P4: "text-stone-600 bg-stone-50",
     };
     return colors[priority] || colors.P3;
   };
@@ -323,8 +331,12 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">Create New Ticket</h2>
-            <p className="text-sm text-stone-500">Submit a new support request</p>
+            <h2 className="text-lg font-semibold text-stone-900">
+              Create New Ticket
+            </h2>
+            <p className="text-sm text-stone-500">
+              Submit a new support request
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -338,12 +350,17 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
         {/* Form */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-700">Subject</label>
+            <label className="text-sm font-medium text-stone-700">
+              Subject
+            </label>
             <input
               type="text"
               value={newTicketForm.subject}
               onChange={(e) =>
-                setNewTicketForm((prev) => ({ ...prev, subject: e.target.value }))
+                setNewTicketForm((prev) => ({
+                  ...prev,
+                  subject: e.target.value,
+                }))
               }
               placeholder="Brief summary of your issue"
               className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
@@ -352,11 +369,16 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-stone-700">Priority</label>
+              <label className="text-sm font-medium text-stone-700">
+                Priority
+              </label>
               <select
                 value={newTicketForm.priority}
                 onChange={(e) =>
-                  setNewTicketForm((prev) => ({ ...prev, priority: e.target.value }))
+                  setNewTicketForm((prev) => ({
+                    ...prev,
+                    priority: e.target.value,
+                  }))
                 }
                 className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
               >
@@ -367,11 +389,16 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-stone-700">Category</label>
+              <label className="text-sm font-medium text-stone-700">
+                Category
+              </label>
               <select
                 value={newTicketForm.category}
                 onChange={(e) =>
-                  setNewTicketForm((prev) => ({ ...prev, category: e.target.value }))
+                  setNewTicketForm((prev) => ({
+                    ...prev,
+                    category: e.target.value,
+                  }))
                 }
                 className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
               >
@@ -383,11 +410,16 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-700">Description</label>
+            <label className="text-sm font-medium text-stone-700">
+              Description
+            </label>
             <textarea
               value={newTicketForm.description}
               onChange={(e) =>
-                setNewTicketForm((prev) => ({ ...prev, description: e.target.value }))
+                setNewTicketForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
               }
               placeholder="Provide detailed information about your issue..."
               rows={8}
@@ -406,7 +438,9 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
           </button>
           <button
             onClick={handleCreateTicket}
-            disabled={!newTicketForm.subject.trim() || !newTicketForm.description.trim()}
+            disabled={
+              !newTicketForm.subject.trim() || !newTicketForm.description.trim()
+            }
             className="px-6 py-2 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Create Ticket
@@ -420,8 +454,12 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
         <Ticket className="w-12 h-12 text-stone-300 mb-4" />
-        <h3 className="text-lg font-medium text-stone-900 mb-1">Ticket not found</h3>
-        <p className="text-sm text-stone-500">The ticket you&apos;re looking for doesn&apos;t exist.</p>
+        <h3 className="text-lg font-medium text-stone-900 mb-1">
+          Ticket not found
+        </h3>
+        <p className="text-sm text-stone-500">
+          The ticket you&apos;re looking for doesn&apos;t exist.
+        </p>
       </div>
     );
   }
@@ -433,16 +471,20 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
         <div className="flex items-start justify-between pr-12">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <span className="font-mono text-sm text-stone-500">{ticket.key}</span>
+              <span className="font-mono text-sm text-stone-500">
+                {ticket.key}
+              </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(
-                  ticket.priority
+                  ticket.priority,
                 )}`}
               >
                 {ticket.priority}
               </span>
             </div>
-            <h2 className="text-lg font-semibold text-stone-900">{ticket.subject}</h2>
+            <h2 className="text-lg font-semibold text-stone-900">
+              {ticket.subject}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -455,9 +497,11 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
 
         <div className="flex items-center gap-4 mt-4">
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${getStatusColor(ticket.status)}`} />
+            <span
+              className={`w-2 h-2 rounded-full ${getStatusColor(ticket.status)}`}
+            />
             <span className="text-sm font-medium text-stone-700">
-              {ticket.status.replace(/_/g, ' ')}
+              {ticket.status.replace(/_/g, " ")}
             </span>
           </div>
           <span className="text-stone-300">|</span>
@@ -489,7 +533,9 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
                     {new Date(ticket.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-sm text-stone-700 whitespace-pre-wrap">{ticket.description}</p>
+                <p className="text-sm text-stone-700 whitespace-pre-wrap">
+                  {ticket.description}
+                </p>
               </div>
             </div>
           </div>
@@ -513,12 +559,16 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm text-stone-900">{comment.author}</span>
+                      <span className="font-medium text-sm text-stone-900">
+                        {comment.author}
+                      </span>
                       <span className="text-xs text-stone-400">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-stone-700 whitespace-pre-wrap">{comment.content}</p>
+                    <p className="text-sm text-stone-700 whitespace-pre-wrap">
+                      {comment.content}
+                    </p>
                   </div>
                 </motion.div>
               ))}
@@ -533,7 +583,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                       handleSubmitReply();
                     }
                   }}
@@ -572,7 +622,9 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
                     {ticket.assignee.name[0]}
                   </span>
                 </div>
-                <span className="text-sm font-medium text-stone-900">{ticket.assignee.name}</span>
+                <span className="text-sm font-medium text-stone-900">
+                  {ticket.assignee.name}
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-3 text-stone-500">
@@ -592,7 +644,9 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-stone-500">Category</span>
-                <span className="font-medium text-stone-900">{ticket.category}</span>
+                <span className="font-medium text-stone-900">
+                  {ticket.category}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-stone-500">Created</span>
@@ -657,7 +711,7 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
                         {asset.name}
                       </p>
                       <p className="text-xs text-stone-500">
-                        {asset.type} {asset.isZabbixSynced && '• Zabbix'}
+                        {asset.type} {asset.isZabbixSynced && "• Zabbix"}
                       </p>
                     </div>
                     <button
@@ -679,24 +733,24 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
               Actions
             </h4>
             <div className="space-y-2">
-              {ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && (
+              {ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && (
                 <button
                   onClick={handleResolveTicket}
                   disabled={isUpdating}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-stone-700 hover:bg-white hover:shadow-sm transition-all disabled:opacity-50"
                 >
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
-                  {isUpdating ? 'Updating...' : 'Mark as Resolved'}
+                  {isUpdating ? "Updating..." : "Mark as Resolved"}
                 </button>
               )}
-              {ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && (
+              {ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && (
                 <button
                   onClick={handleEscalateTicket}
                   disabled={isUpdating}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-stone-700 hover:bg-white hover:shadow-sm transition-all disabled:opacity-50"
                 >
                   <AlertTriangle className="w-4 h-4 text-red-500" />
-                  {isUpdating ? 'Updating...' : 'Escalate Ticket'}
+                  {isUpdating ? "Updating..." : "Escalate Ticket"}
                 </button>
               )}
               <button
@@ -730,14 +784,14 @@ export function TicketSlideOver({ data, onClose }: TicketSlideOverProps) {
                   onClick={() => setShowAssetSelector(false)}
                 />
                 <motion.div
-                  initial={{ opacity: 0, x: '100%' }}
+                  initial={{ opacity: 0, x: "100%" }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: '100%' }}
-                  transition={{ type: 'spring', damping: 25 }}
+                  exit={{ opacity: 0, x: "100%" }}
+                  transition={{ type: "spring", damping: 25 }}
                   className="fixed inset-y-0 right-0 w-full sm:w-[400px] bg-white shadow-2xl z-50"
                 >
                   <AssetSelector
-                    orgId={ticket.orgId || ''}
+                    orgId={ticket.orgId || ""}
                     subdomain={subdomain}
                     linkedAssets={linkedAssets}
                     onLink={handleLinkAsset}

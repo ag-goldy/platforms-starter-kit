@@ -1,11 +1,11 @@
 /**
  * AI Auto-Classification for Tickets
- * 
+ *
  * Automatically suggests category, priority, and assignee
  * based on ticket content using AI.
  */
 
-import { getAIResponse } from './client';
+import { getAIResponse } from "./client";
 
 interface ClassificationResult {
   category: { value: string; confidence: number } | null;
@@ -27,7 +27,7 @@ export async function classifyTicket(
   description: string,
   _orgId: string,
   existingCategories: string[],
-  existingAgents: AgentInfo[]
+  existingAgents: AgentInfo[],
 ): Promise<ClassificationResult> {
   // Skip if no API key available
   if (!process.env.BASETEN_API_KEY) {
@@ -40,8 +40,8 @@ Given this ticket:
 Subject: ${subject}
 Description: ${description}
 
-Available categories: ${existingCategories.join(', ') || 'General IT, WiFi/Network, IPTV, VoIP, Security/CCTV, Access Control'}
-Available agents: ${existingAgents.map(a => `${a.name}${a.specialties ? ` (specialties: ${a.specialties.join(', ')})` : ''}`).join(', ') || 'Support Team'}
+Available categories: ${existingCategories.join(", ") || "General IT, WiFi/Network, IPTV, VoIP, Security/CCTV, Access Control"}
+Available agents: ${existingAgents.map((a) => `${a.name}${a.specialties ? ` (specialties: ${a.specialties.join(", ")})` : ""}`).join(", ") || "Support Team"}
 
 Classify this ticket. Respond ONLY with valid JSON:
 {
@@ -57,17 +57,19 @@ Priority guide:
 - P4: Low priority, informational, scheduled maintenance`;
 
   try {
-    const response = await getAIResponse(
-      [{ role: 'user', content: prompt }],
-      { temperature: 0.1, max_tokens: 200 }
-    );
+    const response = await getAIResponse([{ role: "user", content: prompt }], {
+      temperature: 0.1,
+      max_tokens: 200,
+    });
 
     const content = response.choices[0]?.message?.content;
-    if (!content) return { category: null, priority: null, suggestedAssignee: null };
+    if (!content)
+      return { category: null, priority: null, suggestedAssignee: null };
 
     // Extract JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { category: null, priority: null, suggestedAssignee: null };
+    if (!jsonMatch)
+      return { category: null, priority: null, suggestedAssignee: null };
 
     const parsed = JSON.parse(jsonMatch[0]);
 
@@ -75,16 +77,19 @@ Priority guide:
     return {
       category: parsed.category?.confidence >= 80 ? parsed.category : null,
       priority: parsed.priority?.confidence >= 80 ? parsed.priority : null,
-      suggestedAssignee: parsed.assignee?.confidence >= 80
-        ? {
-            id: existingAgents.find(a => a.name === parsed.assignee.name)?.id || '',
-            reason: parsed.assignee.reason,
-            confidence: parsed.assignee.confidence,
-          }
-        : null,
+      suggestedAssignee:
+        parsed.assignee?.confidence >= 80
+          ? {
+              id:
+                existingAgents.find((a) => a.name === parsed.assignee.name)
+                  ?.id || "",
+              reason: parsed.assignee.reason,
+              confidence: parsed.assignee.confidence,
+            }
+          : null,
     };
   } catch (error) {
-    console.error('[AI Classification] Failed:', error);
+    console.error("[AI Classification] Failed:", error);
     return { category: null, priority: null, suggestedAssignee: null };
   }
 }

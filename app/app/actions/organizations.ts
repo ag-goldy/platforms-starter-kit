@@ -1,16 +1,26 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { organizations, users, memberships, kbCategories, kbArticles, zabbixConfigs } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { revalidatePath } from 'next/cache';
-import { eq, and, asc } from 'drizzle-orm';
-import { invalidateOrgSettings, invalidateOrgAll } from '@/lib/cache-invalidation';
-import type { OnboardingData } from '@/components/organizations/onboarding-wizard';
-import { rateLimit } from '@/lib/rate-limit';
-import { normalizeCustomerId } from '@/lib/tickets/keys';
-import { generateKbKey } from '@/lib/kb/keys';
+import { db } from "@/db";
+import {
+  organizations,
+  users,
+  memberships,
+  kbCategories,
+  kbArticles,
+  zabbixConfigs,
+} from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { revalidatePath } from "next/cache";
+import { eq, and, asc } from "drizzle-orm";
+import {
+  invalidateOrgSettings,
+  invalidateOrgAll,
+} from "@/lib/cache-invalidation";
+import type { OnboardingData } from "@/components/organizations/onboarding-wizard";
+import { rateLimit } from "@/lib/rate-limit";
+import { normalizeCustomerId } from "@/lib/tickets/keys";
+import { generateKbKey } from "@/lib/kb/keys";
 
 export interface OrgEmailSettings {
   allowPublicIntake: boolean;
@@ -29,15 +39,25 @@ export async function createOrganizationAction(data: {
   const user = await requireInternalRole();
 
   // 5 org creations per hour per admin — prevents accidental mass org creation
-  const rl = await rateLimit(`create-org:${user.user.id}`, { maxRequests: 5, windowSeconds: 3600 });
-  if (!rl.allowed) throw new Error('Rate limit exceeded: too many organizations created recently');
+  const rl = await rateLimit(`create-org:${user.user.id}`, {
+    maxRequests: 5,
+    windowSeconds: 3600,
+  });
+  if (!rl.allowed)
+    throw new Error(
+      "Rate limit exceeded: too many organizations created recently",
+    );
 
   // Validate slug and subdomain format
   const slugRegex = /^[a-z0-9-]+$/;
   if (!slugRegex.test(data.slug) || !slugRegex.test(data.subdomain)) {
-    throw new Error('Slug and subdomain must be lowercase alphanumeric with hyphens only');
+    throw new Error(
+      "Slug and subdomain must be lowercase alphanumeric with hyphens only",
+    );
   }
-  const customerId = data.customerId ? normalizeCustomerId(data.customerId) : null;
+  const customerId = data.customerId
+    ? normalizeCustomerId(data.customerId)
+    : null;
 
   const [org] = await db
     .insert(organizations)
@@ -52,35 +72,42 @@ export async function createOrganizationAction(data: {
   await logAudit({
     userId: user.user.id,
     orgId: org.id,
-    action: 'ORG_CREATED',
+    action: "ORG_CREATED",
     details: JSON.stringify({ name: org.name, slug: org.slug }),
   });
 
   // Create default automation rules for the new organization
   try {
-    const { createDefaultRules } = await import('@/lib/automation/default-rules');
+    const { createDefaultRules } =
+      await import("@/lib/automation/default-rules");
     await createDefaultRules(org.id);
   } catch (error) {
-    console.error('Failed to create default automation rules:', error);
+    console.error("Failed to create default automation rules:", error);
     // Don't fail organization creation if default rules fail
   }
 
-  revalidatePath('/app/organizations');
+  revalidatePath("/app/organizations");
   return { orgId: org.id };
 }
 
 /**
  * Create organization with full onboarding setup
  */
-export async function createOrganizationWithOnboardingAction(data: OnboardingData) {
+export async function createOrganizationWithOnboardingAction(
+  data: OnboardingData,
+) {
   const user = await requireInternalRole();
 
   // Validate slug and subdomain format
   const slugRegex = /^[a-z0-9-]+$/;
   if (!slugRegex.test(data.slug) || !slugRegex.test(data.subdomain)) {
-    throw new Error('Slug and subdomain must be lowercase alphanumeric with hyphens only');
+    throw new Error(
+      "Slug and subdomain must be lowercase alphanumeric with hyphens only",
+    );
   }
-  const customerId = data.customerId ? normalizeCustomerId(data.customerId) : null;
+  const customerId = data.customerId
+    ? normalizeCustomerId(data.customerId)
+    : null;
 
   // Create organization with all settings
   const [org] = await db
@@ -97,7 +124,7 @@ export async function createOrganizationWithOnboardingAction(data: OnboardingDat
       businessHours: {
         timezone: data.timezone,
         workingDays: [1, 2, 3, 4, 5], // Mon-Fri
-        workingHours: { start: '09:00', end: '17:00' },
+        workingHours: { start: "09:00", end: "17:00" },
         holidays: [],
       },
       // SLA Policy
@@ -114,16 +141,20 @@ export async function createOrganizationWithOnboardingAction(data: OnboardingDat
 
   // Create default automation rules
   try {
-    const { createDefaultRules } = await import('@/lib/automation/default-rules');
+    const { createDefaultRules } =
+      await import("@/lib/automation/default-rules");
     await createDefaultRules(org.id);
   } catch (error) {
-    console.error('Failed to create default automation rules:', error);
+    console.error("Failed to create default automation rules:", error);
   }
 
   // Create categories
   for (const categoryName of data.categories) {
     try {
-      const slug = categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const slug = categoryName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
       await db.insert(kbCategories).values({
         orgId: org.id,
         name: categoryName,
@@ -140,7 +171,7 @@ export async function createOrganizationWithOnboardingAction(data: OnboardingDat
   if (data.createDefaultArticles) {
     const defaultArticles = [
       {
-        title: 'How to Connect to Hotel WiFi',
+        title: "How to Connect to Hotel WiFi",
         content: `## How to Connect to Hotel WiFi
 
 ### Step 1: Select the Network
@@ -158,7 +189,7 @@ Open your browser and accept the terms of service if prompted.
 - Contact the front desk if issues persist`,
       },
       {
-        title: 'Using the In-Room Phone',
+        title: "Using the In-Room Phone",
         content: `## Using the In-Room Phone
 
 ### Making Calls
@@ -175,7 +206,7 @@ Open your browser and accept the terms of service if prompted.
 - For static, try hanging up and redialing`,
       },
       {
-        title: 'Troubleshooting TV Issues',
+        title: "Troubleshooting TV Issues",
         content: `## Troubleshooting TV Issues
 
 ### No Signal
@@ -201,9 +232,9 @@ Open your browser and accept the terms of service if prompted.
           title: article.title,
           slug: await generateKbKey(),
           content: article.content,
-          contentType: 'markdown',
-          status: 'PUBLISHED',
-          visibility: 'public',
+          contentType: "markdown",
+          status: "PUBLISHED",
+          visibility: "public",
           authorId: user.user.id,
         });
       } catch (error) {
@@ -251,14 +282,14 @@ Open your browser and accept the terms of service if prompted.
         syncIntervalMinutes: 5,
       });
     } catch (error) {
-      console.error('Failed to configure Zabbix:', error);
+      console.error("Failed to configure Zabbix:", error);
     }
   }
 
   await logAudit({
     userId: user.user.id,
     orgId: org.id,
-    action: 'ORG_CREATED',
+    action: "ORG_CREATED",
     details: JSON.stringify({
       name: org.name,
       slug: org.slug,
@@ -268,13 +299,18 @@ Open your browser and accept the terms of service if prompted.
     }),
   });
 
-  revalidatePath('/app/organizations');
+  revalidatePath("/app/organizations");
   return { orgId: org.id };
 }
 
-export async function updateOrganizationCustomerIdAction(orgId: string, customerId: string) {
+export async function updateOrganizationCustomerIdAction(
+  orgId: string,
+  customerId: string,
+) {
   const session = await requireInternalRole();
-  const normalizedCustomerId = customerId ? normalizeCustomerId(customerId) : null;
+  const normalizedCustomerId = customerId
+    ? normalizeCustomerId(customerId)
+    : null;
 
   await db
     .update(organizations)
@@ -286,10 +322,10 @@ export async function updateOrganizationCustomerIdAction(orgId: string, customer
 
   await logAudit({
     actorId: session.user.id,
-    actorKind: session.platformAdmin ? 'platform_admin' : 'user',
+    actorKind: session.platformAdmin ? "platform_admin" : "user",
     orgId,
-    action: 'organization.customer_id_updated',
-    resource: 'organization',
+    action: "organization.customer_id_updated",
+    resource: "organization",
     resourceId: orgId,
     details: { customerId: normalizedCustomerId },
   });
@@ -299,7 +335,10 @@ export async function updateOrganizationCustomerIdAction(orgId: string, customer
   return { success: true };
 }
 
-export async function updateOrg2FAPolicyAction(orgId: string, requireTwoFactor: boolean) {
+export async function updateOrg2FAPolicyAction(
+  orgId: string,
+  requireTwoFactor: boolean,
+) {
   const user = await requireInternalRole();
 
   await db
@@ -313,7 +352,7 @@ export async function updateOrg2FAPolicyAction(orgId: string, requireTwoFactor: 
   await logAudit({
     userId: user.user.id,
     orgId,
-    action: 'ORG_UPDATED',
+    action: "ORG_UPDATED",
     details: JSON.stringify({ requireTwoFactor }),
   });
 
@@ -328,7 +367,7 @@ export async function inviteUserAction(data: {
   orgId: string;
   email: string;
   name?: string;
-  role: 'CUSTOMER_ADMIN' | 'REQUESTER' | 'VIEWER';
+  role: "CUSTOMER_ADMIN" | "REQUESTER" | "VIEWER";
 }) {
   const user = await requireInternalRole();
 
@@ -353,12 +392,12 @@ export async function inviteUserAction(data: {
     where: (memberships, { eq, and }) =>
       and(
         eq(memberships.userId, targetUser.id),
-        eq(memberships.orgId, data.orgId)
+        eq(memberships.orgId, data.orgId),
       ),
   });
 
   if (existingMembership) {
-    throw new Error('User is already a member of this organization');
+    throw new Error("User is already a member of this organization");
   }
 
   // Create membership
@@ -371,7 +410,7 @@ export async function inviteUserAction(data: {
   await logAudit({
     userId: user.user.id,
     orgId: data.orgId,
-    action: 'USER_INVITED',
+    action: "USER_INVITED",
     details: JSON.stringify({ email: data.email, role: data.role }),
   });
 
@@ -381,7 +420,7 @@ export async function inviteUserAction(data: {
 export async function updateUserRoleAction(data: {
   orgId: string;
   userId: string;
-  role: 'CUSTOMER_ADMIN' | 'REQUESTER' | 'VIEWER';
+  role: "CUSTOMER_ADMIN" | "REQUESTER" | "VIEWER";
 }) {
   const user = await requireInternalRole();
 
@@ -391,14 +430,14 @@ export async function updateUserRoleAction(data: {
     .where(
       and(
         eq(memberships.userId, data.userId),
-        eq(memberships.orgId, data.orgId)
-      )
+        eq(memberships.orgId, data.orgId),
+      ),
     );
 
   await logAudit({
     userId: user.user.id,
     orgId: data.orgId,
-    action: 'USER_ROLE_CHANGED',
+    action: "USER_ROLE_CHANGED",
     details: JSON.stringify({ targetUserId: data.userId, role: data.role }),
   });
 
@@ -434,11 +473,11 @@ export async function disableOrganizationAction(orgId: string): Promise<void> {
   });
 
   if (!org) {
-    throw new Error('Organization not found');
+    throw new Error("Organization not found");
   }
 
   if (!org.isActive) {
-    throw new Error('Organization is already disabled');
+    throw new Error("Organization is already disabled");
   }
 
   // Update organization
@@ -456,7 +495,7 @@ export async function disableOrganizationAction(orgId: string): Promise<void> {
   await logAudit({
     userId: user.user.id,
     orgId,
-    action: 'ORG_DISABLED',
+    action: "ORG_DISABLED",
     details: JSON.stringify({ name: org.name }),
   });
 
@@ -464,7 +503,7 @@ export async function disableOrganizationAction(orgId: string): Promise<void> {
   await invalidateOrgSettings(orgId);
   await invalidateOrgAll(orgId);
 
-  revalidatePath('/app/organizations');
+  revalidatePath("/app/organizations");
   revalidatePath(`/app/organizations/${orgId}`);
 }
 
@@ -480,11 +519,11 @@ export async function enableOrganizationAction(orgId: string): Promise<void> {
   });
 
   if (!org) {
-    throw new Error('Organization not found');
+    throw new Error("Organization not found");
   }
 
   if (org.isActive) {
-    throw new Error('Organization is already enabled');
+    throw new Error("Organization is already enabled");
   }
 
   // Update organization
@@ -502,7 +541,7 @@ export async function enableOrganizationAction(orgId: string): Promise<void> {
   await logAudit({
     userId: user.user.id,
     orgId,
-    action: 'ORG_ENABLED',
+    action: "ORG_ENABLED",
     details: JSON.stringify({ name: org.name }),
   });
 
@@ -510,7 +549,7 @@ export async function enableOrganizationAction(orgId: string): Promise<void> {
   await invalidateOrgSettings(orgId);
   await invalidateOrgAll(orgId);
 
-  revalidatePath('/app/organizations');
+  revalidatePath("/app/organizations");
   revalidatePath(`/app/organizations/${orgId}`);
 }
 
@@ -521,7 +560,7 @@ export async function enableOrganizationAction(orgId: string): Promise<void> {
  */
 export async function deleteOrganizationAction(
   orgId: string,
-  confirmationName: string
+  confirmationName: string,
 ): Promise<void> {
   const user = await requireInternalRole();
 
@@ -531,24 +570,24 @@ export async function deleteOrganizationAction(
   });
 
   if (!org) {
-    throw new Error('Organization not found');
+    throw new Error("Organization not found");
   }
 
   // Verify confirmation name matches exactly
   if (confirmationName !== org.name) {
-    throw new Error('Organization name does not match confirmation');
+    throw new Error("Organization name does not match confirmation");
   }
 
   // Organization must be disabled before deletion
   if (org.isActive) {
-    throw new Error('Organization must be disabled before it can be deleted');
+    throw new Error("Organization must be disabled before it can be deleted");
   }
 
   // Log deletion BEFORE deleting (so we have the org reference)
   await logAudit({
     userId: user.user.id,
     orgId,
-    action: 'ORG_DELETED',
+    action: "ORG_DELETED",
     details: JSON.stringify({
       deletedOrgId: orgId,
       deletedOrgName: org.name,
@@ -568,18 +607,18 @@ export async function deleteOrganizationAction(
 
   // Trigger blob storage cleanup (can be async)
   try {
-    const { enqueueJob } = await import('@/lib/jobs/queue');
+    const { enqueueJob } = await import("@/lib/jobs/queue");
     await enqueueJob({
-      type: 'CLEANUP_ORG_STORAGE',
+      type: "CLEANUP_ORG_STORAGE",
       data: { orgId },
       maxAttempts: 3,
     });
   } catch (error) {
-    console.error('Failed to enqueue storage cleanup:', error);
+    console.error("Failed to enqueue storage cleanup:", error);
     // Don't fail deletion if cleanup job fails
   }
 
-  revalidatePath('/app/organizations');
+  revalidatePath("/app/organizations");
 }
 
 /**
@@ -587,7 +626,7 @@ export async function deleteOrganizationAction(
  */
 export async function updateOrgEmailSettingsAction(
   orgId: string,
-  settings: OrgEmailSettings
+  settings: OrgEmailSettings,
 ) {
   const user = await requireInternalRole();
 
@@ -595,15 +634,16 @@ export async function updateOrgEmailSettingsAction(
   if (settings.intakeEmailAddress) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(settings.intakeEmailAddress)) {
-      throw new Error('Invalid intake email address format');
+      throw new Error("Invalid intake email address format");
     }
   }
 
   // Validate email domain format if provided
   if (settings.emailDomain) {
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/;
+    const domainRegex =
+      /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/;
     if (!domainRegex.test(settings.emailDomain)) {
-      throw new Error('Invalid email domain format (e.g., hotel.com)');
+      throw new Error("Invalid email domain format (e.g., hotel.com)");
     }
   }
 
@@ -622,13 +662,13 @@ export async function updateOrgEmailSettingsAction(
   await logAudit({
     userId: user.user.id,
     orgId,
-    action: 'ORG_UPDATED',
+    action: "ORG_UPDATED",
     details: JSON.stringify({
       emailSettings: {
         allowPublicIntake: settings.allowPublicIntake,
         intakeEmailAddress: settings.intakeEmailAddress,
         autoReplyEnabled: settings.autoReplyEnabled,
-      }
+      },
     }),
   });
 

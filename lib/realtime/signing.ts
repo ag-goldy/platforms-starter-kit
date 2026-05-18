@@ -1,16 +1,22 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
 const DEFAULT_TOLERANCE_SECONDS = 300;
 
 export function getRealtimeSecret() {
-  return process.env.REALTIME_BROADCAST_SECRET || process.env.WORKER_API_KEY || '';
+  return (
+    process.env.REALTIME_BROADCAST_SECRET || process.env.WORKER_API_KEY || ""
+  );
 }
 
-export function signRealtimePayload(body: string, timestamp: string, secret = getRealtimeSecret()) {
+export function signRealtimePayload(
+  body: string,
+  timestamp: string,
+  secret = getRealtimeSecret(),
+) {
   return crypto
-    .createHmac('sha256', secret)
+    .createHmac("sha256", secret)
     .update(`${timestamp}.${body}`)
-    .digest('hex');
+    .digest("hex");
 }
 
 export function verifyRealtimeSignature({
@@ -35,8 +41,11 @@ export function verifyRealtimeSignature({
   if (ageSeconds > toleranceSeconds) return false;
 
   const expected = signRealtimePayload(body, timestamp, secret);
-  const expectedBuffer = Buffer.from(expected, 'hex');
-  const actualBuffer = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expected, "hex");
+  const actualBuffer = Buffer.from(signature, "hex");
 
-  return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+  return (
+    expectedBuffer.length === actualBuffer.length &&
+    crypto.timingSafeEqual(expectedBuffer, actualBuffer)
+  );
 }

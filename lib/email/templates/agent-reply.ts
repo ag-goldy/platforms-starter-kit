@@ -1,4 +1,4 @@
-import { escapeHtml, formatMultilineText, renderBaseTemplate } from './utils';
+import { escapeHtml, formatMultilineText, renderBaseTemplate } from "./utils";
 
 export function renderAgentReplyEmail(options: {
   ticketKey: string;
@@ -9,7 +9,7 @@ export function renderAgentReplyEmail(options: {
 }) {
   const { ticketKey, subject, agentName, comment, ticketUrl } = options;
   const title = `New Reply on ${ticketKey}`;
-  
+
   const bodyHtml = `
     <p>Hi there,</p>
     
@@ -21,11 +21,15 @@ export function renderAgentReplyEmail(options: {
       </p>
     </div>
     
-    ${ticketUrl ? `
+    ${
+      ticketUrl
+        ? `
     <div style="text-align: center; margin: 30px 0;">
       <a href="${ticketUrl}" class="btn">View Ticket</a>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
     
     <p style="font-size: 12px; color: #6b7280; text-align: center;">
       Ticket: ${escapeHtml(ticketKey)} • ${escapeHtml(subject)}
@@ -35,10 +39,10 @@ export function renderAgentReplyEmail(options: {
   return {
     subject: `Re: ${subject} (${ticketKey})`,
     html: renderBaseTemplate({
-      title: 'New Reply',
+      title: "New Reply",
       preheader: `${agentName} replied to ticket ${ticketKey}`,
       bodyHtml,
     }),
-    text: `New reply on ticket ${ticketKey}\n\n${agentName} replied:\n${comment}\n\n${ticketUrl ? `View ticket: ${ticketUrl}\n\n` : ''}Subject: ${subject}`,
+    text: `New reply on ticket ${ticketKey}\n\n${agentName} replied:\n${comment}\n\n${ticketUrl ? `View ticket: ${ticketUrl}\n\n` : ""}Subject: ${subject}`,
   };
 }

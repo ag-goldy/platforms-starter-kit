@@ -1,35 +1,35 @@
-import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
-import { eq, and } from 'drizzle-orm';
-import { db } from '../db';
-import { organizations, users, memberships } from '../db/schema';
+import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
+import { eq, and } from "drizzle-orm";
+import { db } from "../db";
+import { organizations, users, memberships } from "../db/schema";
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ".env.local" });
 
-const TEMP_PASSWORD = 'ChangeMe123!';
-const ORG_NAME = 'AGR Capital Group';
-const ORG_SLUG = 'agr-capital-group';
-const ORG_SUBDOMAIN = 'agrcapitalgroup';
+const TEMP_PASSWORD = "ChangeMe123!";
+const ORG_NAME = "AGR Capital Group";
+const ORG_SLUG = "agr-capital-group";
+const ORG_SUBDOMAIN = "agrcapitalgroup";
 
 type RequestedUser = {
   email: string;
   name: string;
   isInternal: boolean;
-  role: 'AGENT' | 'REQUESTER';
+  role: "AGENT" | "REQUESTER";
 };
 
 const requestedUsers: RequestedUser[] = [
   {
-    email: 'help@agrnetworks.com',
-    name: 'Help Desk Agent',
+    email: "help@agrnetworks.com",
+    name: "Help Desk Agent",
     isInternal: true,
-    role: 'AGENT',
+    role: "AGENT",
   },
   {
-    email: 'agisthegoat49@gmail.com',
-    name: 'AGR Capital Group Customer',
+    email: "agisthegoat49@gmail.com",
+    name: "AGR Capital Group Customer",
     isInternal: false,
-    role: 'REQUESTER',
+    role: "REQUESTER",
   },
 ];
 
@@ -49,7 +49,7 @@ async function ensureOrganization() {
       name: ORG_NAME,
       slug: ORG_SLUG,
       subdomain: ORG_SUBDOMAIN,
-      platformRegion: 'sg',
+      platformRegion: "sg",
       allowPublicIntake: true,
       autoReplyEnabled: true,
       createdAt: new Date(),
@@ -61,7 +61,11 @@ async function ensureOrganization() {
   return org;
 }
 
-async function ensureUser(orgId: string, userData: RequestedUser, passwordHash: string) {
+async function ensureUser(
+  orgId: string,
+  userData: RequestedUser,
+  passwordHash: string,
+) {
   const existingUser = await db.query.users.findFirst({
     where: eq(users.email, userData.email),
   });
@@ -137,7 +141,7 @@ async function main() {
     await ensureUser(org.id, userData, passwordHash);
   }
 
-  console.log('\n✨ Requested logins are ready.');
+  console.log("\n✨ Requested logins are ready.");
   console.log(`Organization: ${ORG_NAME}`);
   console.log(`Agent: help@agrnetworks.com / ${TEMP_PASSWORD}`);
   console.log(`Customer: agisthegoat49@gmail.com / ${TEMP_PASSWORD}`);
@@ -146,6 +150,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error('❌ Failed to create requested logins:', error);
+    console.error("❌ Failed to create requested logins:", error);
     process.exit(1);
   });

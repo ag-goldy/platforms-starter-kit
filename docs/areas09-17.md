@@ -23,7 +23,6 @@ System health: real-time charts.
 Feature flag editor.
 Impersonation: button + reason modal + persistent banner during session.
 
-
 Area 10: Ticket Lifecycle and Status Workflows
 Decisions to lock:
 
@@ -32,7 +31,6 @@ Status transitions: which transitions are agent-only, which are customer-allowed
 Customer can: open → reopen (by replying after resolved), close own ticket from resolved.
 Agent can: any transition.
 Automation can: any transition.
-
 
 Should reopen create a new SLA cycle or resume the previous one? Recommendation: new SLA cycle for reopened tickets, with a "reopened from previous resolution" event in the activity log.
 Auto-close after X days on resolved without customer reply: configurable per org? Recommendation: yes, default 7 days.
@@ -46,7 +44,6 @@ Reopen rules and event logging.
 Auto-close cron: scans resolved tickets older than threshold, closes with system message.
 Merge flow UI and audit trail.
 Linked tickets (related, duplicate, blocks, blocked_by) and how they show in detail view.
-
 
 Area 11: SLA and Escalation Engine
 Decisions to lock:
@@ -64,7 +61,6 @@ Cron schedule (every 5 min, scans tickets, fires events idempotently).
 Escalation rule builder UI.
 Visual timeline showing applied policy, remaining time, breaches.
 SLA report page: breach rate, average response time, average resolution time, by priority and team.
-
 
 Area 12: Knowledge Base
 Decisions to lock:
@@ -86,7 +82,6 @@ Search: hybrid (FTS + vector cosine), reranking.
 Feedback loop (thumbs + comment + escalate).
 AI-draft from ticket button.
 
-
 Area 13: Asset Management
 Decisions to lock:
 
@@ -105,7 +100,6 @@ Zabbix sync job (15-min interval, idempotent upsert).
 Auto-ticket from Zabbix trigger (rate-limited 10/host/hour).
 Asset → ticket linking from both directions.
 
-
 Area 14: AI Integration (Zeus)
 Decisions to lock:
 
@@ -116,7 +110,6 @@ Tier 1 (cheap, fast): classification, sentiment, simple suggestions.
 Tier 2 (balanced): drafting, summarization.
 Tier 3 (premium): admin AI chat with full context, complex reasoning.
 Recommend Claude Haiku 4.5 for Tier 1, Sonnet 4.6 for Tier 2, Opus 4.7 for Tier 3 if cost permits.
-
 
 Token budget per org: hard cap or soft warning? Recommendation: hard cap with admin alert at 80%.
 Internal notes in AI context: never (default), or admin opt-in per org? Recommendation: admin opt-in per org, off by default. Even when on, redact PII.
@@ -129,7 +122,6 @@ Defenses: input validation, injection scoring, PII redaction, output filtering, 
 AI features: ticket summary, categorize, suggest reply, smart assignment, KB draft from ticket.
 Audit logging (hashes only, never bodies).
 Per-org AI config UI: enable/disable, data access toggles, system instructions, model selection per feature.
-
 
 Area 15: Email-to-Ticket and Outbound Email
 Decisions to lock:
@@ -149,7 +141,6 @@ Outbound outbox pattern (already in master plan).
 Per-tenant from-address configuration.
 Bounce processing.
 
-
 Area 16: Notifications and Real-time
 Decisions to lock:
 
@@ -168,7 +159,6 @@ Web push subscription flow (user opts in, VAPID key exchange, subscription store
 Email digest cron with templated rollups.
 Notification preferences UI.
 
-
 Area 17: Reporting and Analytics
 Decisions to lock:
 
@@ -179,7 +169,6 @@ Volume (tickets created/resolved by day/week/month).
 CSAT (per agent, per category, with comments).
 Agent performance (handle time, FCR, response time).
 KB analytics (article views, helpful votes, search misses).
-
 
 Custom reports: builder UI in v1, or hardcoded reports? Recommendation: hardcoded core 5 in v1; builder in v2.
 Export: CSV always; PDF? Recommendation: never (rule already locked: no PDF anywhere).
@@ -192,7 +181,6 @@ Charts using Recharts; consistent visual style with design system.
 CSV export per report (signed URL, async if dataset > 10k rows).
 Scheduled email reports (weekly summary to admins, configurable).
 Drill-down from chart to ticket list filtered by clicked dimension.
-
 
 Closing area: Implementation Roadmap
 After Areas 1-17 are all locked, the master plan's Section 9 (Build Sequence) becomes the runbook. Update it once with any deltas from the deep dives.

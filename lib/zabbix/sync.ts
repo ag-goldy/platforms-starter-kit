@@ -1,20 +1,20 @@
 /**
  * Zabbix Sync Service
- * 
+ *
  * Syncs monitoring data from Zabbix to local database
  */
 
-import { ZabbixClient, ZabbixTrigger } from './client';
-import { db } from '@/db';
-import { assets } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { ZabbixClient, ZabbixTrigger } from "./client";
+import { db } from "@/db";
+import { assets } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import {
   getZabbixConfigByOrgId,
   getServicesWithMonitoring,
   updateServiceMonitoring,
   addMonitoringHistory,
-} from './queries';
-import { processTriggerEvents } from '@/lib/monitoring/auto-ticket';
+} from "./queries";
+import { processTriggerEvents } from "@/lib/monitoring/auto-ticket";
 
 export interface SyncResult {
   serviceId: string;
@@ -26,7 +26,7 @@ export interface SyncResult {
   problemsCount?: number;
   autoTickets?: Array<{
     triggerId: string;
-    action: 'created' | 'resolved' | 'skipped';
+    action: "created" | "resolved" | "skipped";
     ticketKey?: string;
     error?: string;
   }>;
@@ -36,37 +36,37 @@ export interface AssetSyncResult {
   assetId: string;
   assetName: string;
   zabbixHostId: string;
-  action: 'created' | 'updated';
+  action: "created" | "updated";
   success: boolean;
   status: string;
   error?: string;
   triggersCount?: number;
   problemsCount?: number;
-  autoTickets?: SyncResult['autoTickets'];
+  autoTickets?: SyncResult["autoTickets"];
 }
 
 /**
  * Calculate monitoring status based on triggers
  */
 function calculateStatus(triggers: ZabbixTrigger[]): string {
-  const problems = triggers.filter(t => t.value === '1');
-  
+  const problems = triggers.filter((t) => t.value === "1");
+
   if (problems.length === 0) {
-    return 'OPERATIONAL';
+    return "OPERATIONAL";
   }
 
   // Check priority levels
-  const critical = problems.filter(t => t.priority === '5'); // Disaster
-  const high = problems.filter(t => t.priority === '4'); // High
-  
+  const critical = problems.filter((t) => t.priority === "5"); // Disaster
+  const high = problems.filter((t) => t.priority === "4"); // High
+
   if (critical.length > 0) {
-    return 'CRITICAL';
+    return "CRITICAL";
   }
   if (high.length > 0) {
-    return 'DEGRADED';
+    return "DEGRADED";
   }
-  
-  return 'MINOR_ISSUES';
+
+  return "MINOR_ISSUES";
 }
 
 /**
@@ -76,10 +76,10 @@ function calculateStatus(triggers: ZabbixTrigger[]): string {
  */
 function calculateUptime(triggers: ZabbixTrigger[]): number {
   if (triggers.length === 0) return 100;
-  
-  const problems = triggers.filter(t => t.value === '1');
+
+  const problems = triggers.filter((t) => t.value === "1");
   const operational = triggers.length - problems.length;
-  
+
   return Math.round((operational / triggers.length) * 100 * 100) / 100;
 }
 
@@ -88,40 +88,52 @@ function calculateUptime(triggers: ZabbixTrigger[]): number {
  */
 async function syncService(
   client: ZabbixClient,
-  service: { id: string; name: string; zabbixHostId: string | null; monitoringEnabled: boolean | null },
-  orgId: string
+  service: {
+    id: string;
+    name: string;
+    zabbixHostId: string | null;
+    monitoringEnabled: boolean | null;
+  },
+  orgId: string,
 ): Promise<SyncResult> {
   if (!service.zabbixHostId || !service.monitoringEnabled) {
     return {
       serviceId: service.id,
       serviceName: service.name,
       success: true,
-      status: 'NOT_CONFIGURED',
+      status: "NOT_CONFIGURED",
     };
   }
 
   try {
     // Get host info
-    console.log(`[Zabbix Sync] Fetching host ${service.zabbixHostId} from Zabbix`);
+    console.log(
+      `[Zabbix Sync] Fetching host ${service.zabbixHostId} from Zabbix`,
+    );
     const host = await client.getHostById(service.zabbixHostId);
     if (!host) {
-      throw new Error('Host not found in Zabbix');
+      throw new Error("Host not found in Zabbix");
     }
     console.log(`[Zabbix Sync] Found host: ${host.name}`);
 
     // Get triggers for the host
     const triggers = await client.getTriggersByHostId(service.zabbixHostId);
-    console.log(`[Zabbix Sync] Found ${triggers.length} triggers, ${triggers.filter(t => t.value === '1').length} problems`);
-    
+    console.log(
+      `[Zabbix Sync] Found ${triggers.length} triggers, ${triggers.filter((t) => t.value === "1").length} problems`,
+    );
+
     // Calculate status
     const status = calculateStatus(triggers);
     const uptimePercentage = calculateUptime(triggers);
-    const problemsCount = triggers.filter(t => t.value === '1').length;
+    const problemsCount = triggers.filter((t) => t.value === "1").length;
 
     // Get response time if available (look for common item keys)
-    const responseTimeItems = await client.getItemsByHostId(service.zabbixHostId, 'response');
+    const responseTimeItems = await client.getItemsByHostId(
+      service.zabbixHostId,
+      "response",
+    );
     let responseTimeMs: number | undefined;
-    
+
     if (responseTimeItems.length > 0 && responseTimeItems[0].lastvalue) {
       responseTimeMs = Math.round(parseFloat(responseTimeItems[0].lastvalue));
     }
@@ -143,19 +155,24 @@ async function syncService(
       responseTimeMs,
       alertsCount: problemsCount,
       details: {
-        triggers: triggers.map(t => ({
+        triggers: triggers.map((t) => ({
           id: t.triggerid,
           description: t.description,
           priority: t.priority,
-          status: t.value === '1' ? 'PROBLEM' : 'OK',
+          status: t.value === "1" ? "PROBLEM" : "OK",
         })),
       },
     });
 
     // Process auto-ticket creation for problem triggers
-    let autoTickets: SyncResult['autoTickets'] = [];
+    let autoTickets: SyncResult["autoTickets"] = [];
     if (triggers.length > 0) {
-      autoTickets = await processTriggerEvents(orgId, service.zabbixHostId, host.name, triggers);
+      autoTickets = await processTriggerEvents(
+        orgId,
+        service.zabbixHostId,
+        host.name,
+        triggers,
+      );
     }
 
     return {
@@ -168,11 +185,12 @@ async function syncService(
       autoTickets,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
     // Update service with error status
     await updateServiceMonitoring(service.id, {
-      monitoringStatus: 'ERROR',
+      monitoringStatus: "ERROR",
       lastSyncedAt: new Date(),
     });
 
@@ -180,7 +198,7 @@ async function syncService(
       serviceId: service.id,
       serviceName: service.name,
       success: false,
-      status: 'ERROR',
+      status: "ERROR",
       error: errorMessage,
     };
   }
@@ -191,9 +209,9 @@ async function syncService(
  */
 export async function syncOrgServices(orgId: string): Promise<SyncResult[]> {
   const config = await getZabbixConfigByOrgId(orgId);
-  
+
   if (!config || !config.isActive) {
-    throw new Error('Zabbix not configured for this organization');
+    throw new Error("Zabbix not configured for this organization");
   }
 
   const client = new ZabbixClient({
@@ -209,12 +227,16 @@ export async function syncOrgServices(orgId: string): Promise<SyncResult[]> {
 
   // Get all services for org
   const services = await getServicesWithMonitoring(orgId);
-  console.log(`[Zabbix Sync] Found ${services.length} services for org ${orgId}`);
-  
+  console.log(
+    `[Zabbix Sync] Found ${services.length} services for org ${orgId}`,
+  );
+
   // Sync each service
   const results: SyncResult[] = [];
   for (const service of services) {
-    console.log(`[Zabbix Sync] Syncing service: ${service.name} (hostId: ${service.zabbixHostId}, enabled: ${service.monitoringEnabled})`);
+    console.log(
+      `[Zabbix Sync] Syncing service: ${service.name} (hostId: ${service.zabbixHostId}, enabled: ${service.monitoringEnabled})`,
+    );
     const result = await syncService(client, service, orgId);
     console.log(`[Zabbix Sync] Result:`, result);
     results.push(result);
@@ -233,7 +255,7 @@ export async function syncOrgAssets(orgId: string): Promise<AssetSyncResult[]> {
   const config = await getZabbixConfigByOrgId(orgId);
 
   if (!config || !config.isActive) {
-    throw new Error('Zabbix not configured for this organization');
+    throw new Error("Zabbix not configured for this organization");
   }
 
   const client = new ZabbixClient({
@@ -253,16 +275,21 @@ export async function syncOrgAssets(orgId: string): Promise<AssetSyncResult[]> {
     try {
       const triggers = await client.getTriggersByHostId(host.hostid);
       const status = calculateStatus(triggers);
-      const problemsCount = triggers.filter((trigger) => trigger.value === '1').length;
+      const problemsCount = triggers.filter(
+        (trigger) => trigger.value === "1",
+      ).length;
 
       const existing = await db.query.assets.findFirst({
-        where: and(eq(assets.orgId, orgId), eq(assets.zabbixHostId, host.hostid)),
+        where: and(
+          eq(assets.orgId, orgId),
+          eq(assets.zabbixHostId, host.hostid),
+        ),
       });
 
       const values = {
         name: host.name || host.host,
         hostname: host.host || host.name,
-        type: 'SERVER',
+        type: "SERVER",
         zabbixHostId: host.hostid,
         zabbixHostName: host.name || host.host,
         zabbixTriggers: triggers,
@@ -273,7 +300,7 @@ export async function syncOrgAssets(orgId: string): Promise<AssetSyncResult[]> {
       };
 
       let assetId: string;
-      let action: AssetSyncResult['action'];
+      let action: AssetSyncResult["action"];
 
       if (existing) {
         const [updated] = await db
@@ -283,25 +310,31 @@ export async function syncOrgAssets(orgId: string): Promise<AssetSyncResult[]> {
           .returning();
 
         assetId = updated?.id || existing.id;
-        action = 'updated';
+        action = "updated";
       } else {
         const [created] = await db
           .insert(assets)
           .values({
             orgId,
             ...values,
-            status: host.available === '1' ? 'ACTIVE' : 'MAINTENANCE',
+            status: host.available === "1" ? "ACTIVE" : "MAINTENANCE",
             createdAt: new Date(),
           })
           .returning();
 
         assetId = created.id;
-        action = 'created';
+        action = "created";
       }
 
-      const autoTickets = triggers.length > 0
-        ? await processTriggerEvents(orgId, host.hostid, host.name || host.host, triggers)
-        : [];
+      const autoTickets =
+        triggers.length > 0
+          ? await processTriggerEvents(
+              orgId,
+              host.hostid,
+              host.name || host.host,
+              triggers,
+            )
+          : [];
 
       results.push({
         assetId,
@@ -316,13 +349,13 @@ export async function syncOrgAssets(orgId: string): Promise<AssetSyncResult[]> {
       });
     } catch (error) {
       results.push({
-        assetId: '',
+        assetId: "",
         assetName: host.name || host.host,
         zabbixHostId: host.hostid,
-        action: 'updated',
+        action: "updated",
         success: false,
-        status: 'ERROR',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        status: "ERROR",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }
@@ -335,12 +368,12 @@ export async function syncOrgAssets(orgId: string): Promise<AssetSyncResult[]> {
  */
 export async function syncSingleService(
   orgId: string,
-  serviceId: string
+  serviceId: string,
 ): Promise<SyncResult> {
   const config = await getZabbixConfigByOrgId(orgId);
-  
+
   if (!config || !config.isActive) {
-    throw new Error('Zabbix not configured for this organization');
+    throw new Error("Zabbix not configured for this organization");
   }
 
   const client = new ZabbixClient({
@@ -349,10 +382,10 @@ export async function syncSingleService(
   });
 
   const services = await getServicesWithMonitoring(orgId);
-  const service = services.find(s => s.id === serviceId);
-  
+  const service = services.find((s) => s.id === serviceId);
+
   if (!service) {
-    throw new Error('Service not found');
+    throw new Error("Service not found");
   }
 
   return syncService(client, service, orgId);

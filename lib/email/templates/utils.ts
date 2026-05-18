@@ -1,9 +1,9 @@
 const htmlEscapes: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
 };
 
 export function escapeHtml(value: string) {
@@ -11,7 +11,7 @@ export function escapeHtml(value: string) {
 }
 
 export function formatMultilineText(value: string) {
-  return escapeHtml(value).replace(/\n/g, '<br>');
+  return escapeHtml(value).replace(/\n/g, "<br>");
 }
 
 export function renderBaseTemplate(options: {
@@ -25,24 +25,23 @@ export function renderBaseTemplate(options: {
   supportEmail?: string;
 }) {
   const { title, preheader, bodyHtml, footerHtml } = options;
-  const safePreheader = preheader ? escapeHtml(preheader) : '';
+  const safePreheader = preheader ? escapeHtml(preheader) : "";
   const brandName =
-    options.brandName || process.env.EMAIL_BRAND_NAME || 'AGR Networks';
-  const supportUrl =
-    options.supportUrl || process.env.EMAIL_SUPPORT_URL || '';
+    options.brandName || process.env.EMAIL_BRAND_NAME || "AGR Networks";
+  const supportUrl = options.supportUrl || process.env.EMAIL_SUPPORT_URL || "";
   const supportEmail =
     options.supportEmail ||
     process.env.SUPPORT_INBOX_EMAIL ||
-    'support@agrnetworks.com';
-  
+    "support@agrnetworks.com";
+
   // Theme Colors
   const theme = {
-    primary: '#f97316', // Orange
-    secondary: '#000000', // Black
-    text: '#333333',
-    bg: '#f5f5f5',
-    white: '#ffffff',
-    border: '#e5e7eb'
+    primary: "#f97316", // Orange
+    secondary: "#000000", // Black
+    text: "#333333",
+    bg: "#f5f5f5",
+    white: "#ffffff",
+    border: "#e5e7eb",
   };
 
   const footerDefault = `
@@ -50,7 +49,7 @@ export function renderBaseTemplate(options: {
       <p style="margin: 0 0 10px 0;">
         &copy; ${new Date().getFullYear()} ${escapeHtml(brandName)}. All rights reserved.
       </p>
-      ${supportUrl ? `<p style="margin: 0;"><a href="${supportUrl}" style="color: ${theme.primary}; text-decoration: none;">Help Center</a> • <a href="mailto:${supportEmail}" style="color: ${theme.primary}; text-decoration: none;">Contact Support</a></p>` : ''}
+      ${supportUrl ? `<p style="margin: 0;"><a href="${supportUrl}" style="color: ${theme.primary}; text-decoration: none;">Help Center</a> • <a href="mailto:${supportEmail}" style="color: ${theme.primary}; text-decoration: none;">Contact Support</a></p>` : ""}
     </div>
   `;
 

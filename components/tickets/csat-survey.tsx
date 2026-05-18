@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
+import { useState, useEffect } from "react";
+import { Star } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface CSATSurveyProps {
   ticketId: string;
@@ -11,17 +11,21 @@ interface CSATSurveyProps {
 }
 
 const RATING_LABELS: Record<number, string> = {
-  1: 'Very Dissatisfied',
-  2: 'Dissatisfied',
-  3: 'Neutral',
-  4: 'Satisfied',
-  5: 'Very Satisfied',
+  1: "Very Dissatisfied",
+  2: "Dissatisfied",
+  3: "Neutral",
+  4: "Satisfied",
+  5: "Very Satisfied",
 };
 
-export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyProps) {
+export function CSATSurvey({
+  ticketId,
+  ticketStatus,
+  isRequester,
+}: CSATSurveyProps) {
   const [rating, setRating] = useState<number | null>(null);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingRating, setExistingRating] = useState<number | null>(null);
   const { success, error: showError } = useToast();
@@ -29,8 +33,8 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
   useEffect(() => {
     // Check if already rated
     fetch(`/api/tickets/${ticketId}/csat`)
-      .then(r => r.json())
-      .then(data => {
+      .then((r) => r.json())
+      .then((data) => {
         if (data.rating) {
           setExistingRating(data.rating.rating);
         }
@@ -39,7 +43,7 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
   }, [ticketId]);
 
   // Only show for resolved/closed tickets
-  if (ticketStatus !== 'RESOLVED' && ticketStatus !== 'CLOSED') {
+  if (ticketStatus !== "RESOLVED" && ticketStatus !== "CLOSED") {
     return null;
   }
 
@@ -54,8 +58,8 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/tickets/${ticketId}/csat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rating, comment: comment || undefined }),
       });
 
@@ -65,9 +69,9 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
       }
 
       setExistingRating(rating);
-      success('Thank you for your feedback!');
+      success("Thank you for your feedback!");
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to submit');
+      showError(err instanceof Error ? err.message : "Failed to submit");
     } finally {
       setIsSubmitting(false);
     }
@@ -82,12 +86,16 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
             <Star
               key={star}
               className={`w-6 h-6 ${
-                star <= existingRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'
+                star <= existingRating
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-gray-300"
               }`}
             />
           ))}
         </div>
-        <p className="text-sm text-gray-500 mt-1">{RATING_LABELS[existingRating]}</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {RATING_LABELS[existingRating]}
+        </p>
       </div>
     );
   }
@@ -111,9 +119,13 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
           >
             <Star
               className={`w-8 h-8 transition-colors ${
-                (hoverRating !== null ? star <= hoverRating : star <= (rating || 0))
-                  ? 'fill-amber-400 text-amber-400'
-                  : 'text-gray-300'
+                (
+                  hoverRating !== null
+                    ? star <= hoverRating
+                    : star <= (rating || 0)
+                )
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-gray-300"
               }`}
             />
           </button>
@@ -140,7 +152,7 @@ export function CSATSurvey({ ticketId, ticketStatus, isRequester }: CSATSurveyPr
             disabled={isSubmitting}
             className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+            {isSubmitting ? "Submitting..." : "Submit Feedback"}
           </button>
         </div>
       )}

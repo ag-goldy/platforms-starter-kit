@@ -1,12 +1,13 @@
-import webpush from 'web-push';
-import { and, eq } from 'drizzle-orm';
-import { db } from '@/db';
-import { userSessionsExtended } from '@/db/schema';
-import type { NotificationType } from './types';
+import webpush from "web-push";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { userSessionsExtended } from "@/db/schema";
+import type { NotificationType } from "./types";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin-crm@agrnetworks.com';
+const VAPID_SUBJECT =
+  process.env.VAPID_SUBJECT || "mailto:admin-crm@agrnetworks.com";
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -26,7 +27,7 @@ export async function sendPushNotification(params: {
   const subscriptions = await db.query.userSessionsExtended.findMany({
     where: and(
       eq(userSessionsExtended.userId, params.userId),
-      eq(userSessionsExtended.isActive, true)
+      eq(userSessionsExtended.isActive, true),
     ),
   });
 
@@ -34,7 +35,9 @@ export async function sendPushNotification(params: {
   await Promise.all(
     subscriptions.map(async (subscription) => {
       try {
-        const data = JSON.parse(Buffer.from(subscription.sessionToken, 'base64').toString('utf8')) as {
+        const data = JSON.parse(
+          Buffer.from(subscription.sessionToken, "base64").toString("utf8"),
+        ) as {
           endpoint?: string;
           keys?: { p256dh?: string; auth?: string };
         };
@@ -52,15 +55,15 @@ export async function sendPushNotification(params: {
           JSON.stringify({
             title: params.title,
             body: params.message,
-            url: params.link || '/',
+            url: params.link || "/",
             tag: `${params.type}:${Date.now()}`,
-          })
+          }),
         );
         sent++;
       } catch (error) {
-        console.error('[Push] Failed to send notification:', error);
+        console.error("[Push] Failed to send notification:", error);
       }
-    })
+    }),
   );
 
   return { sent, skipped: false };

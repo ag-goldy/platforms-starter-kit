@@ -1,11 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { tickets, ticketComments, attachments, ticketAssets } from '@/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/session';
-import { requireOrgRole } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { invalidateTicketCache } from '@/lib/cache-invalidation';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import {
+  tickets,
+  ticketComments,
+  attachments,
+  ticketAssets,
+} from "@/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/session";
+import { requireOrgRole } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { invalidateTicketCache } from "@/lib/cache-invalidation";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -26,15 +31,15 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (!targetTicketId) {
       return NextResponse.json(
-        { error: 'targetTicketId is required' },
-        { status: 400 }
+        { error: "targetTicketId is required" },
+        { status: 400 },
       );
     }
 
     if (sourceTicketId === targetTicketId) {
       return NextResponse.json(
-        { error: 'Cannot merge a ticket into itself' },
-        { status: 400 }
+        { error: "Cannot merge a ticket into itself" },
+        { status: 400 },
       );
     }
 
@@ -49,36 +54,44 @@ export async function POST(request: NextRequest, { params }: Params) {
     ]);
 
     if (!sourceTicket) {
-      return NextResponse.json({ error: 'Source ticket not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Source ticket not found" },
+        { status: 404 },
+      );
     }
 
     if (!targetTicket) {
-      return NextResponse.json({ error: 'Target ticket not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Target ticket not found" },
+        { status: 404 },
+      );
     }
 
     // Verify same org
     if (sourceTicket.orgId !== targetTicket.orgId) {
       return NextResponse.json(
-        { error: 'Cannot merge tickets from different organizations' },
-        { status: 400 }
+        { error: "Cannot merge tickets from different organizations" },
+        { status: 400 },
       );
     }
 
     // Verify user has admin/agent role
-    await requireOrgRole(sourceTicket.orgId!, ['ADMIN', 'AGENT']);
+    await requireOrgRole(sourceTicket.orgId!, ["ADMIN", "AGENT"]);
 
     // Check if either ticket is already closed or merged
-    if (sourceTicket.status === 'CLOSED' || sourceTicket.status === 'MERGED') {
+    if (sourceTicket.status === "CLOSED" || sourceTicket.status === "MERGED") {
       return NextResponse.json(
-        { error: 'Cannot merge a ticket that is already closed or merged' },
-        { status: 400 }
+        { error: "Cannot merge a ticket that is already closed or merged" },
+        { status: 400 },
       );
     }
 
-    if (targetTicket.status === 'CLOSED' || targetTicket.status === 'MERGED') {
+    if (targetTicket.status === "CLOSED" || targetTicket.status === "MERGED") {
       return NextResponse.json(
-        { error: 'Cannot merge into a ticket that is already closed or merged' },
-        { status: 400 }
+        {
+          error: "Cannot merge into a ticket that is already closed or merged",
+        },
+        { status: 400 },
       );
     }
 
@@ -102,7 +115,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         .from(ticketAssets)
         .where(eq(ticketAssets.ticketId, targetTicketId));
 
-      const existingAssetIds = existingAssets.map(a => a.assetId);
+      const existingAssetIds = existingAssets.map((a) => a.assetId);
 
       const sourceAssets = await tx
         .select({ assetId: ticketAssets.assetId })
@@ -110,8 +123,8 @@ export async function POST(request: NextRequest, { params }: Params) {
         .where(eq(ticketAssets.ticketId, sourceTicketId));
 
       const assetsToMove = sourceAssets
-        .map(a => a.assetId)
-        .filter(id => !existingAssetIds.includes(id));
+        .map((a) => a.assetId)
+        .filter((id) => !existingAssetIds.includes(id));
 
       if (assetsToMove.length > 0) {
         await tx
@@ -120,8 +133,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           .where(
             and(
               eq(ticketAssets.ticketId, sourceTicketId),
-              inArray(ticketAssets.assetId, assetsToMove)
-            )
+              inArray(ticketAssets.assetId, assetsToMove),
+            ),
           );
       }
 
@@ -145,7 +158,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       await tx
         .update(tickets)
         .set({
-          status: 'MERGED',
+          status: "MERGED",
           mergedIntoId: targetTicketId,
           updatedAt: new Date(),
         })
@@ -156,7 +169,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     await logAudit({
       userId: user.id,
       orgId: sourceTicket.orgId!,
-      action: 'TICKET_MERGED',
+      action: "TICKET_MERGED",
       details: JSON.stringify({
         sourceTicketId,
         sourceTicketKey: sourceTicket.key,
@@ -172,14 +185,21 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({
       success: true,
       message: `Ticket ${sourceTicket.key} merged into ${targetTicket.key}`,
-      sourceTicket: { id: sourceTicketId, key: sourceTicket.key, status: 'MERGED' },
+      sourceTicket: {
+        id: sourceTicketId,
+        key: sourceTicket.key,
+        status: "MERGED",
+      },
       targetTicket: { id: targetTicketId, key: targetTicket.key },
     });
   } catch (error) {
-    console.error('[API] Failed to merge tickets:', error);
+    console.error("[API] Failed to merge tickets:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to merge tickets' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to merge tickets",
+      },
+      { status: 500 },
     );
   }
 }

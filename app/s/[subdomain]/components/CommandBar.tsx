@@ -1,11 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Ticket, BookOpen, Users, Plus, Command, ArrowRight, FileText, X } from 'lucide-react';
-import { useCustomerPortal } from '@/components/customer/CustomerPortalContext';
-import { useHotkeys } from '@/hooks/use-hotkeys';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  Ticket,
+  BookOpen,
+  Users,
+  Plus,
+  Command,
+  ArrowRight,
+  FileText,
+  X,
+} from "lucide-react";
+import { useCustomerPortal } from "@/components/customer/CustomerPortalContext";
+import { useHotkeys } from "@/hooks/use-hotkeys";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface CommandBarProps {
   subdomain: string;
@@ -18,13 +28,13 @@ interface CommandItem {
   subtitle?: string;
   icon: React.ReactNode;
   shortcut?: string;
-  category: 'tickets' | 'articles' | 'people' | 'actions' | 'recent';
+  category: "tickets" | "articles" | "people" | "actions" | "recent";
   action: () => void;
 }
 
 export function CommandBar({ subdomain }: CommandBarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -33,13 +43,13 @@ export function CommandBar({ subdomain }: CommandBarProps) {
   const { openSlideOver } = useCustomerPortal();
 
   // Toggle command palette with Cmd+K or /
-  useHotkeys('cmd+k', () => setIsOpen(true));
-  useHotkeys('/', () => setIsOpen(true));
+  useHotkeys("cmd+k", () => setIsOpen(true));
+  useHotkeys("/", () => setIsOpen(true));
 
   // Handle escape key to close
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         e.preventDefault();
         e.stopPropagation();
         setIsOpen(false);
@@ -47,11 +57,11 @@ export function CommandBar({ subdomain }: CommandBarProps) {
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape, { capture: true });
+      document.addEventListener("keydown", handleEscape, { capture: true });
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape, { capture: true });
+      document.removeEventListener("keydown", handleEscape, { capture: true });
     };
   }, [isOpen]);
 
@@ -64,11 +74,11 @@ export function CommandBar({ subdomain }: CommandBarProps) {
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
 
@@ -84,7 +94,7 @@ export function CommandBar({ subdomain }: CommandBarProps) {
   // Reset state when closed
   useEffect(() => {
     if (!isOpen) {
-      setQuery('');
+      setQuery("");
       setSelectedIndex(0);
     }
   }, [isOpen]);
@@ -93,69 +103,69 @@ export function CommandBar({ subdomain }: CommandBarProps) {
   const commands: CommandItem[] = [
     // Actions
     {
-      id: 'new-ticket',
-      title: 'Create New Ticket',
-      subtitle: 'Submit a new support request',
+      id: "new-ticket",
+      title: "Create New Ticket",
+      subtitle: "Submit a new support request",
       icon: <Plus className="w-4 h-4" />,
-      shortcut: 'C',
-      category: 'actions',
+      shortcut: "C",
+      category: "actions",
       action: () => {
-        openSlideOver('ticket', { mode: 'create' });
+        openSlideOver("ticket", { mode: "create" });
         setIsOpen(false);
       },
     },
     {
-      id: 'invite-user',
-      title: 'Invite Team Member',
-      subtitle: 'Add someone to your organization',
+      id: "invite-user",
+      title: "Invite Team Member",
+      subtitle: "Add someone to your organization",
       icon: <Users className="w-4 h-4" />,
-      category: 'actions',
+      category: "actions",
       action: () => {
-        openSlideOver('team', { mode: 'invite' });
+        openSlideOver("team", { mode: "invite" });
         setIsOpen(false);
       },
     },
     // Navigation
     {
-      id: 'view-tickets',
-      title: 'View All Tickets',
-      subtitle: 'See your ticket history',
+      id: "view-tickets",
+      title: "View All Tickets",
+      subtitle: "See your ticket history",
       icon: <Ticket className="w-4 h-4" />,
-      shortcut: 'T',
-      category: 'tickets',
+      shortcut: "T",
+      category: "tickets",
       action: () => {
         const targetUrl = `/s/${subdomain}?view=tickets`;
-        const currentView = searchParams.get('view');
-        if (currentView !== 'tickets') {
+        const currentView = searchParams.get("view");
+        if (currentView !== "tickets") {
           router.push(targetUrl);
         }
         setIsOpen(false);
       },
     },
     {
-      id: 'view-kb',
-      title: 'Browse Knowledge Base',
-      subtitle: 'Find answers in articles',
+      id: "view-kb",
+      title: "Browse Knowledge Base",
+      subtitle: "Find answers in articles",
       icon: <BookOpen className="w-4 h-4" />,
-      category: 'articles',
+      category: "articles",
       action: () => {
         const targetUrl = `/s/${subdomain}?view=kb`;
-        const currentView = searchParams.get('view');
-        if (currentView !== 'kb') {
+        const currentView = searchParams.get("view");
+        if (currentView !== "kb") {
           router.push(targetUrl);
         }
         setIsOpen(false);
       },
     },
     {
-      id: 'view-team',
-      title: 'Team Directory',
-      subtitle: 'Manage organization members',
+      id: "view-team",
+      title: "Team Directory",
+      subtitle: "Manage organization members",
       icon: <Users className="w-4 h-4" />,
-      category: 'people',
+      category: "people",
       action: () => {
-        console.log('CommandBar: Opening team slide-over');
-        openSlideOver('team');
+        console.log("CommandBar: Opening team slide-over");
+        openSlideOver("team");
         setIsOpen(false);
       },
     },
@@ -165,15 +175,18 @@ export function CommandBar({ subdomain }: CommandBarProps) {
   const filteredCommands = commands.filter(
     (cmd) =>
       cmd.title.toLowerCase().includes(query.toLowerCase()) ||
-      cmd.subtitle?.toLowerCase().includes(query.toLowerCase())
+      cmd.subtitle?.toLowerCase().includes(query.toLowerCase()),
   );
 
   // Group by category
-  const groupedCommands = filteredCommands.reduce((acc, cmd) => {
-    if (!acc[cmd.category]) acc[cmd.category] = [];
-    acc[cmd.category].push(cmd);
-    return acc;
-  }, {} as Record<string, CommandItem[]>);
+  const groupedCommands = filteredCommands.reduce(
+    (acc, cmd) => {
+      if (!acc[cmd.category]) acc[cmd.category] = [];
+      acc[cmd.category].push(cmd);
+      return acc;
+    },
+    {} as Record<string, CommandItem[]>,
+  );
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
@@ -181,36 +194,38 @@ export function CommandBar({ subdomain }: CommandBarProps) {
       const flatCommands = filteredCommands;
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           setSelectedIndex((prev) => (prev + 1) % flatCommands.length);
           break;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
-          setSelectedIndex((prev) => (prev - 1 + flatCommands.length) % flatCommands.length);
+          setSelectedIndex(
+            (prev) => (prev - 1 + flatCommands.length) % flatCommands.length,
+          );
           break;
-        case 'Enter':
+        case "Enter":
           e.preventDefault();
           if (flatCommands[selectedIndex]) {
             flatCommands[selectedIndex].action();
           }
           break;
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           e.stopPropagation();
           setIsOpen(false);
           break;
       }
     },
-    [filteredCommands, selectedIndex]
+    [filteredCommands, selectedIndex],
   );
 
   const categoryLabels: Record<string, string> = {
-    actions: 'Actions',
-    tickets: 'Tickets',
-    articles: 'Knowledge Base',
-    people: 'People',
-    recent: 'Recent',
+    actions: "Actions",
+    tickets: "Tickets",
+    articles: "Knowledge Base",
+    people: "People",
+    recent: "Recent",
   };
 
   return (
@@ -221,7 +236,9 @@ export function CommandBar({ subdomain }: CommandBarProps) {
         className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors text-left group"
       >
         <Search className="w-4 h-4 text-stone-400 group-hover:text-stone-600" />
-        <span className="flex-1 text-sm text-stone-500">Search or jump to...</span>
+        <span className="flex-1 text-sm text-stone-500">
+          Search or jump to...
+        </span>
         <kbd className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded bg-white text-xs font-medium text-stone-400 border border-stone-200">
           <Command className="w-3 h-3" />
           <span>K</span>
@@ -264,7 +281,7 @@ export function CommandBar({ subdomain }: CommandBarProps) {
                 />
                 {query && (
                   <button
-                    onClick={() => setQuery('')}
+                    onClick={() => setQuery("")}
                     className="p-1 hover:bg-stone-100 rounded transition-colors"
                   >
                     <X className="w-4 h-4 text-stone-400" />
@@ -293,7 +310,9 @@ export function CommandBar({ subdomain }: CommandBarProps) {
                       </div>
                       <div className="space-y-1">
                         {items.map((item) => {
-                          const globalIndex = filteredCommands.findIndex((c) => c.id === item.id);
+                          const globalIndex = filteredCommands.findIndex(
+                            (c) => c.id === item.id,
+                          );
                           const isSelected = globalIndex === selectedIndex;
 
                           return (
@@ -303,21 +322,25 @@ export function CommandBar({ subdomain }: CommandBarProps) {
                               onMouseEnter={() => setSelectedIndex(globalIndex)}
                               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                                 isSelected
-                                  ? 'bg-brand-500 text-white'
-                                  : 'hover:bg-stone-100 text-stone-700'
+                                  ? "bg-brand-500 text-white"
+                                  : "hover:bg-stone-100 text-stone-700"
                               }`}
                             >
                               <span
-                                className={`${isSelected ? 'text-white' : 'text-stone-400'}`}
+                                className={`${isSelected ? "text-white" : "text-stone-400"}`}
                               >
                                 {item.icon}
                               </span>
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm">{item.title}</div>
+                                <div className="font-medium text-sm">
+                                  {item.title}
+                                </div>
                                 {item.subtitle && (
                                   <div
                                     className={`text-xs truncate ${
-                                      isSelected ? 'text-white/70' : 'text-stone-500'
+                                      isSelected
+                                        ? "text-white/70"
+                                        : "text-stone-500"
                                     }`}
                                   >
                                     {item.subtitle}
@@ -328,8 +351,8 @@ export function CommandBar({ subdomain }: CommandBarProps) {
                                 <kbd
                                   className={`px-2 py-0.5 rounded text-xs font-medium ${
                                     isSelected
-                                      ? 'bg-white/20 text-white'
-                                      : 'bg-stone-100 text-stone-500'
+                                      ? "bg-white/20 text-white"
+                                      : "bg-stone-100 text-stone-500"
                                   }`}
                                 >
                                   {item.shortcut}
@@ -337,7 +360,7 @@ export function CommandBar({ subdomain }: CommandBarProps) {
                               )}
                               <ArrowRight
                                 className={`w-4 h-4 ${
-                                  isSelected ? 'text-white' : 'text-stone-300'
+                                  isSelected ? "text-white" : "text-stone-300"
                                 }`}
                               />
                             </button>
@@ -355,18 +378,20 @@ export function CommandBar({ subdomain }: CommandBarProps) {
                   <span className="flex items-center gap-1">
                     <kbd className="px-1.5 py-0.5 rounded bg-white border border-stone-200">
                       ↑↓
-                    </kbd>{' '}
+                    </kbd>{" "}
                     Navigate
                   </span>
                   <span className="flex items-center gap-1">
                     <kbd className="px-1.5 py-0.5 rounded bg-white border border-stone-200">
                       ↵
-                    </kbd>{' '}
+                    </kbd>{" "}
                     Select
                   </span>
                 </div>
                 <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 rounded bg-white border border-stone-200">esc</kbd>{' '}
+                  <kbd className="px-1.5 py-0.5 rounded bg-white border border-stone-200">
+                    esc
+                  </kbd>{" "}
                   Close
                 </span>
               </div>

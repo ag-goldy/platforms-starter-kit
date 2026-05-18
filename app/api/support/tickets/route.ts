@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { tickets, ticketComments, organizations } from '@/db/schema';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { sendEmail } from '@/lib/email';
-import { eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { tickets, ticketComments, organizations } from "@/db/schema";
+import { generateTicketKey } from "@/lib/tickets/keys";
+import { sendEmail } from "@/lib/email";
+import { eq } from "drizzle-orm";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,18 +14,18 @@ export async function POST(request: NextRequest) {
 
     if (!email || !subject || !description) {
       return NextResponse.json(
-        { error: 'Email, subject, and description are required' },
-        { status: 400 }
+        { error: "Email, subject, and description are required" },
+        { status: 400 },
       );
     }
 
     let resolvedOrgId: string | null = null;
-    
+
     if (orgId) {
       const org = await db.query.organizations.findFirst({
         where: eq(organizations.id, orgId),
       });
-      
+
       if (org) {
         resolvedOrgId = org.id;
       }
@@ -40,50 +40,51 @@ export async function POST(request: NextRequest) {
         orgId: resolvedOrgId,
         subject,
         description,
-        status: 'NEW',
-        priority: 'P3',
-        category: 'SERVICE_REQUEST',
+        status: "NEW",
+        priority: "P3",
+        category: "SERVICE_REQUEST",
         requesterEmail: email,
       })
       .returning();
 
-    const createdDate = new Date().toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    const createdDate = new Date().toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
     await db.insert(ticketComments).values({
       ticketId: ticket.id,
-      content: `Ticket created on ${createdDate}. Submitted by: ${email}${name ? ` (${name})` : ''}`,
+      content: `Ticket created on ${createdDate}. Submitted by: ${email}${name ? ` (${name})` : ""}`,
       isInternal: false,
     });
 
-    const { createTicketToken } = await import('@/lib/tickets/magic-links');
+    const { createTicketToken } = await import("@/lib/tickets/magic-links");
     const token = await createTicketToken({
       ticketId: ticket.id,
       email,
-      purpose: 'VIEW',
+      purpose: "VIEW",
       expiresInDays: 30,
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://atlas.agrnetworks.com';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://atlas.agrnetworks.com";
     const ticketUrl = `${baseUrl}/ticket/${token}`;
 
     try {
       const logoUrl = `${baseUrl}/logo/atlas-logo.png`;
-      const currentDate = new Date().toLocaleString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      const currentDate = new Date().toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
-      
+
       await sendEmail({
         to: email,
         subject: `Ticket Received: ${ticketKey} - ${subject}`,
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
                     <tr>
                       <td style="padding: 40px 30px;">
                         <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                          Hi <strong>${name || 'there'}</strong>,
+                          Hi <strong>${name || "there"}</strong>,
                         </p>
                         
                         <p style="color: #555555; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
         `,
         text: `AGR Networks - Support Ticket Confirmation
 
-Hi ${name || 'there'},
+Hi ${name || "there"},
 
 Thank you for contacting AGR Networks Support. Your ticket has been received and assigned to our team.
 
@@ -247,7 +248,7 @@ Website: ${baseUrl}
 `,
       });
     } catch (emailError) {
-      console.error('[Support Ticket] Email failed:', emailError);
+      console.error("[Support Ticket] Email failed:", emailError);
     }
 
     return NextResponse.json({
@@ -260,13 +261,13 @@ Website: ${baseUrl}
       },
       ticketUrl,
     });
-
   } catch (error) {
-    console.error('[Support Ticket] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("[Support Ticket] Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: 'Failed to create ticket', details: errorMessage },
-      { status: 500 }
+      { error: "Failed to create ticket", details: errorMessage },
+      { status: 500 },
     );
   }
 }

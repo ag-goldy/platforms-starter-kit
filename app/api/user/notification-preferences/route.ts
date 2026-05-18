@@ -1,16 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { notificationPreferences } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/session';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { notificationPreferences } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/session";
 
 const EVENT_TYPES = [
-  { key: 'ticket_assigned', label: 'Ticket assigned to you', defaultEmail: true, defaultInApp: true },
-  { key: 'ticket_comment', label: 'New comment on your ticket', defaultEmail: true, defaultInApp: true },
-  { key: 'ticket_status_change', label: 'Ticket status changed', defaultEmail: false, defaultInApp: true },
-  { key: 'ticket_sla_warning', label: 'SLA deadline approaching', defaultEmail: true, defaultInApp: true },
-  { key: 'service_status_change', label: 'Service status changed', defaultEmail: true, defaultInApp: true },
-  { key: 'team_member_joined', label: 'New team member joined', defaultEmail: false, defaultInApp: true },
+  {
+    key: "ticket_assigned",
+    label: "Ticket assigned to you",
+    defaultEmail: true,
+    defaultInApp: true,
+  },
+  {
+    key: "ticket_comment",
+    label: "New comment on your ticket",
+    defaultEmail: true,
+    defaultInApp: true,
+  },
+  {
+    key: "ticket_status_change",
+    label: "Ticket status changed",
+    defaultEmail: false,
+    defaultInApp: true,
+  },
+  {
+    key: "ticket_sla_warning",
+    label: "SLA deadline approaching",
+    defaultEmail: true,
+    defaultInApp: true,
+  },
+  {
+    key: "service_status_change",
+    label: "Service status changed",
+    defaultEmail: true,
+    defaultInApp: true,
+  },
+  {
+    key: "team_member_joined",
+    label: "New team member joined",
+    defaultEmail: false,
+    defaultInApp: true,
+  },
 ] as const;
 
 /**
@@ -28,14 +58,21 @@ export async function GET() {
 
     if (!prefs) {
       // Create default preferences
-      const defaultEmailTypes = EVENT_TYPES.filter(et => et.defaultEmail).map(et => et.key);
-      const defaultInAppTypes = EVENT_TYPES.filter(et => et.defaultInApp).map(et => et.key);
+      const defaultEmailTypes = EVENT_TYPES.filter((et) => et.defaultEmail).map(
+        (et) => et.key,
+      );
+      const defaultInAppTypes = EVENT_TYPES.filter((et) => et.defaultInApp).map(
+        (et) => et.key,
+      );
 
-      const [created] = await db.insert(notificationPreferences).values({
-        userId: user.id,
-        emailTypes: defaultEmailTypes,
-        inAppTypes: defaultInAppTypes,
-      }).returning();
+      const [created] = await db
+        .insert(notificationPreferences)
+        .values({
+          userId: user.id,
+          emailTypes: defaultEmailTypes,
+          inAppTypes: defaultInAppTypes,
+        })
+        .returning();
 
       prefs = created;
     }
@@ -44,7 +81,7 @@ export async function GET() {
     const emailTypes = prefs.emailTypes || [];
     const inAppTypes = prefs.inAppTypes || [];
 
-    const preferencesWithLabels = EVENT_TYPES.map(et => ({
+    const preferencesWithLabels = EVENT_TYPES.map((et) => ({
       eventType: et.key,
       label: et.label,
       emailEnabled: emailTypes.includes(et.key),
@@ -53,10 +90,15 @@ export async function GET() {
 
     return NextResponse.json({ preferences: preferencesWithLabels });
   } catch (error) {
-    console.error('[API] Failed to fetch notification preferences:', error);
+    console.error("[API] Failed to fetch notification preferences:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch preferences' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch preferences",
+      },
+      { status: 500 },
     );
   }
 }
@@ -73,16 +115,16 @@ export async function PUT(request: NextRequest) {
 
     if (!eventType) {
       return NextResponse.json(
-        { error: 'eventType is required' },
-        { status: 400 }
+        { error: "eventType is required" },
+        { status: 400 },
       );
     }
 
     // Validate event type
-    if (!EVENT_TYPES.some(et => et.key === eventType)) {
+    if (!EVENT_TYPES.some((et) => et.key === eventType)) {
       return NextResponse.json(
-        { error: 'Invalid event type' },
-        { status: 400 }
+        { error: "Invalid event type" },
+        { status: 400 },
       );
     }
 
@@ -99,7 +141,7 @@ export async function PUT(request: NextRequest) {
       if (emailEnabled && !emailTypes.includes(eventType)) {
         emailTypes = [...emailTypes, eventType];
       } else if (!emailEnabled) {
-        emailTypes = emailTypes.filter(t => t !== eventType);
+        emailTypes = emailTypes.filter((t) => t !== eventType);
       }
     }
 
@@ -107,13 +149,14 @@ export async function PUT(request: NextRequest) {
       if (inAppEnabled && !inAppTypes.includes(eventType)) {
         inAppTypes = [...inAppTypes, eventType];
       } else if (!inAppEnabled) {
-        inAppTypes = inAppTypes.filter(t => t !== eventType);
+        inAppTypes = inAppTypes.filter((t) => t !== eventType);
       }
     }
 
     // Update or create
     if (prefs) {
-      await db.update(notificationPreferences)
+      await db
+        .update(notificationPreferences)
         .set({ emailTypes, inAppTypes, updatedAt: new Date() })
         .where(eq(notificationPreferences.id, prefs.id));
     } else {
@@ -126,10 +169,15 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[API] Failed to update notification preferences:', error);
+    console.error("[API] Failed to update notification preferences:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update preferences' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to update preferences",
+      },
+      { status: 500 },
     );
   }
 }
@@ -141,7 +189,7 @@ export async function PUT(request: NextRequest) {
 export async function shouldNotify(
   userId: string,
   eventType: string,
-  channel: 'email' | 'inApp'
+  channel: "email" | "inApp",
 ): Promise<boolean> {
   const prefs = await db.query.notificationPreferences.findFirst({
     where: eq(notificationPreferences.userId, userId),
@@ -149,6 +197,6 @@ export async function shouldNotify(
 
   if (!prefs) return true; // Default to enabled
 
-  const types = channel === 'email' ? prefs.emailTypes : prefs.inAppTypes;
+  const types = channel === "email" ? prefs.emailTypes : prefs.inAppTypes;
   return types?.includes(eventType) ?? true;
 }

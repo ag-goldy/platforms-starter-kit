@@ -1,19 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { tickets, organizations, users, ticketComments, type Ticket } from '@/db/schema';
-import { generateTicketKey } from '@/lib/tickets/keys';
-import { createTicketToken } from '@/lib/tickets/magic-links';
-import { sendWithOutbox } from '@/lib/email/outbox';
-import { renderTicketCreatedEmail } from '@/lib/email/templates/ticket-created';
-import { sendCustomerTicketCreatedNotification } from '@/lib/email/notifications';
-import { getTicketById } from '@/lib/tickets/queries';
-import { eq } from 'drizzle-orm';
-import { supportBaseUrl } from '@/lib/utils';
-import { headers } from 'next/headers';
-import { getClientIP } from '@/lib/rate-limit';
-import { processEmailReply } from '@/lib/email/reply-handler';
-import { getOrgSLATargets } from '@/lib/tickets/sla';
-import { bearerTokenMatches, constantTimeEquals } from '@/lib/security/secrets';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import {
+  tickets,
+  organizations,
+  users,
+  ticketComments,
+  type Ticket,
+} from "@/db/schema";
+import { generateTicketKey } from "@/lib/tickets/keys";
+import { createTicketToken } from "@/lib/tickets/magic-links";
+import { sendWithOutbox } from "@/lib/email/outbox";
+import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
+import { sendCustomerTicketCreatedNotification } from "@/lib/email/notifications";
+import { getTicketById } from "@/lib/tickets/queries";
+import { eq } from "drizzle-orm";
+import { supportBaseUrl } from "@/lib/utils";
+import { headers } from "next/headers";
+import { getClientIP } from "@/lib/rate-limit";
+import { processEmailReply } from "@/lib/email/reply-handler";
+import { getOrgSLATargets } from "@/lib/tickets/sla";
+import { bearerTokenMatches, constantTimeEquals } from "@/lib/security/secrets";
 
 /**
  * Extract plain text from HTML email body
@@ -21,14 +27,14 @@ import { bearerTokenMatches, constantTimeEquals } from '@/lib/security/secrets';
 function extractTextFromHtml(html: string): string {
   // Remove HTML tags and decode entities
   return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -46,21 +52,23 @@ function parseInboundEmail(body: unknown): {
   references?: string;
 } | null {
   // Handle Resend webhook format
-  if (typeof body === 'object' && body !== null) {
+  if (typeof body === "object" && body !== null) {
     const data = body as Record<string, unknown>;
-    
+
     // Resend format
-    if (data.type === 'email.received' && data.data) {
+    if (data.type === "email.received" && data.data) {
       const emailData = data.data as Record<string, unknown>;
       const from = emailData.from as string;
       const to = (emailData.to as string[])?.[0] || (emailData.to as string);
       const subject = emailData.subject as string;
-      const text = (emailData.text as string) || '';
-      const html = (emailData.html as string) || '';
-      const messageId = (emailData['message-id'] as string) || (emailData.messageId as string);
-      const inReplyTo = (emailData['in-reply-to'] as string) || (emailData.inReplyTo as string);
-      const references = (emailData.references as string);
-      
+      const text = (emailData.text as string) || "";
+      const html = (emailData.html as string) || "";
+      const messageId =
+        (emailData["message-id"] as string) || (emailData.messageId as string);
+      const inReplyTo =
+        (emailData["in-reply-to"] as string) || (emailData.inReplyTo as string);
+      const references = emailData.references as string;
+
       if (from && subject) {
         return {
           from,
@@ -74,36 +82,46 @@ function parseInboundEmail(body: unknown): {
         };
       }
     }
-    
+
     // Generic webhook format (SendGrid, Postmark, etc.)
     if (data.from && data.subject) {
       return {
         from: data.from as string,
         to: data.to as string,
         subject: data.subject as string,
-        textBody: (data.text as string) || (data['text-body'] as string) || extractTextFromHtml((data.html as string) || (data['html-body'] as string) || ''),
-        htmlBody: (data.html as string) || (data['html-body'] as string) || undefined,
-        messageId: (data['message-id'] as string) || (data.messageId as string),
-        inReplyTo: (data['in-reply-to'] as string) || (data.inReplyTo as string),
-        references: (data.references as string),
+        textBody:
+          (data.text as string) ||
+          (data["text-body"] as string) ||
+          extractTextFromHtml(
+            (data.html as string) || (data["html-body"] as string) || "",
+          ),
+        htmlBody:
+          (data.html as string) || (data["html-body"] as string) || undefined,
+        messageId: (data["message-id"] as string) || (data.messageId as string),
+        inReplyTo:
+          (data["in-reply-to"] as string) || (data.inReplyTo as string),
+        references: data.references as string,
       };
     }
-    
+
     // Mailgun format
-    if (data['sender'] && data.subject) {
+    if (data["sender"] && data.subject) {
       return {
-        from: data['sender'] as string,
-        to: data['recipient'] as string,
+        from: data["sender"] as string,
+        to: data["recipient"] as string,
         subject: data.subject as string,
-        textBody: (data['body-plain'] as string) || extractTextFromHtml((data['body-html'] as string) || ''),
-        htmlBody: (data['body-html'] as string) || undefined,
-        messageId: (data['Message-Id'] as string) || (data.messageId as string),
-        inReplyTo: (data['In-Reply-To'] as string) || (data.inReplyTo as string),
-        references: (data.References as string),
+        textBody:
+          (data["body-plain"] as string) ||
+          extractTextFromHtml((data["body-html"] as string) || ""),
+        htmlBody: (data["body-html"] as string) || undefined,
+        messageId: (data["Message-Id"] as string) || (data.messageId as string),
+        inReplyTo:
+          (data["In-Reply-To"] as string) || (data.inReplyTo as string),
+        references: data.References as string,
       };
     }
   }
-  
+
   return null;
 }
 
@@ -114,11 +132,14 @@ function parseInboundEmail(body: unknown): {
  * 3. Check if recipient email matches org's intake email (if configured)
  * 4. Return null for public ticket if no match
  */
-async function findOrganizationForEmail(senderEmail: string, recipientEmail?: string) {
+async function findOrganizationForEmail(
+  senderEmail: string,
+  recipientEmail?: string,
+) {
   // Extract domain from sender email
-  const domain = senderEmail.split('@')[1]?.toLowerCase();
+  const domain = senderEmail.split("@")[1]?.toLowerCase();
   if (!domain) return null;
-  
+
   // Step 1: Try to find user by email
   const user = await db.query.users.findFirst({
     where: eq(users.email, senderEmail),
@@ -130,62 +151,78 @@ async function findOrganizationForEmail(senderEmail: string, recipientEmail?: st
       },
     },
   });
-  
+
   // If user exists and has memberships, use their first org
   if (user?.memberships && user.memberships.length > 0) {
-    console.log(`[Inbound Email] Matched user ${senderEmail} to org ${user.memberships[0].organization.name}`);
+    console.log(
+      `[Inbound Email] Matched user ${senderEmail} to org ${user.memberships[0].organization.name}`,
+    );
     return user.memberships[0].organization;
   }
-  
+
   // Step 2: Try to match by domain pattern against organization subdomains
   // Get all organizations that allow public intake
   const allOrgs = await db
     .select()
     .from(organizations)
     .where(eq(organizations.allowPublicIntake, true));
-  
+
   for (const org of allOrgs) {
     // Match by subdomain pattern (e.g., acme.example.com matches org with subdomain "acme")
-    if (org.subdomain && domain.startsWith(org.subdomain + '.')) {
-      console.log(`[Inbound Email] Matched domain ${domain} to org ${org.name} via subdomain`);
+    if (org.subdomain && domain.startsWith(org.subdomain + ".")) {
+      console.log(
+        `[Inbound Email] Matched domain ${domain} to org ${org.name} via subdomain`,
+      );
       return org;
     }
-    
+
     // Match exact subdomain (e.g., org with subdomain "acme" and domain is "acme.com")
-    const domainParts = domain.split('.');
+    const domainParts = domain.split(".");
     if (org.subdomain && domainParts[0] === org.subdomain) {
-      console.log(`[Inbound Email] Matched domain ${domain} to org ${org.name} via exact subdomain match`);
+      console.log(
+        `[Inbound Email] Matched domain ${domain} to org ${org.name} via exact subdomain match`,
+      );
       return org;
     }
   }
-  
+
   // Step 3: If recipient email is provided, try to match by intake address
   // Format: support+org-slug@domain.com or org-slug@domain.com
   if (recipientEmail) {
-    const recipientLocal = recipientEmail.split('@')[0]?.toLowerCase();
+    const recipientLocal = recipientEmail.split("@")[0]?.toLowerCase();
     if (recipientLocal) {
       // Check for support+slug format
       const slugMatch = recipientLocal.match(/^support\+(.+)$/);
       if (slugMatch) {
         const slug = slugMatch[1];
-        const org = allOrgs.find(o => o.slug === slug || o.subdomain === slug);
+        const org = allOrgs.find(
+          (o) => o.slug === slug || o.subdomain === slug,
+        );
         if (org) {
-          console.log(`[Inbound Email] Matched recipient ${recipientEmail} to org ${org.name} via slug`);
+          console.log(
+            `[Inbound Email] Matched recipient ${recipientEmail} to org ${org.name} via slug`,
+          );
           return org;
         }
       }
-      
+
       // Check if local part matches org slug/subdomain directly
-      const org = allOrgs.find(o => o.slug === recipientLocal || o.subdomain === recipientLocal);
+      const org = allOrgs.find(
+        (o) => o.slug === recipientLocal || o.subdomain === recipientLocal,
+      );
       if (org) {
-        console.log(`[Inbound Email] Matched recipient ${recipientEmail} to org ${org.name} via local part`);
+        console.log(
+          `[Inbound Email] Matched recipient ${recipientEmail} to org ${org.name} via local part`,
+        );
         return org;
       }
     }
   }
-  
+
   // No matching org - return null for public ticket
-  console.log(`[Inbound Email] No org match for ${senderEmail}, creating public ticket`);
+  console.log(
+    `[Inbound Email] No org match for ${senderEmail}, creating public ticket`,
+  );
   return null;
 }
 
@@ -195,33 +232,33 @@ async function findOrganizationForEmail(senderEmail: string, recipientEmail?: st
 async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
   const webhookSecret = process.env.INBOUND_EMAIL_SECRET;
   if (!webhookSecret) {
-    console.error('[SECURITY] INBOUND_EMAIL_SECRET is not configured - rejecting inbound email webhook');
+    console.error(
+      "[SECURITY] INBOUND_EMAIL_SECRET is not configured - rejecting inbound email webhook",
+    );
     return false;
   }
 
-  const authHeader = request.headers.get('authorization');
+  const authHeader = request.headers.get("authorization");
   if (bearerTokenMatches(authHeader, webhookSecret)) {
     return true;
   }
 
-  const signature = request.headers.get('x-webhook-signature') || 
-                   request.headers.get('x-resend-signature') ||
-                   request.headers.get('x-sendgrid-signature');
-  
+  const signature =
+    request.headers.get("x-webhook-signature") ||
+    request.headers.get("x-resend-signature") ||
+    request.headers.get("x-sendgrid-signature");
+
   if (!signature) {
     return false;
   }
-  
+
   return constantTimeEquals(signature, webhookSecret);
 }
 
 /**
  * Add a system comment to a ticket
  */
-async function addTicketComment(
-  ticketId: string,
-  content: string
-) {
+async function addTicketComment(ticketId: string, content: string) {
   await db.insert(ticketComments).values({
     ticketId,
     content,
@@ -234,36 +271,42 @@ export async function POST(request: NextRequest) {
     const isValid = await verifyWebhookSignature(request);
     if (!isValid) {
       return NextResponse.json(
-        { error: process.env.INBOUND_EMAIL_SECRET ? 'Invalid signature' : 'Inbound email webhook not configured' },
-        { status: process.env.INBOUND_EMAIL_SECRET ? 401 : 503 }
+        {
+          error: process.env.INBOUND_EMAIL_SECRET
+            ? "Invalid signature"
+            : "Inbound email webhook not configured",
+        },
+        { status: process.env.INBOUND_EMAIL_SECRET ? 401 : 503 },
       );
     }
 
     const body = await request.json();
-    
+
     // Parse email content
     const emailData = parseInboundEmail(body);
     if (!emailData) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
+        { error: "Invalid email format" },
+        { status: 400 },
       );
     }
-    
+
     const { from, subject, textBody, to } = emailData;
-    
+
     // Validate required fields
     if (!from || !subject || !textBody) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
+        { error: "Missing required fields" },
+        { status: 400 },
       );
     }
-    
+
     // Extract email address (handle "Name <email@example.com>" format)
-    const emailMatch = from.match(/<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/);
+    const emailMatch = from.match(
+      /<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/,
+    );
     const senderEmail = emailMatch ? emailMatch[1] : from;
-    
+
     // Try to process as a reply first
     const replyResult = await processEmailReply({
       from,
@@ -274,7 +317,7 @@ export async function POST(request: NextRequest) {
       inReplyTo: emailData.inReplyTo,
       references: emailData.references,
     });
-    
+
     if (replyResult && !replyResult.isNewTicket) {
       // This was a reply to an existing ticket
       return NextResponse.json({
@@ -285,21 +328,23 @@ export async function POST(request: NextRequest) {
         isReply: true,
       });
     }
-    
+
     // No matching ticket found, create a new ticket
     // Find organization by sender email domain or recipient email
     const org = await findOrganizationForEmail(senderEmail, to);
-    
+
     // Generate ticket key
     const ticketKey = await generateTicketKey(org?.id ?? null);
-    
+
     // Get SLA targets if org exists, otherwise use defaults
-    const slaTargets = org ? await getOrgSLATargets(org.id, 'P3') : { responseHours: 4, resolutionHours: 24 };
-    
+    const slaTargets = org
+      ? await getOrgSLATargets(org.id, "P3")
+      : { responseHours: 4, resolutionHours: 24 };
+
     // Get IP for token creation (use a default if not available)
     const headersList = await headers();
-    const ip = getClientIP(headersList) || 'unknown';
-    
+    const ip = getClientIP(headersList) || "unknown";
+
     // Create ticket (public if no org, assigned if org found)
     const [ticket] = await db
       .insert(tickets)
@@ -309,68 +354,76 @@ export async function POST(request: NextRequest) {
         subject: subject.trim(),
         description: textBody.trim(),
         requesterEmail: senderEmail,
-        status: 'NEW',
-        priority: 'P3',
-        category: 'INCIDENT',
+        status: "NEW",
+        priority: "P3",
+        category: "INCIDENT",
         slaResponseTargetHours: slaTargets.responseHours,
         slaResolutionTargetHours: slaTargets.resolutionHours,
       } as any)
       .returning();
-    
+
     // Add a comment to track the source
     await addTicketComment(
       ticket.id,
-      `Ticket created from email sent by ${senderEmail}${to ? ` to ${to}` : ''} on ${new Date().toLocaleString()}.`
+      `Ticket created from email sent by ${senderEmail}${to ? ` to ${to}` : ""} on ${new Date().toLocaleString()}.`,
     );
-    
+
     // Generate magic link token for sender
     const token = await createTicketToken({
       ticketId: ticket.id,
       email: senderEmail,
-      purpose: 'VIEW',
+      purpose: "VIEW",
       createdIp: ip,
       lastSentAt: new Date(),
     });
     const magicLink = `${supportBaseUrl}/ticket/${token}`;
-    
+
     // Send confirmation email to sender
     const emailContent = renderTicketCreatedEmail({
       ticketKey,
       subject: subject.trim(),
       magicLink,
       senderEmail,
-      createdAt: new Date().toLocaleString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      createdAt: new Date().toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       }),
     });
-    
+
     await sendWithOutbox({
-      type: 'inbound_email_ticket_created',
+      type: "inbound_email_ticket_created",
       to: senderEmail,
       subject: emailContent.subject,
       html: emailContent.html,
       text: emailContent.text,
     });
-    
+
     // Send notification to internal support queue (only if org exists)
     if (org?.id) {
       const fullTicket = await getTicketById(ticket.id, org.id);
-      if (fullTicket && 'requester' in fullTicket && 'organization' in fullTicket) {
-        await sendCustomerTicketCreatedNotification(fullTicket as unknown as Ticket & {
-          requester: { email: string; name: string | null } | null;
-          organization: { name: string };
-        });
+      if (
+        fullTicket &&
+        "requester" in fullTicket &&
+        "organization" in fullTicket
+      ) {
+        await sendCustomerTicketCreatedNotification(
+          fullTicket as unknown as Ticket & {
+            requester: { email: string; name: string | null } | null;
+            organization: { name: string };
+          },
+        );
       }
     } else {
       // Public ticket - notify internal team differently or log for manual assignment
-      console.log(`[Inbound Email] Public ticket created: ${ticketKey} from ${senderEmail}`);
+      console.log(
+        `[Inbound Email] Public ticket created: ${ticketKey} from ${senderEmail}`,
+      );
     }
-    
+
     return NextResponse.json({
       success: true,
       ticketId: ticket.id,
@@ -379,10 +432,10 @@ export async function POST(request: NextRequest) {
       isReply: false,
     });
   } catch (error) {
-    console.error('[Inbound Email] Error processing email:', error);
+    console.error("[Inbound Email] Error processing email:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -390,7 +443,7 @@ export async function POST(request: NextRequest) {
 // Allow GET for webhook verification (some providers use this)
 export async function GET() {
   return NextResponse.json({
-    status: 'ok',
-    message: 'Inbound email webhook endpoint',
+    status: "ok",
+    message: "Inbound email webhook endpoint",
   });
 }

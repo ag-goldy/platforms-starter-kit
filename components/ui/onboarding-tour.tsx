@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
-import { Button } from './button';
-import { cn } from '@/lib/utils';
+import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
+import { X, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { Button } from "./button";
+import { cn } from "@/lib/utils";
 
 interface TourStep {
   target: string;
   title: string;
   content: string;
-  position?: 'top' | 'bottom' | 'left' | 'right';
+  position?: "top" | "bottom" | "left" | "right";
   action?: {
     label: string;
     onClick: () => void;
@@ -45,35 +45,35 @@ export function OnboardingTour({
 
   const updateTargetPosition = useCallback(() => {
     if (!isOpen) return;
-    
+
     const step = steps[currentStep];
     const target = document.querySelector(step.target);
-    
+
     if (target) {
       const rect = target.getBoundingClientRect();
       setTargetRect(rect);
-      
+
       // Scroll target into view
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [currentStep, steps, isOpen]);
 
   useEffect(() => {
     updateTargetPosition();
-    
+
     const handleResize = () => updateTargetPosition();
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize);
-    
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize);
+
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize);
     };
   }, [updateTargetPosition]);
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     } else {
       handleComplete();
     }
@@ -81,18 +81,18 @@ export function OnboardingTour({
 
   const handlePrev = () => {
     if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
   const handleComplete = () => {
-    localStorage.setItem(`tour-${tourId}-completed`, 'true');
+    localStorage.setItem(`tour-${tourId}-completed`, "true");
     onComplete?.();
     onClose();
   };
 
   const handleSkip = () => {
-    localStorage.setItem(`tour-${tourId}-skipped`, 'true');
+    localStorage.setItem(`tour-${tourId}-skipped`, "true");
     onClose();
   };
 
@@ -103,40 +103,46 @@ export function OnboardingTour({
 
   // Calculate tooltip position
   const getTooltipPosition = () => {
-    if (!targetRect) return { top: '50%', left: '50%' };
-    
-    const position = step.position || 'bottom';
+    if (!targetRect) return { top: "50%", left: "50%" };
+
+    const position = step.position || "bottom";
     const tooltipWidth = 320;
     const tooltipHeight = 200;
     const gap = 16;
-    
+
     let top = 0;
     let left = 0;
-    
+
     switch (position) {
-      case 'top':
+      case "top":
         top = targetRect.top - tooltipHeight - gap;
         left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
         break;
-      case 'bottom':
+      case "bottom":
         top = targetRect.bottom + gap;
         left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
         break;
-      case 'left':
+      case "left":
         top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
         left = targetRect.left - tooltipWidth - gap;
         break;
-      case 'right':
+      case "right":
         top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
         left = targetRect.right + gap;
         break;
     }
-    
+
     // Keep within viewport
     const padding = 16;
-    top = Math.max(padding, Math.min(top, window.innerHeight - tooltipHeight - padding));
-    left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding));
-    
+    top = Math.max(
+      padding,
+      Math.min(top, window.innerHeight - tooltipHeight - padding),
+    );
+    left = Math.max(
+      padding,
+      Math.min(left, window.innerWidth - tooltipWidth - padding),
+    );
+
     return { top: `${top}px`, left: `${left}px` };
   };
 
@@ -144,7 +150,7 @@ export function OnboardingTour({
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={handleSkip} />
-      
+
       {/* Highlight */}
       {targetRect && (
         <motion.div
@@ -156,13 +162,13 @@ export function OnboardingTour({
             width: targetRect.width + 8,
             height: targetRect.height + 8,
           }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
           style={{
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+            boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.5)",
           }}
         />
       )}
-      
+
       {/* Tooltip */}
       <motion.div
         className="absolute w-80 bg-white rounded-lg shadow-xl p-4"
@@ -183,21 +189,17 @@ export function OnboardingTour({
             </button>
           )}
         </div>
-        
+
         {/* Content */}
         <p className="text-gray-600 text-sm mb-4">{step.content}</p>
-        
+
         {/* Action */}
         {step.action && (
-          <Button
-            size="sm"
-            onClick={step.action.onClick}
-            className="mb-4"
-          >
+          <Button size="sm" onClick={step.action.onClick} className="mb-4">
             {step.action.label}
           </Button>
         )}
-        
+
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t">
           {/* Progress dots */}
@@ -208,12 +210,14 @@ export function OnboardingTour({
                 onClick={() => setCurrentStep(i)}
                 className={cn(
                   "w-2 h-2 rounded-full transition-colors",
-                  i === currentStep ? "bg-blue-500" : "bg-gray-300 hover:bg-gray-400"
+                  i === currentStep
+                    ? "bg-blue-500"
+                    : "bg-gray-300 hover:bg-gray-400",
                 )}
               />
             ))}
           </div>
-          
+
           {/* Navigation */}
           <div className="flex items-center gap-2">
             {currentStep > 0 && (
@@ -237,14 +241,14 @@ export function OnboardingTour({
             </Button>
           </div>
         </div>
-        
+
         {/* Step counter */}
         <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
           {currentStep + 1}
         </div>
       </motion.div>
     </div>,
-    document.body
+    document.body,
   );
 }
 

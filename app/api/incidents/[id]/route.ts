@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { incidents, incidentUpdates, services } from '@/db/schema';
-import { eq, and, desc, inArray } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth/session';
-import { requireOrgRole } from '@/lib/auth/permissions';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { incidents, incidentUpdates, services } from "@/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/session";
+import { requireOrgRole } from "@/lib/auth/permissions";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -26,12 +26,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       .limit(1);
 
     if (!incident) {
-      return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Incident not found" },
+        { status: 404 },
+      );
     }
 
     // Verify user has access to this org
     // Note: Internal users (ADMIN, AGENT) bypass role check automatically
-    await requireOrgRole(incident.orgId, ['CUSTOMER_ADMIN']);
+    await requireOrgRole(incident.orgId, ["CUSTOMER_ADMIN"]);
 
     // Get updates
     const updates = await db
@@ -58,10 +61,13 @@ export async function GET(request: NextRequest, { params }: Params) {
       },
     });
   } catch (error) {
-    console.error('[API] Failed to fetch incident:', error);
+    console.error("[API] Failed to fetch incident:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch incident' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to fetch incident",
+      },
+      { status: 500 },
     );
   }
 }
@@ -83,12 +89,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
       .limit(1);
 
     if (!incident) {
-      return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Incident not found" },
+        { status: 404 },
+      );
     }
 
     // Verify user has admin/agent role
     // Note: Internal users (ADMIN, AGENT) bypass role check automatically
-    await requireOrgRole(incident.orgId, ['CUSTOMER_ADMIN']);
+    await requireOrgRole(incident.orgId, ["CUSTOMER_ADMIN"]);
 
     const body = await request.json();
     const { status, title, message, severity, servicesAffected } = body;
@@ -101,10 +110,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (title !== undefined) updates.title = title;
     if (message !== undefined) updates.message = message;
     if (severity !== undefined) updates.severity = severity;
-    if (servicesAffected !== undefined) updates.servicesAffected = servicesAffected;
+    if (servicesAffected !== undefined)
+      updates.servicesAffected = servicesAffected;
 
     // If status changed to resolved, set resolvedAt
-    if (status === 'resolved' && incident.status !== 'resolved') {
+    if (status === "resolved" && incident.status !== "resolved") {
       updates.resolvedAt = new Date();
     }
 
@@ -116,10 +126,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ incident: updated });
   } catch (error) {
-    console.error('[API] Failed to update incident:', error);
+    console.error("[API] Failed to update incident:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update incident' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to update incident",
+      },
+      { status: 500 },
     );
   }
 }
@@ -141,21 +154,27 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       .limit(1);
 
     if (!incident) {
-      return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Incident not found" },
+        { status: 404 },
+      );
     }
 
     // Verify user has admin role
     // Note: Internal users (ADMIN, AGENT) bypass role check automatically
-    await requireOrgRole(incident.orgId, ['CUSTOMER_ADMIN']);
+    await requireOrgRole(incident.orgId, ["CUSTOMER_ADMIN"]);
 
     await db.delete(incidents).where(eq(incidents.id, incidentId));
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[API] Failed to delete incident:', error);
+    console.error("[API] Failed to delete incident:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to delete incident' },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to delete incident",
+      },
+      { status: 500 },
     );
   }
 }

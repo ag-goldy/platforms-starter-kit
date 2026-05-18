@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   getBulkOperationById,
   processBulkOperation,
-} from '@/lib/bulk-operations/queries';
-import { requireInternalRole } from '@/lib/auth/permissions';
+} from "@/lib/bulk-operations/queries";
+import { requireInternalRole } from "@/lib/auth/permissions";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -22,8 +22,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     if (!operation) {
       return NextResponse.json(
-        { error: 'Bulk operation not found' },
-        { status: 404 }
+        { error: "Bulk operation not found" },
+        { status: 404 },
       );
     }
 
@@ -31,10 +31,10 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ operation });
   } catch (error) {
-    console.error('Error fetching bulk operation:', error);
+    console.error("Error fetching bulk operation:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch bulk operation' },
-      { status: 500 }
+      { error: "Failed to fetch bulk operation" },
+      { status: 500 },
     );
   }
 }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -51,17 +51,17 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (!operation) {
       return NextResponse.json(
-        { error: 'Bulk operation not found' },
-        { status: 404 }
+        { error: "Bulk operation not found" },
+        { status: 404 },
       );
     }
 
     await requireInternalRole();
 
-    if (operation.status !== 'pending') {
+    if (operation.status !== "pending") {
       return NextResponse.json(
-        { error: 'Operation already processed' },
-        { status: 400 }
+        { error: "Operation already processed" },
+        { status: 400 },
       );
     }
 
@@ -70,10 +70,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ operation, result });
   } catch (error) {
-    console.error('Error executing bulk operation:', error);
+    console.error("Error executing bulk operation:", error);
     return NextResponse.json(
-      { error: 'Failed to execute bulk operation' },
-      { status: 500 }
+      { error: "Failed to execute bulk operation" },
+      { status: 500 },
     );
   }
 }

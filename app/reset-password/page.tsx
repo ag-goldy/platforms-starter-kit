@@ -1,10 +1,16 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { validatePasswordResetToken } from '@/lib/auth/password-reset';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { validatePasswordResetToken } from "@/lib/auth/password-reset";
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -14,7 +20,7 @@ export default async function ResetPasswordPage({
   const params = await searchParams;
   const token = params.token;
   const error = params.error;
-  const success = params.success === 'true';
+  const success = params.success === "true";
 
   // Success state
   if (success) {
@@ -49,7 +55,10 @@ export default async function ResetPasswordPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-blue-600 hover:underline"
+            >
               Request a new reset link
             </Link>
           </CardContent>
@@ -71,7 +80,10 @@ export default async function ResetPasswordPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-blue-600 hover:underline"
+            >
               Request a new reset link
             </Link>
           </CardContent>
@@ -81,21 +93,26 @@ export default async function ResetPasswordPage({
   }
 
   async function resetPasswordAction(formData: FormData) {
-    'use server';
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
-    const resetToken = formData.get('token') as string;
+    "use server";
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
+    const resetToken = formData.get("token") as string;
 
     if (!password || password.length < 8) {
-      redirect(`/reset-password?token=${resetToken}&error=Password must be at least 8 characters`);
+      redirect(
+        `/reset-password?token=${resetToken}&error=Password must be at least 8 characters`,
+      );
     }
 
     if (password !== confirmPassword) {
-      redirect(`/reset-password?token=${resetToken}&error=Passwords do not match`);
+      redirect(
+        `/reset-password?token=${resetToken}&error=Passwords do not match`,
+      );
     }
 
     try {
-      const { resetPasswordWithToken } = await import('@/lib/auth/password-reset');
+      const { resetPasswordWithToken } =
+        await import("@/lib/auth/password-reset");
       const result = await resetPasswordWithToken(resetToken, password);
 
       if (!result.success) {
@@ -104,14 +121,19 @@ export default async function ResetPasswordPage({
     } catch (err: unknown) {
       // Don't catch redirect errors - re-throw them
       const error = err as { message?: string; digest?: string };
-      if (error?.message?.includes('NEXT_REDIRECT') || error?.digest?.includes('NEXT_REDIRECT')) {
+      if (
+        error?.message?.includes("NEXT_REDIRECT") ||
+        error?.digest?.includes("NEXT_REDIRECT")
+      ) {
         throw err;
       }
-      console.error('Password reset error:', err);
-      redirect(`/reset-password?token=${resetToken}&error=An error occurred. Please try again.`);
+      console.error("Password reset error:", err);
+      redirect(
+        `/reset-password?token=${resetToken}&error=An error occurred. Please try again.`,
+      );
     }
 
-    redirect('/reset-password?success=true');
+    redirect("/reset-password?success=true");
   }
 
   return (

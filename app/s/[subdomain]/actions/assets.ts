@@ -1,16 +1,16 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { areas, assets, sites } from '@/db/schema';
-import { requireOrgMemberRole } from '@/lib/auth/permissions';
-import { and, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { db } from "@/db";
+import { areas, assets, sites } from "@/db/schema";
+import { requireOrgMemberRole } from "@/lib/auth/permissions";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 const assetSchema = z.object({
   name: z.string().min(1).max(200),
   type: z.string().min(1).max(50), // Can be standard or custom type
-  status: z.string().min(1).max(50).default('ACTIVE'), // Can be standard or custom status
+  status: z.string().min(1).max(50).default("ACTIVE"), // Can be standard or custom status
   siteId: z.string().uuid().optional().nullable(),
   areaId: z.string().uuid().optional().nullable(),
   hostname: z.string().optional().nullable(),
@@ -29,7 +29,7 @@ const orgAssetTypeSchema = z.object({
   name: z.string().min(1).max(50),
   label: z.string().min(1).max(100),
   description: z.string().optional().nullable(),
-  color: z.string().max(7).default('#6B7280'),
+  color: z.string().max(7).default("#6B7280"),
   icon: z.string().optional().nullable(),
   sortOrder: z.number().default(0),
 });
@@ -39,33 +39,35 @@ const orgAssetStatusSchema = z.object({
   name: z.string().min(1).max(50),
   label: z.string().min(1).max(100),
   description: z.string().optional().nullable(),
-  color: z.string().max(7).default('#6B7280'),
+  color: z.string().max(7).default("#6B7280"),
   sortOrder: z.number().default(0),
 });
 
 function normalizeTags(input?: string | null): string[] | null {
   if (!input) return null;
   const tags = input
-    .split(',')
+    .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
   return tags.length > 0 ? tags : null;
 }
 
-function parseAccessUrls(input?: string | null): { label: string; url: string }[] | null {
+function parseAccessUrls(
+  input?: string | null,
+): { label: string; url: string }[] | null {
   if (!input) return null;
   try {
     const parsed = JSON.parse(input);
     if (Array.isArray(parsed)) {
-      return parsed.filter(item => item.label && item.url);
+      return parsed.filter((item) => item.label && item.url);
     }
   } catch {
     // If not valid JSON, try comma-separated format: "Label:URL,Label2:URL2"
     const urls = input
-      .split(',')
+      .split(",")
       .map((pair) => {
-        const [label, ...urlParts] = pair.split(':');
-        const url = urlParts.join(':'); // Handle URLs with colons
+        const [label, ...urlParts] = pair.split(":");
+        const url = urlParts.join(":"); // Handle URLs with colons
         if (label && url) {
           return { label: label.trim(), url: url.trim() };
         }
@@ -77,13 +79,17 @@ function parseAccessUrls(input?: string | null): { label: string; url: string }[
   return null;
 }
 
-async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId?: string | null) {
+async function validateSiteAndArea(
+  orgId: string,
+  siteId?: string | null,
+  areaId?: string | null,
+) {
   if (siteId) {
     const site = await db.query.sites.findFirst({
       where: and(eq(sites.id, siteId), eq(sites.orgId, orgId)),
     });
     if (!site) {
-      throw new Error('Site not found');
+      throw new Error("Site not found");
     }
   }
 
@@ -92,19 +98,21 @@ async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId
       where: eq(areas.id, areaId),
       with: { site: true },
     });
-    interface SiteInfo { orgId: string }
+    interface SiteInfo {
+      orgId: string;
+    }
     const site = area?.site as SiteInfo | undefined;
     if (!area || !site || site.orgId !== orgId) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
     if (siteId && area.siteId !== siteId) {
-      throw new Error('Area does not belong to selected site');
+      throw new Error("Area does not belong to selected site");
     }
   }
 }
 
 export async function getCustomerAssetsAction(orgId: string) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   return db.query.assets.findMany({
     where: eq(assets.orgId, orgId),
     orderBy: (table, { asc }) => [asc(table.name)],
@@ -115,11 +123,18 @@ export async function getCustomerAssetsAction(orgId: string) {
   });
 }
 
-export async function createCustomerAssetAction(orgId: string, data: z.input<typeof assetSchema>) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function createCustomerAssetAction(
+  orgId: string,
+  data: z.input<typeof assetSchema>,
+) {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = assetSchema.parse(data);
 
-  await validateSiteAndArea(orgId, validated.siteId || null, validated.areaId || null);
+  await validateSiteAndArea(
+    orgId,
+    validated.siteId || null,
+    validated.areaId || null,
+  );
 
   const [created] = await db
     .insert(assets)
@@ -151,12 +166,16 @@ export async function createCustomerAssetAction(orgId: string, data: z.input<typ
 export async function updateCustomerAssetAction(
   orgId: string,
   assetId: string,
-  data: z.input<typeof assetSchema>
+  data: z.input<typeof assetSchema>,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = assetSchema.parse(data);
 
-  await validateSiteAndArea(orgId, validated.siteId || null, validated.areaId || null);
+  await validateSiteAndArea(
+    orgId,
+    validated.siteId || null,
+    validated.areaId || null,
+  );
 
   const [updated] = await db
     .update(assets)
@@ -181,7 +200,7 @@ export async function updateCustomerAssetAction(
     .returning();
 
   if (!updated) {
-    throw new Error('Asset not found');
+    throw new Error("Asset not found");
   }
 
   revalidatePath(`/s/[subdomain]/assets`);
@@ -192,11 +211,18 @@ export async function updateCustomerAssetAction(
 // CUSTOM ASSET TYPES
 // ============================================================================
 
-import { orgAssetTypes, orgAssetStatuses, type OrgAssetType, type OrgAssetStatus } from '@/db/schema';
-import { asc } from 'drizzle-orm';
+import {
+  orgAssetTypes,
+  orgAssetStatuses,
+  type OrgAssetType,
+  type OrgAssetStatus,
+} from "@/db/schema";
+import { asc } from "drizzle-orm";
 
-export async function getOrgAssetTypesAction(orgId: string): Promise<OrgAssetType[]> {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function getOrgAssetTypesAction(
+  orgId: string,
+): Promise<OrgAssetType[]> {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   return db.query.orgAssetTypes.findMany({
     where: eq(orgAssetTypes.orgId, orgId),
     orderBy: [asc(orgAssetTypes.sortOrder), asc(orgAssetTypes.label)],
@@ -205,9 +231,9 @@ export async function getOrgAssetTypesAction(orgId: string): Promise<OrgAssetTyp
 
 export async function createOrgAssetTypeAction(
   orgId: string,
-  data: z.input<typeof orgAssetTypeSchema>
+  data: z.input<typeof orgAssetTypeSchema>,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = orgAssetTypeSchema.parse(data);
 
   const [created] = await db
@@ -230,9 +256,9 @@ export async function createOrgAssetTypeAction(
 export async function updateOrgAssetTypeAction(
   orgId: string,
   typeId: string,
-  data: z.input<typeof orgAssetTypeSchema>
+  data: z.input<typeof orgAssetTypeSchema>,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = orgAssetTypeSchema.parse(data);
 
   const [updated] = await db
@@ -250,7 +276,7 @@ export async function updateOrgAssetTypeAction(
     .returning();
 
   if (!updated) {
-    throw new Error('Asset type not found');
+    throw new Error("Asset type not found");
   }
 
   revalidatePath(`/s/[subdomain]/assets`);
@@ -258,7 +284,7 @@ export async function updateOrgAssetTypeAction(
 }
 
 export async function deleteOrgAssetTypeAction(orgId: string, typeId: string) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const [deleted] = await db
     .delete(orgAssetTypes)
@@ -266,7 +292,7 @@ export async function deleteOrgAssetTypeAction(orgId: string, typeId: string) {
     .returning();
 
   if (!deleted) {
-    throw new Error('Asset type not found');
+    throw new Error("Asset type not found");
   }
 
   revalidatePath(`/s/[subdomain]/assets`);
@@ -277,8 +303,10 @@ export async function deleteOrgAssetTypeAction(orgId: string, typeId: string) {
 // CUSTOM ASSET STATUSES
 // ============================================================================
 
-export async function getOrgAssetStatusesAction(orgId: string): Promise<OrgAssetStatus[]> {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function getOrgAssetStatusesAction(
+  orgId: string,
+): Promise<OrgAssetStatus[]> {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   return db.query.orgAssetStatuses.findMany({
     where: eq(orgAssetStatuses.orgId, orgId),
     orderBy: [asc(orgAssetStatuses.sortOrder), asc(orgAssetStatuses.label)],
@@ -287,9 +315,9 @@ export async function getOrgAssetStatusesAction(orgId: string): Promise<OrgAsset
 
 export async function createOrgAssetStatusAction(
   orgId: string,
-  data: z.input<typeof orgAssetStatusSchema>
+  data: z.input<typeof orgAssetStatusSchema>,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = orgAssetStatusSchema.parse(data);
 
   const [created] = await db
@@ -311,9 +339,9 @@ export async function createOrgAssetStatusAction(
 export async function updateOrgAssetStatusAction(
   orgId: string,
   statusId: string,
-  data: z.input<typeof orgAssetStatusSchema>
+  data: z.input<typeof orgAssetStatusSchema>,
 ) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
   const validated = orgAssetStatusSchema.parse(data);
 
   const [updated] = await db
@@ -326,27 +354,34 @@ export async function updateOrgAssetStatusAction(
       sortOrder: validated.sortOrder,
       updatedAt: new Date(),
     })
-    .where(and(eq(orgAssetStatuses.id, statusId), eq(orgAssetStatuses.orgId, orgId)))
+    .where(
+      and(eq(orgAssetStatuses.id, statusId), eq(orgAssetStatuses.orgId, orgId)),
+    )
     .returning();
 
   if (!updated) {
-    throw new Error('Asset status not found');
+    throw new Error("Asset status not found");
   }
 
   revalidatePath(`/s/[subdomain]/assets`);
   return { status: updated };
 }
 
-export async function deleteOrgAssetStatusAction(orgId: string, statusId: string) {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function deleteOrgAssetStatusAction(
+  orgId: string,
+  statusId: string,
+) {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const [deleted] = await db
     .delete(orgAssetStatuses)
-    .where(and(eq(orgAssetStatuses.id, statusId), eq(orgAssetStatuses.orgId, orgId)))
+    .where(
+      and(eq(orgAssetStatuses.id, statusId), eq(orgAssetStatuses.orgId, orgId)),
+    )
     .returning();
 
   if (!deleted) {
-    throw new Error('Asset status not found');
+    throw new Error("Asset status not found");
   }
 
   revalidatePath(`/s/[subdomain]/assets`);
@@ -364,8 +399,10 @@ export interface AssetConfig {
   defaultStatuses: { name: string; label: string; color: string }[];
 }
 
-export async function getAssetConfigAction(orgId: string): Promise<AssetConfig> {
-  await requireOrgMemberRole(orgId, ['CUSTOMER_ADMIN']);
+export async function getAssetConfigAction(
+  orgId: string,
+): Promise<AssetConfig> {
+  await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
 
   const [types, statuses] = await Promise.all([
     getOrgAssetTypesAction(orgId),
@@ -374,21 +411,21 @@ export async function getAssetConfigAction(orgId: string): Promise<AssetConfig> 
 
   // Default system types
   const defaultTypes = [
-    { name: 'AP', label: 'Access Point', color: '#10B981' },
-    { name: 'SWITCH', label: 'Switch', color: '#3B82F6' },
-    { name: 'FIREWALL', label: 'Firewall', color: '#EF4444' },
-    { name: 'CAMERA', label: 'Camera', color: '#8B5CF6' },
-    { name: 'NVR', label: 'NVR', color: '#F59E0B' },
-    { name: 'SERVER', label: 'Server', color: '#6366F1' },
-    { name: 'ISP_CIRCUIT', label: 'ISP Circuit', color: '#EC4899' },
-    { name: 'OTHER', label: 'Other', color: '#6B7280' },
+    { name: "AP", label: "Access Point", color: "#10B981" },
+    { name: "SWITCH", label: "Switch", color: "#3B82F6" },
+    { name: "FIREWALL", label: "Firewall", color: "#EF4444" },
+    { name: "CAMERA", label: "Camera", color: "#8B5CF6" },
+    { name: "NVR", label: "NVR", color: "#F59E0B" },
+    { name: "SERVER", label: "Server", color: "#6366F1" },
+    { name: "ISP_CIRCUIT", label: "ISP Circuit", color: "#EC4899" },
+    { name: "OTHER", label: "Other", color: "#6B7280" },
   ];
 
   // Default system statuses
   const defaultStatuses = [
-    { name: 'ACTIVE', label: 'Active', color: '#10B981' },
-    { name: 'RETIRED', label: 'Retired', color: '#6B7280' },
-    { name: 'MAINTENANCE', label: 'Maintenance', color: '#F59E0B' },
+    { name: "ACTIVE", label: "Active", color: "#10B981" },
+    { name: "RETIRED", label: "Retired", color: "#6B7280" },
+    { name: "MAINTENANCE", label: "Maintenance", color: "#F59E0B" },
   ];
 
   return {
