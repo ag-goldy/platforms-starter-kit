@@ -1,27 +1,35 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { users, memberships, organizations } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { revalidatePath } from 'next/cache';
-import { eq, and, asc } from 'drizzle-orm';
-import { z } from 'zod/v3';
-import { createInvitation, createInvitationLink, cancelInvitation, resendInvitationEmail } from '@/lib/users/invitations';
-import type { CustomerRole } from '@/lib/auth/roles';
+import { db } from "@/db";
+import { users, memberships, organizations } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { revalidatePath } from "next/cache";
+import { eq, and, asc } from "drizzle-orm";
+import { z } from "zod/v3";
+import {
+  createInvitation,
+  createInvitationLink,
+  cancelInvitation,
+  resendInvitationEmail,
+} from "@/lib/users/invitations";
+import type { CustomerRole } from "@/lib/auth/roles";
 
 const passwordSchema = z.string().min(8).max(100);
 
 /**
  * Change user password (for authenticated users)
  */
-export async function changePasswordAction(currentPassword: string, newPassword: string) {
-  const bcrypt = await import('bcryptjs');
-  const { getServerSession } = await import('@/lib/auth/session');
-  
+export async function changePasswordAction(
+  currentPassword: string,
+  newPassword: string,
+) {
+  const bcrypt = await import("bcryptjs");
+  const { getServerSession } = await import("@/lib/auth/session");
+
   const session = await getServerSession();
   if (!session?.user?.id) {
-    throw new Error('Not authenticated');
+    throw new Error("Not authenticated");
   }
 
   // Get current user
@@ -30,13 +38,13 @@ export async function changePasswordAction(currentPassword: string, newPassword:
   });
 
   if (!user?.passwordHash) {
-    throw new Error('Password cannot be changed');
+    throw new Error("Password cannot be changed");
   }
 
   // Verify current password
   const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!isValid) {
-    throw new Error('Current password is incorrect');
+    throw new Error("Current password is incorrect");
   }
 
   // Validate new password
@@ -51,23 +59,26 @@ export async function changePasswordAction(currentPassword: string, newPassword:
 
   await logAudit({
     userId: session.user.id,
-    action: 'USER_UPDATED',
+    action: "USER_UPDATED",
     details: JSON.stringify({ userId: session.user.id }),
   });
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { success: true };
 }
 
 /**
  * Admin: Change any user's password
  */
-export async function adminChangePasswordAction(userId: string, newPassword: string) {
+export async function adminChangePasswordAction(
+  userId: string,
+  newPassword: string,
+) {
   const user = await requireInternalRole();
 
   passwordSchema.parse(newPassword);
 
-  const bcrypt = await import('bcryptjs');
+  const bcrypt = await import("bcryptjs");
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
   await db
@@ -77,11 +88,11 @@ export async function adminChangePasswordAction(userId: string, newPassword: str
 
   await logAudit({
     userId: user.id,
-    action: 'USER_UPDATED',
+    action: "USER_UPDATED",
     details: JSON.stringify({ targetUserId: userId, changedBy: user.id }),
   });
 
-  revalidatePath('/app/users');
+  revalidatePath("/app/users");
   return { success: true };
 }
 
@@ -95,7 +106,7 @@ export async function inviteUserAction(data: {
   role: CustomerRole;
 }) {
   const inviter = await requireInternalRole();
-  
+
   const email = z.string().email().parse(data.email);
   const orgId = z.string().uuid().parse(data.orgId);
 
@@ -109,13 +120,13 @@ export async function inviteUserAction(data: {
   await logAudit({
     userId: inviter.id,
     orgId,
-    action: 'USER_INVITED',
+    action: "USER_INVITED",
     details: JSON.stringify({ email, role: data.role }),
   });
 
   revalidatePath(`/app/organizations/${orgId}`);
-  revalidatePath('/app/users');
-  
+  revalidatePath("/app/users");
+
   return { invitationId: invitation.id, invitationLink };
 }
 
@@ -128,7 +139,7 @@ export async function createInvitationLinkAction(data: {
   role: CustomerRole;
 }) {
   const inviter = await requireInternalRole();
-  
+
   const email = z.string().email().parse(data.email);
   const orgId = z.string().uuid().parse(data.orgId);
 
@@ -142,24 +153,27 @@ export async function createInvitationLinkAction(data: {
   await logAudit({
     userId: inviter.id,
     orgId,
-    action: 'USER_INVITED',
+    action: "USER_INVITED",
     details: JSON.stringify({ email, role: data.role }),
   });
 
   revalidatePath(`/app/organizations/${orgId}`);
-  revalidatePath('/app/users');
-  
+  revalidatePath("/app/users");
+
   return { invitationId: invitation.id, invitationLink };
 }
 
 /**
  * Cancel an invitation
  */
-export async function cancelInvitationAction(invitationId: string, orgId: string) {
+export async function cancelInvitationAction(
+  invitationId: string,
+  orgId: string,
+) {
   await requireInternalRole();
   await cancelInvitation(invitationId, orgId);
   revalidatePath(`/app/organizations/${orgId}`);
-  revalidatePath('/app/users');
+  revalidatePath("/app/users");
   return { success: true };
 }
 
@@ -169,8 +183,8 @@ export async function cancelInvitationAction(invitationId: string, orgId: string
 export async function resendInvitationAction(invitationId: string) {
   await requireInternalRole();
   await resendInvitationEmail(invitationId);
-  revalidatePath('/app/users');
-  revalidatePath('/app/organizations');
+  revalidatePath("/app/users");
+  revalidatePath("/app/organizations");
   return { success: true };
 }
 
@@ -187,13 +201,13 @@ export async function removeUserFromOrgAction(userId: string, orgId: string) {
   await logAudit({
     userId: user.id,
     orgId,
-    action: 'USER_UPDATED',
+    action: "USER_UPDATED",
     details: JSON.stringify({ targetUserId: userId }),
   });
 
   revalidatePath(`/app/organizations/${orgId}`);
-  revalidatePath('/app/users');
-  
+  revalidatePath("/app/users");
+
   return { success: true };
 }
 
@@ -213,20 +227,20 @@ export async function updateUserRoleAction(data: {
     .where(
       and(
         eq(memberships.userId, data.userId),
-        eq(memberships.orgId, data.orgId)
-      )
+        eq(memberships.orgId, data.orgId),
+      ),
     );
 
   await logAudit({
     userId: user.id,
     orgId: data.orgId,
-    action: 'USER_ROLE_CHANGED',
+    action: "USER_ROLE_CHANGED",
     details: JSON.stringify({ targetUserId: data.userId, newRole: data.role }),
   });
 
   revalidatePath(`/app/organizations/${data.orgId}`);
-  revalidatePath('/app/users');
-  
+  revalidatePath("/app/users");
+
   return { success: true };
 }
 
@@ -254,7 +268,7 @@ export async function updateUserInfoAction(data: {
   });
 
   if (existingUser && existingUser.id !== data.userId) {
-    throw new Error('Email is already in use by another user');
+    throw new Error("Email is already in use by another user");
   }
 
   // Validate managerId if provided (must be an internal user)
@@ -264,13 +278,13 @@ export async function updateUserInfoAction(data: {
       where: eq(users.id, data.managerId),
     });
     if (!managerUser) {
-      throw new Error('Manager user not found');
+      throw new Error("Manager user not found");
     }
     if (!managerUser.isInternal) {
-      throw new Error('Manager must be an internal user');
+      throw new Error("Manager must be an internal user");
     }
     if (data.managerId === data.userId) {
-      throw new Error('User cannot be their own manager');
+      throw new Error("User cannot be their own manager");
     }
     validatedManagerId = data.managerId;
   }
@@ -291,13 +305,16 @@ export async function updateUserInfoAction(data: {
 
   await logAudit({
     userId: user.id,
-    action: 'USER_UPDATED',
-    details: JSON.stringify({ targetUserId: data.userId, email: validatedEmail }),
+    action: "USER_UPDATED",
+    details: JSON.stringify({
+      targetUserId: data.userId,
+      email: validatedEmail,
+    }),
   });
 
-  revalidatePath('/app/users');
-  revalidatePath('/app/organizations');
-  
+  revalidatePath("/app/users");
+  revalidatePath("/app/organizations");
+
   return { success: true };
 }
 
@@ -308,10 +325,7 @@ export async function getAllUsersAction() {
   await requireInternalRole();
 
   // Get all users
-  const allUsers = await db
-    .select()
-    .from(users)
-    .orderBy(asc(users.email));
+  const allUsers = await db.select().from(users).orderBy(asc(users.email));
 
   // Get memberships for all users
   const allMemberships = await db
@@ -382,18 +396,18 @@ export async function createUserAction(data: {
   role?: CustomerRole;
 }) {
   const admin = await requireInternalRole();
-  const bcrypt = await import('bcryptjs');
+  const bcrypt = await import("bcryptjs");
 
   // Validate inputs
   const emailSchema = z.string().email();
   const validatedEmail = emailSchema.parse(data.email);
-  
+
   if (!data.name || data.name.trim().length < 2) {
-    throw new Error('Name must be at least 2 characters');
+    throw new Error("Name must be at least 2 characters");
   }
-  
+
   if (!data.password || data.password.length < 8) {
-    throw new Error('Password must be at least 8 characters');
+    throw new Error("Password must be at least 8 characters");
   }
 
   // Check if email already exists
@@ -402,7 +416,7 @@ export async function createUserAction(data: {
   });
 
   if (existingUser) {
-    throw new Error('A user with this email already exists');
+    throw new Error("A user with this email already exists");
   }
 
   // Hash password
@@ -423,7 +437,7 @@ export async function createUserAction(data: {
     .returning();
 
   if (!newUser) {
-    throw new Error('Failed to create user');
+    throw new Error("Failed to create user");
   }
 
   // If orgId and role provided, create membership
@@ -443,22 +457,22 @@ export async function createUserAction(data: {
 
   await logAudit({
     userId: admin.id,
-    action: 'USER_CREATED',
-    details: JSON.stringify({ 
-      targetUserId: newUser.id, 
+    action: "USER_CREATED",
+    details: JSON.stringify({
+      targetUserId: newUser.id,
       email: validatedEmail,
       isInternal: data.isInternal,
       orgId: data.orgId,
     }),
   });
 
-  revalidatePath('/app/users');
+  revalidatePath("/app/users");
   if (data.orgId) {
     revalidatePath(`/app/organizations/${data.orgId}`);
   }
 
-  return { 
-    success: true, 
+  return {
+    success: true,
     userId: newUser.id,
     email: newUser.email,
   };
@@ -469,7 +483,10 @@ export async function createUserAction(data: {
  * @param orgId - Organization ID
  * @param includeInternal - Whether to include internal users (default: false)
  */
-export async function getOrganizationMembersAction(orgId: string, includeInternal = false) {
+export async function getOrganizationMembersAction(
+  orgId: string,
+  includeInternal = false,
+) {
   await requireInternalRole();
 
   const whereClause = includeInternal

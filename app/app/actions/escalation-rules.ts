@@ -1,16 +1,16 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { escalationRules } from '@/db/schema';
-import { requireInternalAdmin } from '@/lib/auth/permissions';
-import { and, eq, desc } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod/v3';
+import { db } from "@/db";
+import { escalationRules } from "@/db/schema";
+import { requireInternalAdmin } from "@/lib/auth/permissions";
+import { and, eq, desc } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod/v3";
 
 const actionsSchema = z.object({
   notifyUserIds: z.array(z.string().uuid()).optional(),
   notifyGroupIds: z.array(z.string().uuid()).optional(),
-  changePriority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
+  changePriority: z.enum(["P1", "P2", "P3", "P4"]).optional(),
   addTags: z.array(z.string()).optional(),
   assignToUserId: z.string().uuid().optional(),
   addComment: z.string().optional(),
@@ -20,10 +20,19 @@ const escalationRuleSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  triggerType: z.enum(['no_response', 'no_resolution', 'sla_warning', 'sla_breach']),
+  triggerType: z.enum([
+    "no_response",
+    "no_resolution",
+    "sla_warning",
+    "sla_breach",
+  ]),
   timeThreshold: z.number().int().min(1).max(10080), // Max 1 week in minutes
-  applicablePriorities: z.array(z.enum(['P1', 'P2', 'P3', 'P4'])).default(['P1', 'P2', 'P3', 'P4']),
-  applicableCategories: z.array(z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST'])).default(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST']),
+  applicablePriorities: z
+    .array(z.enum(["P1", "P2", "P3", "P4"]))
+    .default(["P1", "P2", "P3", "P4"]),
+  applicableCategories: z
+    .array(z.enum(["INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST"]))
+    .default(["INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST"]),
   actions: actionsSchema,
 });
 
@@ -42,7 +51,7 @@ export async function getEscalationRules(orgId: string) {
 
 export async function createEscalationRule(
   orgId: string,
-  data: EscalationRuleInput
+  data: EscalationRuleInput,
 ) {
   await requireInternalAdmin();
   const validated = escalationRuleSchema.parse(data);
@@ -69,7 +78,7 @@ export async function createEscalationRule(
 export async function updateEscalationRule(
   orgId: string,
   ruleId: string,
-  data: EscalationRuleInput
+  data: EscalationRuleInput,
 ) {
   await requireInternalAdmin();
   const validated = escalationRuleSchema.parse(data);
@@ -87,14 +96,13 @@ export async function updateEscalationRule(
       actions: validated.actions,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(escalationRules.id, ruleId),
-      eq(escalationRules.orgId, orgId)
-    ))
+    .where(
+      and(eq(escalationRules.id, ruleId), eq(escalationRules.orgId, orgId)),
+    )
     .returning();
 
   if (!rule) {
-    throw new Error('Rule not found');
+    throw new Error("Rule not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/settings/escalation-rules`);
@@ -106,14 +114,13 @@ export async function deleteEscalationRule(orgId: string, ruleId: string) {
 
   const [rule] = await db
     .delete(escalationRules)
-    .where(and(
-      eq(escalationRules.id, ruleId),
-      eq(escalationRules.orgId, orgId)
-    ))
+    .where(
+      and(eq(escalationRules.id, ruleId), eq(escalationRules.orgId, orgId)),
+    )
     .returning();
 
   if (!rule) {
-    throw new Error('Rule not found');
+    throw new Error("Rule not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/settings/escalation-rules`);
@@ -123,7 +130,7 @@ export async function deleteEscalationRule(orgId: string, ruleId: string) {
 export async function toggleEscalationRule(
   orgId: string,
   ruleId: string,
-  isActive: boolean
+  isActive: boolean,
 ) {
   await requireInternalAdmin();
 
@@ -133,14 +140,13 @@ export async function toggleEscalationRule(
       isActive,
       updatedAt: new Date(),
     })
-    .where(and(
-      eq(escalationRules.id, ruleId),
-      eq(escalationRules.orgId, orgId)
-    ))
+    .where(
+      and(eq(escalationRules.id, ruleId), eq(escalationRules.orgId, orgId)),
+    )
     .returning();
 
   if (!rule) {
-    throw new Error('Rule not found');
+    throw new Error("Rule not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/settings/escalation-rules`);
@@ -149,12 +155,12 @@ export async function toggleEscalationRule(
 
 export function formatDuration(minutes: number): string {
   if (minutes < 60) {
-    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
   }
   if (minutes < 1440) {
     const hours = Math.floor(minutes / 60);
-    return `${hours} hour${hours > 1 ? 's' : ''}`;
+    return `${hours} hour${hours > 1 ? "s" : ""}`;
   }
   const days = Math.floor(minutes / 1440);
-  return `${days} day${days > 1 ? 's' : ''}`;
+  return `${days} day${days > 1 ? "s" : ""}`;
 }

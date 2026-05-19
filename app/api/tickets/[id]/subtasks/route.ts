@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { ticketSubtasks, tickets } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 
 const subtaskSchema = z.object({
   title: z.string().min(1),

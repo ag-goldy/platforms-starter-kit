@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { ticketDependencies } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 
 const dependencySchema = z.object({
   dependsOnTicketId: z.string().uuid(),

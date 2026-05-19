@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createStatuspageClient } from "@/lib/integrations/statuspage/client";
 import { canManageOrgSettings, canManageTickets } from "@/lib/auth/permissions";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 
 const updateIncidentSchema = z.object({
   status: z

@@ -1,12 +1,12 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { ticketTemplates } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { logAudit } from '@/lib/audit/log';
-import { revalidatePath } from 'next/cache';
-import { eq } from 'drizzle-orm';
-import { z } from 'zod/v3';
+import { db } from "@/db";
+import { ticketTemplates } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { logAudit } from "@/lib/audit/log";
+import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+import { z } from "zod/v3";
 
 const templateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -22,7 +22,7 @@ export async function createTemplateAction(data: {
   internalOnly?: boolean;
 }) {
   const user = await requireInternalRole();
-  
+
   const validated = templateSchema.parse(data);
 
   const [template] = await db
@@ -38,11 +38,14 @@ export async function createTemplateAction(data: {
 
   await logAudit({
     userId: user.id,
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({ templateId: template.id, action: 'TEMPLATE_CREATED' }),
+    action: "TICKET_UPDATED",
+    details: JSON.stringify({
+      templateId: template.id,
+      action: "TEMPLATE_CREATED",
+    }),
   });
 
-  revalidatePath('/app/templates');
+  revalidatePath("/app/templates");
   return { templateId: template.id, error: null };
 }
 
@@ -53,10 +56,10 @@ export async function updateTemplateAction(
     subject: string;
     content: string;
     internalOnly?: boolean;
-  }
+  },
 ) {
   const user = await requireInternalRole();
-  
+
   const validated = templateSchema.parse(data);
 
   await db
@@ -72,11 +75,11 @@ export async function updateTemplateAction(
 
   await logAudit({
     userId: user.id,
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({ templateId, action: 'TEMPLATE_UPDATED' }),
+    action: "TICKET_UPDATED",
+    details: JSON.stringify({ templateId, action: "TEMPLATE_UPDATED" }),
   });
 
-  revalidatePath('/app/templates');
+  revalidatePath("/app/templates");
   return { error: null };
 }
 
@@ -87,17 +90,17 @@ export async function deleteTemplateAction(templateId: string) {
 
   await logAudit({
     userId: user.id,
-    action: 'TICKET_UPDATED',
-    details: JSON.stringify({ templateId, action: 'TEMPLATE_DELETED' }),
+    action: "TICKET_UPDATED",
+    details: JSON.stringify({ templateId, action: "TEMPLATE_DELETED" }),
   });
 
-  revalidatePath('/app/templates');
+  revalidatePath("/app/templates");
   return { error: null };
 }
 
 export async function getTemplatesAction() {
   await requireInternalRole();
-  
+
   return db.query.ticketTemplates.findMany({
     orderBy: (templates, { asc }) => [asc(templates.name)],
     with: {
@@ -111,4 +114,3 @@ export async function getTemplatesAction() {
     },
   });
 }
-

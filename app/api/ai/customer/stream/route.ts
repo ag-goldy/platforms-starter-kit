@@ -9,7 +9,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 import { auth } from "@/auth";
 import { headers } from "next/headers";
 import { getClientIP } from "@/lib/rate-limit";

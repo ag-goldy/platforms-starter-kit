@@ -5,7 +5,7 @@ import { kbArticles } from "@/db/schema";
 import { requireOrgMemberRole } from "@/lib/auth/permissions";
 import { and, eq, desc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 import { generateKbKey } from "@/lib/kb/keys";
 
 // Schema for customer KB article submission

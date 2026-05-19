@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { assets, ticketAssets } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/permissions";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 
 // Archive/Unarchive schema
 const archiveSchema = z.object({

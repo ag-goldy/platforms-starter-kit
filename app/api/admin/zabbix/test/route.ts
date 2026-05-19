@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/permissions';
-import { z } from 'zod/v3';
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth/permissions";
+import { z } from "zod/v3";
 
 const testSchema = z.object({
   apiUrl: z.string().url(),
@@ -20,25 +20,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(testResult);
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+    if (error instanceof Error && error.name === "AuthorizationError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
-        { status: 400 }
+        { error: "Invalid data", details: error.errors },
+        { status: 400 },
       );
     }
-    console.error('Zabbix test connection error:', error);
+    console.error("Zabbix test connection error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Connection test failed' 
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Connection test failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,17 +44,19 @@ export async function POST(request: NextRequest) {
 async function testZabbixConnection(apiUrl: string, apiToken: string) {
   try {
     // Ensure URL ends with /api_jsonrpc.php
-    const baseUrl = apiUrl.replace(/\/api_jsonrpc\.php$/, '').replace(/\/$/, '');
+    const baseUrl = apiUrl
+      .replace(/\/api_jsonrpc\.php$/, "")
+      .replace(/\/$/, "");
     const rpcUrl = `${baseUrl}/api_jsonrpc.php`;
 
     const response = await fetch(rpcUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'apiinfo.version',
+        jsonrpc: "2.0",
+        method: "apiinfo.version",
         params: {},
         id: 1,
       }),
@@ -81,14 +81,14 @@ async function testZabbixConnection(apiUrl: string, apiToken: string) {
 
     // Now test authentication with the token
     const authResponse = await fetch(rpcUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
       },
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'user.checkAuthentication',
+        jsonrpc: "2.0",
+        method: "user.checkAuthentication",
         params: {},
         id: 2,
       }),
@@ -107,14 +107,14 @@ async function testZabbixConnection(apiUrl: string, apiToken: string) {
 
     // Get host count to verify permissions
     const hostResponse = await fetch(rpcUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
       },
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'host.get',
+        jsonrpc: "2.0",
+        method: "host.get",
         params: {
           countOutput: true,
         },
@@ -135,7 +135,7 @@ async function testZabbixConnection(apiUrl: string, apiToken: string) {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Connection failed',
+      error: error instanceof Error ? error.message : "Connection failed",
     };
   }
 }

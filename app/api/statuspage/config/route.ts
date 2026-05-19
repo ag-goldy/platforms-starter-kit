@@ -11,7 +11,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { statuspageConfigs, StatuspageConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 import { StatuspageClient } from "@/lib/integrations/statuspage/client";
 import { canManageOrgSettings } from "@/lib/auth/permissions";
 

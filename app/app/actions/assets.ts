@@ -1,16 +1,16 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { areas, assets, sites } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { and, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod/v3';
+import { db } from "@/db";
+import { areas, assets, sites } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod/v3";
 
 const assetSchema = z.object({
   name: z.string().min(1).max(200),
   type: z.string().min(1).max(50), // Can be standard or custom type
-  status: z.string().min(1).max(50).default('ACTIVE'), // Can be standard or custom status
+  status: z.string().min(1).max(50).default("ACTIVE"), // Can be standard or custom status
   siteId: z.string().uuid().optional().nullable(),
   areaId: z.string().uuid().optional().nullable(),
   hostname: z.string().optional().nullable(),
@@ -27,26 +27,28 @@ const assetSchema = z.object({
 function normalizeTags(input?: string | null): string[] | null {
   if (!input) return null;
   const tags = input
-    .split(',')
+    .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
   return tags.length > 0 ? tags : null;
 }
 
-function parseAccessUrls(input?: string | null): { label: string; url: string }[] | null {
+function parseAccessUrls(
+  input?: string | null,
+): { label: string; url: string }[] | null {
   if (!input) return null;
   try {
     const parsed = JSON.parse(input);
     if (Array.isArray(parsed)) {
-      return parsed.filter(item => item.label && item.url);
+      return parsed.filter((item) => item.label && item.url);
     }
   } catch {
     // If not valid JSON, try comma-separated format: "Label:URL,Label2:URL2"
     const urls = input
-      .split(',')
+      .split(",")
       .map((pair) => {
-        const [label, ...urlParts] = pair.split(':');
-        const url = urlParts.join(':'); // Handle URLs with colons
+        const [label, ...urlParts] = pair.split(":");
+        const url = urlParts.join(":"); // Handle URLs with colons
         if (label && url) {
           return { label: label.trim(), url: url.trim() };
         }
@@ -58,13 +60,17 @@ function parseAccessUrls(input?: string | null): { label: string; url: string }[
   return null;
 }
 
-async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId?: string | null) {
+async function validateSiteAndArea(
+  orgId: string,
+  siteId?: string | null,
+  areaId?: string | null,
+) {
   if (siteId) {
     const site = await db.query.sites.findFirst({
       where: and(eq(sites.id, siteId), eq(sites.orgId, orgId)),
     });
     if (!site) {
-      throw new Error('Site not found');
+      throw new Error("Site not found");
     }
   }
 
@@ -75,10 +81,10 @@ async function validateSiteAndArea(orgId: string, siteId?: string | null, areaId
     });
     const site = area?.site as { orgId: string } | undefined;
     if (!area || !site || site.orgId !== orgId) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
     if (siteId && area.siteId !== siteId) {
-      throw new Error('Area does not belong to selected site');
+      throw new Error("Area does not belong to selected site");
     }
   }
 }
@@ -95,11 +101,18 @@ export async function getAssetsAction(orgId: string) {
   });
 }
 
-export async function createAssetAction(orgId: string, data: z.input<typeof assetSchema>) {
+export async function createAssetAction(
+  orgId: string,
+  data: z.input<typeof assetSchema>,
+) {
   await requireInternalRole();
   const validated = assetSchema.parse(data);
 
-  await validateSiteAndArea(orgId, validated.siteId || null, validated.areaId || null);
+  await validateSiteAndArea(
+    orgId,
+    validated.siteId || null,
+    validated.areaId || null,
+  );
 
   const [created] = await db
     .insert(assets)
@@ -131,12 +144,16 @@ export async function createAssetAction(orgId: string, data: z.input<typeof asse
 export async function updateAssetAction(
   orgId: string,
   assetId: string,
-  data: z.input<typeof assetSchema>
+  data: z.input<typeof assetSchema>,
 ) {
   await requireInternalRole();
   const validated = assetSchema.parse(data);
 
-  await validateSiteAndArea(orgId, validated.siteId || null, validated.areaId || null);
+  await validateSiteAndArea(
+    orgId,
+    validated.siteId || null,
+    validated.areaId || null,
+  );
 
   const [updated] = await db
     .update(assets)
@@ -161,7 +178,7 @@ export async function updateAssetAction(
     .returning();
 
   if (!updated) {
-    throw new Error('Asset not found');
+    throw new Error("Asset not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/assets`);

@@ -1,25 +1,25 @@
-'use server';
+"use server";
 
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { automationRules } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod/v3';
-import type { Condition, Action, TriggerOn } from '@/lib/automation/types';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { automationRules } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod/v3";
+import type { Condition, Action, TriggerOn } from "@/lib/automation/types";
 
 const automationRuleSchema = z.object({
   name: z.string().min(1).max(200),
   enabled: z.boolean(),
   priority: z.number().int().min(0),
   triggerOn: z.enum([
-    'TICKET_CREATED',
-    'TICKET_UPDATED',
-    'COMMENT_ADDED',
-    'STATUS_CHANGED',
-    'PRIORITY_CHANGED',
-    'ASSIGNED',
-    'UNASSIGNED'
+    "TICKET_CREATED",
+    "TICKET_UPDATED",
+    "COMMENT_ADDED",
+    "STATUS_CHANGED",
+    "PRIORITY_CHANGED",
+    "ASSIGNED",
+    "UNASSIGNED",
   ]),
   conditions: z.array(z.any()), // Validate conditions structure
   actions: z.array(z.any()), // Validate actions structure
@@ -56,7 +56,7 @@ export async function createAutomationRuleAction(
     triggerOn: TriggerOn;
     conditions: Condition[];
     actions: Action[];
-  }
+  },
 ) {
   const user = await requireInternalRole();
   const validated = automationRuleSchema.parse(data);
@@ -75,7 +75,7 @@ export async function createAutomationRuleAction(
     })
     .returning();
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   revalidatePath(`/app/organizations/${orgId}/automation`);
   return rule;
 }
@@ -93,7 +93,7 @@ export async function updateAutomationRuleAction(
     triggerOn: TriggerOn;
     conditions: Condition[];
     actions: Action[];
-  }>
+  }>,
 ) {
   await requireInternalRole();
 
@@ -114,7 +114,7 @@ export async function updateAutomationRuleAction(
     .where(and(eq(automationRules.id, id), eq(automationRules.orgId, orgId)))
     .returning();
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   revalidatePath(`/app/organizations/${orgId}/automation`);
   return updated;
 }
@@ -129,7 +129,7 @@ export async function deleteAutomationRuleAction(id: string, orgId: string) {
     .delete(automationRules)
     .where(and(eq(automationRules.id, id), eq(automationRules.orgId, orgId)));
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   revalidatePath(`/app/organizations/${orgId}/automation`);
   return { success: true };
 }

@@ -1,16 +1,16 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { notices, sites } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { and, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod/v3';
+import { db } from "@/db";
+import { notices, sites } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod/v3";
 
 const noticeSchema = z.object({
   siteId: z.string().uuid().optional().nullable(),
-  type: z.enum(['MAINTENANCE', 'INCIDENT', 'KNOWN_ISSUE']),
-  severity: z.enum(['INFO', 'WARN', 'CRITICAL']),
+  type: z.enum(["MAINTENANCE", "INCIDENT", "KNOWN_ISSUE"]),
+  severity: z.enum(["INFO", "WARN", "CRITICAL"]),
   title: z.string().min(1).max(200),
   body: z.string().min(1),
   startsAt: z.string().optional().nullable(),
@@ -35,7 +35,10 @@ export async function getNoticesAction(orgId: string) {
   });
 }
 
-export async function createNoticeAction(orgId: string, data: z.input<typeof noticeSchema>) {
+export async function createNoticeAction(
+  orgId: string,
+  data: z.input<typeof noticeSchema>,
+) {
   const user = await requireInternalRole();
   const validated = noticeSchema.parse(data);
 
@@ -44,7 +47,7 @@ export async function createNoticeAction(orgId: string, data: z.input<typeof not
       where: and(eq(sites.id, validated.siteId), eq(sites.orgId, orgId)),
     });
     if (!site) {
-      throw new Error('Site not found');
+      throw new Error("Site not found");
     }
   }
 
@@ -73,7 +76,7 @@ export async function createNoticeAction(orgId: string, data: z.input<typeof not
 export async function updateNoticeAction(
   orgId: string,
   noticeId: string,
-  data: z.input<typeof noticeSchema>
+  data: z.input<typeof noticeSchema>,
 ) {
   await requireInternalRole();
   const validated = noticeSchema.parse(data);
@@ -83,7 +86,7 @@ export async function updateNoticeAction(
       where: and(eq(sites.id, validated.siteId), eq(sites.orgId, orgId)),
     });
     if (!site) {
-      throw new Error('Site not found');
+      throw new Error("Site not found");
     }
   }
 
@@ -104,14 +107,18 @@ export async function updateNoticeAction(
     .returning();
 
   if (!updated) {
-    throw new Error('Notice not found');
+    throw new Error("Notice not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/notices`);
   return { notice: updated };
 }
 
-export async function toggleNoticeActiveAction(orgId: string, noticeId: string, isActive: boolean) {
+export async function toggleNoticeActiveAction(
+  orgId: string,
+  noticeId: string,
+  isActive: boolean,
+) {
   await requireInternalRole();
   const [updated] = await db
     .update(notices)
@@ -120,7 +127,7 @@ export async function toggleNoticeActiveAction(orgId: string, noticeId: string, 
     .returning();
 
   if (!updated) {
-    throw new Error('Notice not found');
+    throw new Error("Notice not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}/notices`);

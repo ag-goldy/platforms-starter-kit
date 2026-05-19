@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIP } from "@/lib/rate-limit";
 import { headers } from "next/headers";

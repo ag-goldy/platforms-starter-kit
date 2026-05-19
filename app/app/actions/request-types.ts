@@ -1,35 +1,41 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { requestTypes } from '@/db/schema';
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { revalidatePath } from 'next/cache';
-import { and, eq } from 'drizzle-orm';
-import { z } from 'zod/v3';
-import { requestFormSchema, type RequestFormSchema } from '@/lib/request-types/validation';
-import { slugify } from '@/lib/utils/slug';
+import { db } from "@/db";
+import { requestTypes } from "@/db/schema";
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { revalidatePath } from "next/cache";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod/v3";
+import {
+  requestFormSchema,
+  type RequestFormSchema,
+} from "@/lib/request-types/validation";
+import { slugify } from "@/lib/utils/slug";
 
 const requestTypeSchema = z.object({
   name: z.string().min(1).max(200),
   slug: z.string().optional(),
   description: z.string().optional().nullable(),
-  category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST']),
-  defaultPriority: z.enum(['P1', 'P2', 'P3', 'P4']),
+  category: z.enum(["INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST"]),
+  defaultPriority: z.enum(["P1", "P2", "P3", "P4"]),
   isActive: z.boolean().default(true),
   requiredAttachments: z.boolean().default(false),
   formSchema: z.unknown().optional(),
 });
 
 function parseFormSchema(raw: unknown): RequestFormSchema {
-  if (raw === null || raw === undefined || raw === '') {
+  if (raw === null || raw === undefined || raw === "") {
     return requestFormSchema.parse({ fields: [] });
   }
 
-  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
   return requestFormSchema.parse(parsed);
 }
 
-export async function getRequestTypesAction(orgId: string, includeInactive = true) {
+export async function getRequestTypesAction(
+  orgId: string,
+  includeInactive = true,
+) {
   await requireInternalRole();
   return db.query.requestTypes.findMany({
     where: includeInactive
@@ -41,7 +47,7 @@ export async function getRequestTypesAction(orgId: string, includeInactive = tru
 
 export async function createRequestTypeAction(
   orgId: string,
-  data: z.input<typeof requestTypeSchema>
+  data: z.input<typeof requestTypeSchema>,
 ) {
   const user = await requireInternalRole();
   const validated = requestTypeSchema.parse(data);
@@ -49,7 +55,7 @@ export async function createRequestTypeAction(
   const slug = slugify(validated.slug || validated.name);
 
   if (!slug) {
-    throw new Error('Slug is required');
+    throw new Error("Slug is required");
   }
 
   const [created] = await db
@@ -78,7 +84,7 @@ export async function createRequestTypeAction(
 export async function updateRequestTypeAction(
   orgId: string,
   requestTypeId: string,
-  data: z.input<typeof requestTypeSchema>
+  data: z.input<typeof requestTypeSchema>,
 ) {
   await requireInternalRole();
   const validated = requestTypeSchema.parse(data);
@@ -86,7 +92,7 @@ export async function updateRequestTypeAction(
   const slug = slugify(validated.slug || validated.name);
 
   if (!slug) {
-    throw new Error('Slug is required');
+    throw new Error("Slug is required");
   }
 
   const [updated] = await db
@@ -102,11 +108,13 @@ export async function updateRequestTypeAction(
       formSchema,
       updatedAt: new Date(),
     })
-    .where(and(eq(requestTypes.id, requestTypeId), eq(requestTypes.orgId, orgId)))
+    .where(
+      and(eq(requestTypes.id, requestTypeId), eq(requestTypes.orgId, orgId)),
+    )
     .returning();
 
   if (!updated) {
-    throw new Error('Request type not found');
+    throw new Error("Request type not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}`);
@@ -118,7 +126,7 @@ export async function updateRequestTypeAction(
 export async function toggleRequestTypeActiveAction(
   orgId: string,
   requestTypeId: string,
-  isActive: boolean
+  isActive: boolean,
 ) {
   await requireInternalRole();
 
@@ -128,11 +136,13 @@ export async function toggleRequestTypeActiveAction(
       isActive,
       updatedAt: new Date(),
     })
-    .where(and(eq(requestTypes.id, requestTypeId), eq(requestTypes.orgId, orgId)))
+    .where(
+      and(eq(requestTypes.id, requestTypeId), eq(requestTypes.orgId, orgId)),
+    )
     .returning();
 
   if (!updated) {
-    throw new Error('Request type not found');
+    throw new Error("Request type not found");
   }
 
   revalidatePath(`/app/organizations/${orgId}`);

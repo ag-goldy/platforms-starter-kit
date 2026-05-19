@@ -6,7 +6,7 @@ import { requireInternalRole } from "@/lib/auth/permissions";
 import { logAudit } from "@/lib/audit/log";
 import { revalidatePath } from "next/cache";
 import { eq, inArray } from "drizzle-orm";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 import { transitionTicketStatus } from "@/lib/tickets/lifecycle";
 
 const ticketIdsSchema = z.array(z.string().uuid()).min(1);

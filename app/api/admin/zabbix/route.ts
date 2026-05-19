@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { zabbixConfigs, organizations } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/permissions";
-import { z } from 'zod/v3';
+import { z } from "zod/v3";
 
 // Schema for creating/updating Zabbix config
 const zabbixConfigSchema = z.object({

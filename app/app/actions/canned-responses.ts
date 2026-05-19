@@ -1,12 +1,15 @@
-'use server';
+"use server";
 
-import { requireInternalRole } from '@/lib/auth/permissions';
-import { db } from '@/db';
-import { cannedResponses } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { getCannedResponses, getCannedResponseById } from '@/lib/canned-responses/queries';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod/v3';
+import { requireInternalRole } from "@/lib/auth/permissions";
+import { db } from "@/db";
+import { cannedResponses } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import {
+  getCannedResponses,
+  getCannedResponseById,
+} from "@/lib/canned-responses/queries";
+import { revalidatePath } from "next/cache";
+import { z } from "zod/v3";
 
 const cannedResponseSchema = z.object({
   name: z.string().min(1).max(200),
@@ -28,7 +31,7 @@ export async function getCannedResponsesAction(orgId: string | null) {
  */
 export async function createCannedResponseAction(
   orgId: string,
-  data: { name: string; content: string; shortcut?: string | null }
+  data: { name: string; content: string; shortcut?: string | null },
 ) {
   const user = await requireInternalRole();
   const validated = cannedResponseSchema.parse(data);
@@ -44,7 +47,7 @@ export async function createCannedResponseAction(
     })
     .returning();
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return response;
 }
 
@@ -54,12 +57,12 @@ export async function createCannedResponseAction(
 export async function updateCannedResponseAction(
   id: string,
   orgId: string,
-  data: { name?: string; content?: string; shortcut?: string | null }
+  data: { name?: string; content?: string; shortcut?: string | null },
 ) {
   await requireInternalRole();
   const existing = await getCannedResponseById(id, orgId);
   if (!existing) {
-    throw new Error('Canned response not found');
+    throw new Error("Canned response not found");
   }
 
   const validated = cannedResponseSchema.partial().parse(data);
@@ -73,7 +76,7 @@ export async function updateCannedResponseAction(
     .where(and(eq(cannedResponses.id, id), eq(cannedResponses.orgId, orgId)))
     .returning();
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return updated;
 }
 
@@ -84,14 +87,13 @@ export async function deleteCannedResponseAction(id: string, orgId: string) {
   await requireInternalRole();
   const existing = await getCannedResponseById(id, orgId);
   if (!existing) {
-    throw new Error('Canned response not found');
+    throw new Error("Canned response not found");
   }
 
   await db
     .delete(cannedResponses)
     .where(and(eq(cannedResponses.id, id), eq(cannedResponses.orgId, orgId)));
 
-  revalidatePath('/app');
+  revalidatePath("/app");
   return { success: true };
 }
-
