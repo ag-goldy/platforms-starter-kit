@@ -31,19 +31,18 @@ async function streamBlob(attachment: typeof attachments.$inferSelect) {
     let contentType: string | null = null;
 
     if (isPathname) {
-      const downloadUrl = await getDownloadUrl(pathname);
-      const downloadHost = new URL(downloadUrl).hostname;
-      if (!downloadHost.endsWith(".vercel-storage.com")) {
+      const safeDownloadUrl = new URL(await getDownloadUrl(pathname));
+      if (!safeDownloadUrl.hostname.endsWith(".vercel-storage.com")) {
         return new Response("Invalid storage URL", { status: 400 });
       }
-      blobResponse = await fetch(downloadUrl);
+      blobResponse = await fetch(safeDownloadUrl.href);
       contentType = blobResponse.headers.get("content-type");
     } else {
-      const storageHost = new URL(attachment.storageKey).hostname;
-      if (!storageHost.endsWith(".vercel-storage.com")) {
+      const safeStorageUrl = new URL(attachment.storageKey);
+      if (!safeStorageUrl.hostname.endsWith(".vercel-storage.com")) {
         return new Response("Invalid storage URL", { status: 400 });
       }
-      blobResponse = await fetch(attachment.storageKey);
+      blobResponse = await fetch(safeStorageUrl.href);
     }
 
     if (!blobResponse.ok || !blobResponse.body) {

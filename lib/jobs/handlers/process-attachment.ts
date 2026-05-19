@@ -66,15 +66,16 @@ export async function processAttachmentJob(
         throw new Error("Blob storage is not configured");
       }
 
-      const downloadUrl = await getDownloadUrl(attachment.blobPathname);
-
-      // Validate URL is a Vercel Blob domain before fetching
-      const parsedUrl = new URL(downloadUrl);
-      if (!parsedUrl.hostname.endsWith(".vercel-storage.com")) {
-        throw new Error(`Unexpected download URL host: ${parsedUrl.hostname}`);
+      const safeDownloadUrl = new URL(
+        await getDownloadUrl(attachment.blobPathname),
+      );
+      if (!safeDownloadUrl.hostname.endsWith(".vercel-storage.com")) {
+        throw new Error(
+          `Unexpected download URL host: ${safeDownloadUrl.hostname}`,
+        );
       }
 
-      const fileResponse = await fetch(downloadUrl);
+      const fileResponse = await fetch(safeDownloadUrl.href);
       if (!fileResponse.ok) {
         throw new Error(
           `Failed to download attachment: ${fileResponse.statusText}`,

@@ -44,6 +44,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Only intercept same-origin requests
+  if (url.origin !== self.location.origin) return;
+
   // Cache strategy: Network first, fallback to cache
   event.respondWith(
     fetch(request)
