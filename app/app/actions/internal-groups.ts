@@ -5,7 +5,7 @@ import { internalGroups, internalGroupMemberships, organizations, users } from '
 import { requireInternalAdmin } from '@/lib/auth/permissions';
 import { revalidatePath } from 'next/cache';
 import { and, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const groupNameSchema = z.string().trim().min(2).max(80);
 const descriptionSchema = z.string().trim().max(300);

@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createStatuspageClient } from "@/lib/integrations/statuspage/client";
 import { canManageOrgSettings } from "@/lib/auth/permissions";
-import { z } from "zod";
+import { z } from 'zod/v3';
 
 const createComponentSchema = z.object({
   name: z.string().min(1, "Name is required"),

@@ -6,7 +6,7 @@ import { cannedResponses } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getCannedResponses, getCannedResponseById } from '@/lib/canned-responses/queries';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const cannedResponseSchema = z.object({
   name: z.string().min(1).max(200),

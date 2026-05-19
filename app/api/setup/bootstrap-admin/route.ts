@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { z } from 'zod/v3';
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "@/db";

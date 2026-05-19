@@ -5,7 +5,7 @@ import { ticketAssignmentRules, users, internalGroups } from "@/db/schema";
 import { requireInternalAdmin } from "@/lib/auth/permissions";
 import { and, eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z } from 'zod/v3';
 
 const conditionsSchema = z.object({
   requestTypeIds: z.array(z.string().uuid()).optional(),

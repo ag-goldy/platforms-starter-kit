@@ -5,7 +5,7 @@ import { kbArticles, kbArticleVersions, kbArticleTemplates } from "@/db/schema";
 import { requireOrgMemberRole } from "@/lib/auth/permissions";
 import { and, eq, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z } from 'zod/v3';
 
 // ============================================================================
 // KB ARTICLE VERSIONING

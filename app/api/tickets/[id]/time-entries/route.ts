@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { timeEntries } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { z } from "zod";
+import { z } from 'zod/v3';
 import { rateLimit } from "@/lib/rate-limit";
 
 const createTimeEntrySchema = z.object({

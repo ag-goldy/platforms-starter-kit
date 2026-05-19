@@ -5,7 +5,7 @@ import { customFields, customFieldValues } from '@/db/schema';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { and, eq, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const optionSchema = z.object({
   label: z.string(),

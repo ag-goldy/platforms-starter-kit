@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { z } from 'zod/v3';
 import { db } from "@/db";
 import { kbArticles, users, tickets } from "@/db/schema";
 import { and, sql, eq } from "drizzle-orm";

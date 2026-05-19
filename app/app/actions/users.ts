@@ -6,7 +6,7 @@ import { requireInternalRole } from '@/lib/auth/permissions';
 import { logAudit } from '@/lib/audit/log';
 import { revalidatePath } from 'next/cache';
 import { eq, and, asc } from 'drizzle-orm';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { createInvitation, createInvitationLink, cancelInvitation, resendInvitationEmail } from '@/lib/users/invitations';
 import type { CustomerRole } from '@/lib/auth/roles';
 

@@ -6,7 +6,7 @@ import { requireInternalRole, canViewTicket } from "@/lib/auth/permissions";
 import { logAudit } from "@/lib/audit/log";
 import { revalidatePath } from "next/cache";
 import { eq, and } from "drizzle-orm";
-import { z } from "zod";
+import { z } from 'zod/v3';
 
 const tagSchema = z.object({
   name: z.string().min(1).max(50),

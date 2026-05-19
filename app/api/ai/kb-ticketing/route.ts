@@ -6,7 +6,7 @@ import {
   filterTechnologyContent,
   withTechFilter,
 } from "@/lib/ai/baseten-api";
-import { z } from "zod";
+import { z } from 'zod/v3';
 
 // Request validation schemas
 const kbGenerateSchema = z.object({

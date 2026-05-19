@@ -6,7 +6,7 @@ import { requireInternalRole } from '@/lib/auth/permissions';
 import { logAudit } from '@/lib/audit/log';
 import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const templateSchema = z.object({
   name: z.string().min(1).max(100),

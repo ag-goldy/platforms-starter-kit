@@ -5,7 +5,7 @@ import { escalationRules } from '@/db/schema';
 import { requireInternalAdmin } from '@/lib/auth/permissions';
 import { and, eq, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const actionsSchema = z.object({
   notifyUserIds: z.array(z.string().uuid()).optional(),

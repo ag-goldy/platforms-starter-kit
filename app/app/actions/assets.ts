@@ -5,7 +5,7 @@ import { areas, assets, sites } from '@/db/schema';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const assetSchema = z.object({
   name: z.string().min(1).max(200),

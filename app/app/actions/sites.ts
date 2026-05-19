@@ -5,7 +5,7 @@ import { areas, sites } from "@/db/schema";
 import { requireInternalRole } from "@/lib/auth/permissions";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z } from 'zod/v3';
 import { slugify } from "@/lib/utils/slug";
 
 const siteSchema = z.object({

@@ -5,7 +5,7 @@ import { requestTypes } from '@/db/schema';
 import { requireInternalRole } from '@/lib/auth/permissions';
 import { revalidatePath } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { requestFormSchema, type RequestFormSchema } from '@/lib/request-types/validation';
 import { slugify } from '@/lib/utils/slug';
 

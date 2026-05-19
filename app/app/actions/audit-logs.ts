@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { auditLogs } from "@/db/schema";
 import { requireInternalRole } from "@/lib/auth/permissions";
 import { and, eq, desc, gte, lte, sql, like, or } from "drizzle-orm";
-import { z } from "zod";
+import { z } from 'zod/v3';
 
 const filterSchema = z.object({
   orgId: z.string().uuid().optional(),

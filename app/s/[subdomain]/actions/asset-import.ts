@@ -5,7 +5,7 @@ import { assets, sites, areas } from '@/db/schema';
 import { requireOrgMemberRole } from '@/lib/auth/permissions';
 import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 // Asset import row schema
 const assetImportRowSchema = z.object({

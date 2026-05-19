@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { automationRules } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import type { Condition, Action, TriggerOn } from '@/lib/automation/types';
 
 const automationRuleSchema = z.object({
