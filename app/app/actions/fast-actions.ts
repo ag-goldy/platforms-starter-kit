@@ -1,6 +1,6 @@
 "use server";
 
-import { requireInternalRole } from "@/lib/auth/permissions";
+import { requireInternalRole, requireTicketAccess } from "@/lib/auth/permissions";
 import {
   assignTicketAction,
   updateTicketStatusAction,
@@ -10,7 +10,6 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { tickets } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { canViewTicket } from "@/lib/auth/permissions";
 
 /**
  * Assign ticket to current user
@@ -19,7 +18,7 @@ export async function assignToMeAction(ticketId: string) {
   const session = await requireInternalRole();
 
   // Verify user can view ticket
-  await canViewTicket(ticketId);
+  await requireTicketAccess(ticketId);
 
   await assignTicketAction(ticketId, session.user.id);
   revalidatePath("/app");
@@ -35,7 +34,7 @@ export async function replyAndWaitingAction(ticketId: string, comment: string) {
   await requireInternalRole();
 
   // Verify user can view ticket
-  await canViewTicket(ticketId);
+  await requireTicketAccess(ticketId);
 
   // Add comment
   await addTicketCommentAction(ticketId, comment, false);
@@ -56,7 +55,7 @@ export async function closeAndSendCSATAction(ticketId: string) {
   await requireInternalRole();
 
   // Verify user can view ticket
-  await canViewTicket(ticketId);
+  await requireTicketAccess(ticketId);
 
   // Get ticket to check if CSAT is configured
   const ticket = await db.query.tickets.findFirst({

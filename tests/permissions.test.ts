@@ -35,6 +35,7 @@ import {
   requireOrgMemberRole,
   canViewTicket,
   canDownloadAttachment,
+  requireTicketAccess,
   AuthorizationError,
 } from "@/lib/auth/permissions";
 import { getRequestContext, type RequestContext } from "@/lib/auth/context";
@@ -681,6 +682,163 @@ run("Permissions", () => {
       await expect(canViewTicket(otherTicket.id)).rejects.toThrow(
         AuthorizationError,
       );
+    });
+  });
+
+  describe("requireTicketAccess", () => {
+    it("should return ticket for platform admins", async () => {
+      mockGetRequestContext.mockResolvedValue({
+        user: null,
+        platformAdmin: {
+          id: "pa-id",
+          email: "platform@admin.com",
+          name: "Platform Admin",
+          role: "SUPER_ADMIN",
+          passwordHash: "hash",
+          ipAllowlist: null,
+          isActive: true,
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          lastLoginAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        isInternal: true,
+        isPlatformAdmin: true,
+        org: null,
+        orgId: null,
+        membership: null,
+        subdomain: null,
+        ip: "127.0.0.1",
+        impersonation: null,
+      } as unknown as RequestContext);
+
+      const ticket = await requireTicketAccess(ticketId);
+      expect(ticket.id).toBe(ticketId);
+    });
+
+    it("should return ticket for internal users with active membership", async () => {
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: true,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: true,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      const ticket = await requireTicketAccess(ticketId);
+      expect(ticket.id).toBe(ticketId);
+    });
+
+    it("should throw 'Ticket not found' for internal users without membership", async () => {
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: null,
+          orgId: null,
+          membership: null,
+          subdomain: null,
+          ip: "127.0.0.1",
+        }),
+      );
+
+      await expect(requireTicketAccess(ticketId)).rejects.toThrow(
+        AuthorizationError,
+      );
+      await expect(requireTicketAccess(ticketId)).rejects.toThrow(
+        "Ticket not found",
+      );
+    });
+
+    it("should throw 'Ticket not found' for internal users with inactive membership", async () => {
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: false,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: false,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      await expect(requireTicketAccess(ticketId)).rejects.toThrow(
+        AuthorizationError,
+      );
+      await expect(requireTicketAccess(ticketId)).rejects.toThrow(
+        "Ticket not found",
+      );
+    });
+
+    it("should throw 'Ticket not found' for non-existent ticket id", async () => {
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: null,
+          orgId: null,
+          membership: null,
+          subdomain: null,
+          ip: "127.0.0.1",
+        }),
+      );
+
+      await expect(
+        requireTicketAccess("00000000-0000-0000-0000-000000000000"),
+      ).rejects.toThrow(AuthorizationError);
+      await expect(
+        requireTicketAccess("00000000-0000-0000-0000-000000000000"),
+      ).rejects.toThrow("Ticket not found");
     });
   });
 

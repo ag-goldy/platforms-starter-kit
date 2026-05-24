@@ -1,9 +1,8 @@
 'use server';
 
-import { requireInternalRole } from '@/lib/auth/permissions';
+import { requireInternalRole, requireTicketAccess } from '@/lib/auth/permissions';
 import { createTicketLink, removeTicketLink, getTicketLinks } from '@/lib/tickets/links';
 import { getTicketById } from '@/lib/tickets/queries';
-import { canViewTicket } from '@/lib/auth/permissions';
 import { revalidatePath } from 'next/cache';
 import type { LinkType } from '@/lib/tickets/links';
 
@@ -18,8 +17,8 @@ export async function createTicketLinkAction(
   const user = await requireInternalRole();
   
   // Verify user can view both tickets
-  await canViewTicket(sourceTicketId);
-  await canViewTicket(targetTicketId);
+  await requireTicketAccess(sourceTicketId);
+  await requireTicketAccess(targetTicketId);
 
   await createTicketLink(sourceTicketId, targetTicketId, linkType, user.id);
   revalidatePath(`/app/tickets/${sourceTicketId}`);
@@ -38,8 +37,8 @@ export async function removeTicketLinkAction(
   await requireInternalRole();
   
   // Verify user can view both tickets
-  await canViewTicket(sourceTicketId);
-  await canViewTicket(targetTicketId);
+  await requireTicketAccess(sourceTicketId);
+  await requireTicketAccess(targetTicketId);
 
   await removeTicketLink(sourceTicketId, targetTicketId, linkType);
   revalidatePath(`/app/tickets/${sourceTicketId}`);
@@ -52,8 +51,8 @@ export async function removeTicketLinkAction(
  */
 export async function getTicketLinksAction(ticketId: string) {
   await requireInternalRole();
-  await canViewTicket(ticketId);
-  
+  await requireTicketAccess(ticketId);
+
   const links = await getTicketLinks(ticketId);
   
   // Get ticket details for linked tickets

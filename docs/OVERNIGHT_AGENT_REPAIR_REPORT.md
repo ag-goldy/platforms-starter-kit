@@ -133,3 +133,47 @@ Static code review of the following flows:
 3. Add `error.tsx` boundaries to core routes (`/app/tickets`, `/app/organizations`) for better UX on unexpected errors.
 4. Run a full Playwright E2E smoke test if the environment is available.
 5. Consider removing `ignoreBuildErrors: true` from `next.config.ts` once the TypeScript error count is under control.
+
+
+## Known Issue: Drizzle Journal Drift
+
+The Drizzle migrations journal is severely out of sync with the actual migration files.
+
+### Current State
+
+**Tracked migrations in `__drizzle_migrations` (9 total):**
+
+| id | hash | created_at |
+|----|------|------------|
+| 1 | 5cb665936530bfc1d3371356bc1705a881f9b115b59fa9b33ec71214d2b522ad | 1767207816991 |
+| 2 | 2ff36ced057a8c71438db46b1bb4d5393817d9a286c164c47290eddeff11e361 | 1767267993978 |
+| 3 | d9f4697fe8450b832ee502ec71923c172663e0889dbb4c15a10a578060be9097 | 1767359687210 |
+| 4 | 753f7db104b65c1be3c2e2e7fd5fafaeeaf6893eeabc020345c7453c514538f8 | 1768279802121 |
+| 5 | cd9bf5eef58398ad6a00cfbddc90ea2a8e8218c94e09a646bb0c4af38f3aa5e1 | 1768280198695 |
+| 16 | 785cf8dfde2437885404c86b2964c539bc2219885f38186f9ff8a36a4f585a89 | 1770715257375 |
+| 17 | 9b8d64ae2d407d179b6170136cd0fd6522a9ee81052fe760c090ab61180f8876 | 1771659265038 |
+| 18 | 2b4af3d66c21587ac0c43c90c58340d58765677434031f99b4872def7afcfdf1 | 1772121655150 |
+| 19 | b3cc75fa802f8a5b333c480eb0d77f3d2185602e108f36fb33d3ade3c6939413 | 1778381149418 |
+
+**Migration files in `drizzle/` (59 total):**
+
+Files 0000 through 0057 (with some gaps), plus 023-028 (legacy numbering).
+Key missing from journal: 0008-0013, 0015, 0020-0022, 0029-0050, 0051-0057, and all 023-028 files.
+
+### The Problem
+
+`drizzle-kit migrate` only knows about 9 migrations. The remaining ~50 migration files are invisible to Drizzle Kit. This means:
+- Future `pnpm db:migrate` runs will not apply missing migrations.
+- Schema changes in untracked files (like 0050) are not applied automatically.
+- New environments (new developers, CI, staging) may get inconsistent schema states depending on how the DB was initially created.
+
+### Recommended Fix
+
+Since this database has no production data, the cleanest fix is:
+1. Drop the entire schema (or create a fresh database).
+2. Delete `drizzle/meta/_journal.json` and all `drizzle/meta/*_snapshot.json` files.
+3. Regenerate migrations from the current schema with `pnpm db:generate` (or run `pnpm db:push` for a single merged migration).
+4. Re-seed with `pnpm db:seed`.
+5. Confirm `__drizzle_migrations` count matches the number of migration files.
+
+**Do NOT attempt this on a production database.** For production, use `drizzle-kit push` with `--force` or manually reconcile the journal.

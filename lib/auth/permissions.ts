@@ -393,6 +393,14 @@ export async function canViewTicket(ticketId: string) {
   return { ticket };
 }
 
+export async function requireTicketAccess(ticketId: string) {
+  const { ticket } = await canViewTicket(ticketId);
+  if (!ticket) {
+    throw new AuthorizationError("Ticket not found");
+  }
+  return ticket;
+}
+
 export async function canEditTicket(ticketId: string) {
   const result = await canViewTicket(ticketId);
   if (!result.ticket) {

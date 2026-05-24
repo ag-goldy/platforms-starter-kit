@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { ticketWatchers, users, platformAdmins } from "@/db/schema";
-import { canViewTicket, AuthorizationError } from "@/lib/auth/permissions";
+import { requireTicketAccess, AuthorizationError } from "@/lib/auth/permissions";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
 
 // GET /api/tickets/[id]/watchers - Get all watchers for a ticket
@@ -19,7 +19,7 @@ export async function GET(
     const { id } = await params;
 
     // Check if user can view the ticket
-    await canViewTicket(id);
+    await requireTicketAccess(id);
 
     // Get regular user watchers
     const userWatchers = await db
@@ -84,7 +84,7 @@ export async function POST(
     const isPlatformAdmin = session.user.isPlatformAdmin;
 
     // Check if user can view the ticket
-    await canViewTicket(id);
+    await requireTicketAccess(id);
 
     // Check if user is already watching (handle both regular users and platform admins)
     const existingWatcher = isPlatformAdmin
