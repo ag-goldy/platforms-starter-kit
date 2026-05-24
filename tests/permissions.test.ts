@@ -428,7 +428,72 @@ run("Permissions", () => {
   });
 
   describe("canViewTicket", () => {
-    it("should allow internal users to view any ticket", async () => {
+    it("should allow platform admins to view any ticket", async () => {
+      mockGetRequestContext.mockResolvedValue({
+        user: null,
+        platformAdmin: {
+          id: "pa-id",
+          email: "platform@admin.com",
+          name: "Platform Admin",
+          role: "SUPER_ADMIN",
+          passwordHash: "hash",
+          ipAllowlist: null,
+          isActive: true,
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          lastLoginAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        isInternal: true,
+        isPlatformAdmin: true,
+        org: null,
+        orgId: null,
+        membership: null,
+        subdomain: null,
+        ip: "127.0.0.1",
+        impersonation: null,
+      } as unknown as RequestContext);
+
+      const result = await canViewTicket(ticketId);
+      expect(result.ticket?.id).toBe(ticketId);
+    });
+
+    it("should allow internal users with active membership to view their org tickets", async () => {
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: true,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: true,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      const result = await canViewTicket(ticketId);
+      expect(result.ticket?.id).toBe(ticketId);
+    });
+
+    it("should return null for internal users without membership", async () => {
       mockGetRequestContext.mockResolvedValue(
         mockRequestContext({
           user: buildUser({
@@ -447,7 +512,98 @@ run("Permissions", () => {
       );
 
       const result = await canViewTicket(ticketId);
-      expect(result.ticket.id).toBe(ticketId);
+      expect(result.ticket).toBeNull();
+    });
+
+    it("should return null for internal users with inactive membership", async () => {
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: false,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: false,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      const result = await canViewTicket(ticketId);
+      expect(result.ticket).toBeNull();
+    });
+
+    it("should return null for internal users viewing other-org tickets", async () => {
+      const [otherOrg] = await db
+        .insert(organizations)
+        .values({
+          name: "Other Org",
+          slug: "other-org",
+          subdomain: "other",
+        })
+        .returning();
+
+      const [otherTicket] = await db
+        .insert(tickets)
+        .values({
+          key: "OTHER-2024-000001",
+          orgId: otherOrg.id,
+          subject: "Other Ticket",
+          description: "Other description",
+          status: "NEW",
+          priority: "P3",
+          category: "INCIDENT",
+        })
+        .returning();
+
+      // Give internal user membership in orgId but NOT in otherOrg
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: true,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: true,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      const result = await canViewTicket(otherTicket.id);
+      expect(result.ticket).toBeNull();
     });
 
     it("should allow org members to view their org tickets", async () => {
@@ -529,7 +685,72 @@ run("Permissions", () => {
   });
 
   describe("canDownloadAttachment", () => {
-    it("should allow internal users to download any attachment", async () => {
+    it("should allow platform admins to download any attachment", async () => {
+      mockGetRequestContext.mockResolvedValue({
+        user: null,
+        platformAdmin: {
+          id: "pa-id",
+          email: "platform@admin.com",
+          name: "Platform Admin",
+          role: "SUPER_ADMIN",
+          passwordHash: "hash",
+          ipAllowlist: null,
+          isActive: true,
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          lastLoginAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        isInternal: true,
+        isPlatformAdmin: true,
+        org: null,
+        orgId: null,
+        membership: null,
+        subdomain: null,
+        ip: "127.0.0.1",
+        impersonation: null,
+      } as unknown as RequestContext);
+
+      const result = await canDownloadAttachment(attachmentId);
+      expect(result.attachment.id).toBe(attachmentId);
+    });
+
+    it("should allow internal users with active membership to download their org attachments", async () => {
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: true,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: true,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      const result = await canDownloadAttachment(attachmentId);
+      expect(result.attachment.id).toBe(attachmentId);
+    });
+
+    it("should throw 'Attachment not found' for internal users without membership", async () => {
       mockGetRequestContext.mockResolvedValue(
         mockRequestContext({
           user: buildUser({
@@ -547,8 +768,124 @@ run("Permissions", () => {
         }),
       );
 
-      const result = await canDownloadAttachment(attachmentId);
-      expect(result.attachment.id).toBe(attachmentId);
+      await expect(canDownloadAttachment(attachmentId)).rejects.toThrow(
+        AuthorizationError,
+      );
+      await expect(
+        canDownloadAttachment(attachmentId),
+      ).rejects.toThrow("Attachment not found");
+    });
+
+    it("should throw 'Attachment not found' for internal users with inactive membership", async () => {
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: false,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: false,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      await expect(canDownloadAttachment(attachmentId)).rejects.toThrow(
+        AuthorizationError,
+      );
+      await expect(
+        canDownloadAttachment(attachmentId),
+      ).rejects.toThrow("Attachment not found");
+    });
+
+    it("should throw 'Attachment not found' for internal users downloading other-org attachments", async () => {
+      const [otherOrg] = await db
+        .insert(organizations)
+        .values({
+          name: "Other Org",
+          slug: "other-org",
+          subdomain: "other",
+        })
+        .returning();
+
+      const [otherTicket] = await db
+        .insert(tickets)
+        .values({
+          key: "OTHER-2024-000001",
+          orgId: otherOrg.id,
+          subject: "Other Ticket",
+          description: "Other description",
+          status: "NEW",
+          priority: "P3",
+          category: "INCIDENT",
+        })
+        .returning();
+
+      const [otherAttachment] = await db
+        .insert(attachments)
+        .values({
+          ticketId: otherTicket.id,
+          orgId: otherOrg.id,
+          filename: "other.txt",
+          contentType: "text/plain",
+          size: 100,
+          blobPathname: "other/path",
+          storageKey: "other/path",
+        })
+        .returning();
+
+      // Give internal user membership in orgId but NOT in otherOrg
+      await db.insert(memberships).values({
+        userId: internalUserId,
+        orgId: orgId,
+        role: "AGENT",
+        isActive: true,
+      });
+
+      mockGetRequestContext.mockResolvedValue(
+        mockRequestContext({
+          user: buildUser({
+            id: internalUserId,
+            email: "internal@test.com",
+            isInternal: true,
+            name: "Internal User",
+          }),
+          isInternal: true,
+          org: buildOrg({ id: orgId }),
+          orgId: orgId,
+          membership: buildMembership({
+            userId: internalUserId,
+            orgId: orgId,
+            role: "AGENT",
+            isActive: true,
+          }),
+          subdomain: "test",
+          ip: "127.0.0.1",
+        }),
+      );
+
+      await expect(
+        canDownloadAttachment(otherAttachment.id),
+      ).rejects.toThrow(AuthorizationError);
+      await expect(
+        canDownloadAttachment(otherAttachment.id),
+      ).rejects.toThrow("Attachment not found");
     });
 
     it("should allow org members to download their org attachments", async () => {

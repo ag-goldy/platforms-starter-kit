@@ -349,8 +349,8 @@ export async function requireOrgMemberRole(
 
 export async function canViewTicket(ticketId: string) {
   const { db } = await import("@/db");
-  const { tickets } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
+  const { tickets, memberships } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
   const { getRequestContext } = await import("@/lib/auth/context");
 
   const ticket = await db.query.tickets.findFirst({
@@ -363,8 +363,26 @@ export async function canViewTicket(ticketId: string) {
 
   const context = await getRequestContext();
 
-  // Internal users and platform admins can view any ticket
-  if (context.isPlatformAdmin || context.user?.isInternal) {
+  // Platform admins can view any ticket
+  if (context.isPlatformAdmin) {
+    return { ticket };
+  }
+
+  // Internal users must have an active membership in the ticket's org
+  if (context.user?.isInternal) {
+    if (!ticket.orgId) {
+      return { ticket };
+    }
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, context.user.id),
+        eq(memberships.orgId, ticket.orgId),
+        eq(memberships.isActive, true),
+      ),
+    });
+    if (!membership) {
+      return { ticket: null }; // No leak: indistinguishable from not found
+    }
     return { ticket };
   }
 
@@ -412,8 +430,8 @@ export async function canManageTickets(
 
 export async function canDownloadAttachment(attachmentId: string) {
   const { db } = await import("@/db");
-  const { attachments } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
+  const { attachments, memberships } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
   const { getRequestContext } = await import("@/lib/auth/context");
 
   const attachment = await db.query.attachments.findFirst({
@@ -426,8 +444,26 @@ export async function canDownloadAttachment(attachmentId: string) {
 
   const context = await getRequestContext();
 
-  // Platform admins and internal users can download any attachment
-  if (context.isPlatformAdmin || context.user?.isInternal) {
+  // Platform admins can download any attachment
+  if (context.isPlatformAdmin) {
+    return { attachment };
+  }
+
+  // Internal users must have an active membership in the attachment's org
+  if (context.user?.isInternal) {
+    if (!attachment.orgId) {
+      return { attachment };
+    }
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, context.user.id),
+        eq(memberships.orgId, attachment.orgId),
+        eq(memberships.isActive, true),
+      ),
+    });
+    if (!membership) {
+      throw new AuthorizationError("Attachment not found"); // No leak
+    }
     return { attachment };
   }
 
