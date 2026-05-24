@@ -238,6 +238,18 @@ export async function sendCSATReminders(maxReminders = 2) {
 }
 
 /**
+ * Get average CSAT rating for an org
+ */
+export async function getOrgCSATAverage(orgId: string): Promise<number | null> {
+  const result = await db
+    .select({ avg: avg(csatSurveys.rating) })
+    .from(csatSurveys)
+    .where(eq(csatSurveys.orgId, orgId));
+
+  return result[0]?.avg ? parseFloat(result[0].avg) : null;
+}
+
+/**
  * Increment reminder count
  */
 export async function incrementReminderCount(surveyId: string) {

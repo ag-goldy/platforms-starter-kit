@@ -7,7 +7,7 @@ import { eq, and, gt } from "drizzle-orm";
 // GET - Get active users for a ticket
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
 
     // Clean up stale sessions (older than 1 minute)
     const oneMinuteAgo = new Date(Date.now() - 60000);
@@ -62,7 +62,7 @@ export async function GET(
 // POST - Register presence
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
@@ -70,7 +70,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
     const { isEditing: _isEditing } = await req.json();
 
     // Upsert session
@@ -104,7 +104,7 @@ export async function POST(
 // DELETE - Unregister presence
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
@@ -112,7 +112,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
 
     await db
       .update(ticketEditSessions)

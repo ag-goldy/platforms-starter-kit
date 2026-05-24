@@ -144,14 +144,4 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 }
 
-/**
- * Get average CSAT for an org
- */
-export async function getOrgCSATAverage(orgId: string): Promise<number | null> {
-  const result = await db
-    .select({ avg: avg(csatResponses.rating) })
-    .from(csatResponses)
-    .where(eq(csatResponses.orgId, orgId));
 
-  return result[0]?.avg ? parseFloat(result[0].avg) : null;
-}

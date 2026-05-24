@@ -7,7 +7,7 @@ import { eq, and } from 'drizzle-orm';
 // GET - Get draft for a ticket
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
     const url = new URL(req.url);
     const draftType = url.searchParams.get('type') || 'comment';
 
@@ -48,7 +48,7 @@ export async function GET(
 // POST - Save draft
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -56,7 +56,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
     const { content, draftType = 'comment', attachments = [] } = await req.json();
 
     await db
@@ -103,7 +103,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
     const url = new URL(req.url);
     const draftType = url.searchParams.get('type') || 'comment';
 
