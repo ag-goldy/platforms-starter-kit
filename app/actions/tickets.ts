@@ -12,64 +12,54 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/permissions";
 import { logAudit } from "@/lib/audit/log";
+import { generateTicketKey } from "@/lib/tickets/keys";
 
 export async function createCustomerTicket(formData: FormData) {
-  const session = await requireAuth(); // We should use the real auth check
+  const session = await requireAuth();
 
-  const title = formData.get("title") as string;
-  const descriptionMd = formData.get("description") as string;
+  const subject = formData.get("title") as string;
+  const description = formData.get("description") as string;
   const orgId = formData.get("orgId") as string;
-  // Do NOT use subdomain from formData — it is user-controlled and enables open redirect.
-  // Fetch the real subdomain from DB after the ticket is created using the trusted orgId.
-  const type = (formData.get("type") as string) || "incident";
-  const priority = (formData.get("priority") as string) || "p3";
+  const category = (formData.get("type") as string) || "INCIDENT";
+  const priority = (formData.get("priority") as string) || "P3";
 
-  if (!title || !descriptionMd || !orgId) {
+  if (!subject || !description || !orgId) {
     throw new Error("Missing required fields");
   }
 
-  // Determine next org-scoped ticket number safely via transaction
-  const [ticket] = await db.transaction(async (tx) => {
-    const result = await tx.execute(
-      sql`SELECT COALESCE(MAX(number), 0) + 1 as next_number FROM tickets WHERE org_id = ${orgId}`,
-    );
-    const nextNumber = result[0].next_number as number;
+  const ticketKey = await generateTicketKey(orgId);
 
-    const [newTicket] = await tx
-      .insert(tickets)
-      .values({
-        orgId,
-        number: nextNumber,
-        title,
-        descriptionMd,
-        type: type as "incident" | "request" | "problem" | "change",
-        priority: priority as "p1" | "p2" | "p3" | "p4",
-        status: "new",
-        source: "portal",
-        requesterId: session.user.id,
-      })
-      .returning();
-
-    await tx.insert(ticketMessages).values({
+  const [newTicket] = await db
+    .insert(tickets)
+    .values({
       orgId,
-      ticketId: newTicket.id,
-      authorId: session.user.id,
-      authorKind: "user",
-      bodyMd: descriptionMd,
-      bodyHtmlSanitized: descriptionMd, // In reality, we should sanitize
-      visibility: "public",
-      channel: "portal",
-    });
+      key: ticketKey,
+      subject,
+      description,
+      category: category as "INCIDENT" | "REQUEST" | "PROBLEM" | "CHANGE",
+      priority: priority.toUpperCase() as "P1" | "P2" | "P3" | "P4",
+      status: "NEW",
+      requesterId: session.user.id,
+    })
+    .returning();
 
-    await tx.insert(ticketEvents).values({
-      orgId,
-      ticketId: newTicket.id,
-      actorId: session.user.id,
-      actorKind: "user",
-      eventType: "ticket_created",
-    });
+  await db.insert(ticketMessages).values({
+    orgId,
+    ticketId: newTicket.id,
+    authorId: session.user.id,
+    authorKind: "user",
+    bodyMd: description,
+    bodyHtmlSanitized: description,
+    visibility: "public",
+    channel: "portal",
+  });
 
-    return [newTicket];
+  await db.insert(ticketEvents).values({
+    orgId,
+    ticketId: newTicket.id,
+    actorId: session.user.id,
+    actorKind: "user",
+    eventType: "ticket_created",
   });
 
   await logAudit({
@@ -77,10 +67,9 @@ export async function createCustomerTicket(formData: FormData) {
     actorId: session.user.id,
     action: "ticket_created",
     resource: "ticket",
-    resourceId: ticket.id,
+    resourceId: newTicket.id,
   });
 
-  // Fetch subdomain from DB — never trust client-supplied values for redirects
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, orgId),
     columns: { subdomain: true },
@@ -88,7 +77,7 @@ export async function createCustomerTicket(formData: FormData) {
   if (!org) throw new Error("Organization not found");
 
   revalidatePath(`/${org.subdomain}/tickets`);
-  redirect(`/${org.subdomain}/tickets/${ticket.number}`);
+  redirect(`/${org.subdomain}/tickets/${encodeURIComponent(newTicket.key)}`);
 }
 
 export async function addCustomerComment(formData: FormData) {

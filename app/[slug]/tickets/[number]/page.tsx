@@ -9,8 +9,6 @@ import { eq, and, asc } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/permissions";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { addCustomerComment } from "@/app/actions/tickets";
 import { ReplyComposer } from "@/components/tickets/reply-composer";
 import { TicketPropertiesOptimistic } from "@/components/tickets/ticket-properties-optimistic";
 
@@ -28,8 +26,9 @@ export default async function TicketDetailPage({
 
   if (!org) notFound();
 
+  // Search by ticket key (URL param "number" is treated as the ticket key)
   const ticket = await db.query.tickets.findFirst({
-    where: and(eq(tickets.orgId, org.id), eq(tickets.number, parseInt(number))),
+    where: and(eq(tickets.orgId, org.id), eq(tickets.key, number)),
   });
 
   if (!ticket) notFound();
@@ -48,17 +47,17 @@ export default async function TicketDetailPage({
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">{ticket.title}</h1>
+          <h1 className="text-3xl font-bold">{ticket.subject}</h1>
           <p className="text-muted-foreground mt-1">
             {ticket.key} • {ticket.status} • {ticket.priority}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 space-y-6">
           <Card className="p-4 prose max-w-none">
-            <p>{ticket.descriptionMd}</p>
+            <p>{ticket.description}</p>
           </Card>
 
           <div className="space-y-4">
@@ -92,7 +91,7 @@ export default async function TicketDetailPage({
               orgId={org.id}
               initialStatus={ticket.status}
               initialPriority={ticket.priority}
-              initialType={ticket.type}
+              initialType={ticket.category}
             />
           </Card>
 
