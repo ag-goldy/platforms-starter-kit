@@ -259,6 +259,27 @@ export async function requireOrgRole(
   const { and, eq } = await import("drizzle-orm");
   const context = await getRequestContext();
 
+  if (
+    context.impersonation &&
+    context.membership &&
+    context.user &&
+    context.impersonation.orgId === orgId
+  ) {
+    if (
+      allowedRoles?.length &&
+      !allowedRoles.includes(context.membership.role as LegacyRole)
+    ) {
+      throw new AuthorizationError("Insufficient organization role");
+    }
+
+    return {
+      user: context.user,
+      membership: context.membership,
+      orgId,
+      context,
+    };
+  }
+
   if (context.isPlatformAdmin && context.platformAdmin) {
     return {
       user: {
@@ -330,6 +351,8 @@ export async function canViewTicket(ticketId: string) {
   const { db } = await import("@/db");
   const { tickets } = await import("@/db/schema");
   const { eq } = await import("drizzle-orm");
+  const { getRequestContext } = await import("@/lib/auth/context");
+
   const ticket = await db.query.tickets.findFirst({
     where: eq(tickets.id, ticketId),
   });
@@ -337,6 +360,14 @@ export async function canViewTicket(ticketId: string) {
   if (!ticket) {
     return { ticket: null };
   }
+
+  const context = await getRequestContext();
+
+  // Internal users and platform admins can view any ticket
+  if (context.isPlatformAdmin || context.user?.isInternal) {
+    return { ticket };
+  }
+
   if (ticket.orgId) {
     await requireOrgRole(ticket.orgId);
   }
@@ -359,7 +390,7 @@ export async function canManageOrgSettings(
 ): Promise<boolean> {
   if (!orgId) return false;
   try {
-    await requireOrgRole(orgId, ["owner", "admin"]);
+    await requireOrgRole(orgId, ["ADMIN", "CUSTOMER_ADMIN"]);
     return true;
   } catch {
     return false;
@@ -372,7 +403,7 @@ export async function canManageTickets(
 ): Promise<boolean> {
   if (!orgId) return false;
   try {
-    await requireOrgRole(orgId, ["owner", "admin", "agent_lead", "agent"]);
+    await requireOrgRole(orgId, ["ADMIN", "AGENT", "CUSTOMER_ADMIN"]);
     return true;
   } catch {
     return false;
@@ -383,6 +414,7 @@ export async function canDownloadAttachment(attachmentId: string) {
   const { db } = await import("@/db");
   const { attachments } = await import("@/db/schema");
   const { eq } = await import("drizzle-orm");
+  const { getRequestContext } = await import("@/lib/auth/context");
 
   const attachment = await db.query.attachments.findFirst({
     where: eq(attachments.id, attachmentId),
@@ -390,6 +422,13 @@ export async function canDownloadAttachment(attachmentId: string) {
 
   if (!attachment) {
     throw new AuthorizationError("Attachment not found");
+  }
+
+  const context = await getRequestContext();
+
+  // Platform admins and internal users can download any attachment
+  if (context.isPlatformAdmin || context.user?.isInternal) {
+    return { attachment };
   }
 
   if (attachment.orgId) {
