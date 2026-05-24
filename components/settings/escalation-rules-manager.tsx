@@ -53,8 +53,8 @@ const TRIGGER_LABELS: Record<string, string> = {
 export function EscalationRulesManager({
   orgId,
   initialRules,
-  users: _users,
-  groups: _groups,
+  users,
+  groups,
 }: EscalationRulesManagerProps) {
   const router = useRouter();
   const [rules] = useState<Rule[]>(initialRules);

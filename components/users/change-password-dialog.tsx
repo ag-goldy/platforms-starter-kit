@@ -46,7 +46,7 @@ export function ChangePasswordDialog({
     try {
       await adminChangePasswordAction(userId, password);
       onSuccess();
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to change password');
     } finally {
       setIsLoading(false);

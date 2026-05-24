@@ -22,9 +22,10 @@ interface TicketFormProps {
   internalUsers: { id: string; name: string | null; email: string }[];
   sites: { id: string; orgId: string; name: string }[];
   areas: { id: string; siteId: string; name: string }[];
+  allowPublic?: boolean;
 }
 
-export function TicketForm({ organizations, internalUsers, sites, areas }: TicketFormProps) {
+export function TicketForm({ organizations, internalUsers, sites, areas, allowPublic = true }: TicketFormProps) {
   const router = useRouter();
   const defaultOrgId = useMemo(() => organizations[0]?.id || '', [organizations]);
   const [orgId, setOrgId] = useState(defaultOrgId);
@@ -65,25 +66,10 @@ export function TicketForm({ organizations, internalUsers, sites, areas }: Ticke
     return scopedAreas.filter((area) => area.name.toLowerCase().includes(term));
   }, [areas, areaSearch, orgId, siteId, sites]);
 
-  if (organizations.length === 0) {
-    return (
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <p className="text-sm text-gray-600">
-            You need at least one organization before creating tickets.
-          </p>
-          <Link href="/app/organizations/new">
-            <Button>Create Organization</Button>
-          </Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!subject.trim() || !description.trim() || !orgId) {
-      setError('Organization, subject, and description are required.');
+    if (!subject.trim() || !description.trim()) {
+      setError('Subject and description are required.');
       return;
     }
 
@@ -92,7 +78,7 @@ export function TicketForm({ organizations, internalUsers, sites, areas }: Ticke
 
     try {
       const result = await createTicketAction({
-        orgId,
+        orgId: allowPublic && orgId === 'public' ? null : orgId,
         subject,
         description,
         priority,
@@ -132,6 +118,11 @@ export function TicketForm({ organizations, internalUsers, sites, areas }: Ticke
                 <SelectValue placeholder="Select an organization" />
               </SelectTrigger>
               <SelectContent>
+                {allowPublic && (
+                  <SelectItem value="public">
+                    🌐 Public intake
+                  </SelectItem>
+                )}
                 {organizations.map((org) => (
                   <SelectItem key={org.id} value={org.id}>
                     {org.name} ({org.subdomain})

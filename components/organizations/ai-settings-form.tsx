@@ -23,6 +23,8 @@ import {
   BookOpen,
   Ticket,
   Server,
+  HardDrive,
+  StickyNote,
 } from "lucide-react";
 import { updateOrgAIConfigAction } from "@/app/app/actions/ai-settings";
 import type { OrgAIConfig } from "@/db/schema";
@@ -48,6 +50,7 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
         allowAssetInfo: config.allowAssetInfo,
         allowServiceStatus: config.allowServiceStatus,
         blockPIIInResponses: config.blockPIIInResponses,
+        includeInternalNotesInAI: config.includeInternalNotesInAI,
         maxResponseTokens: config.maxResponseTokens ?? undefined,
         customerRateLimit: config.customerRateLimit ?? undefined,
         systemInstructions: config.systemInstructions ?? undefined,
@@ -155,7 +158,13 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
               <Switch
                 checked={config.allowTicketSummaries}
                 onCheckedChange={(checked) =>
-                  setConfig({ ...config, allowTicketSummaries: checked })
+                  setConfig({
+                    ...config,
+                    allowTicketSummaries: checked,
+                    includeInternalNotesInAI: checked
+                      ? config.includeInternalNotesInAI
+                      : false,
+                  })
                 }
                 disabled={!config.aiEnabled}
               />
@@ -177,6 +186,44 @@ export function AISettingsForm({ orgId, initialConfig }: AISettingsFormProps) {
                   setConfig({ ...config, allowServiceStatus: checked })
                 }
                 disabled={!config.aiEnabled}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4" />
+                  Asset Context
+                </Label>
+                <p className="text-sm text-gray-500">
+                  AI can reference customer assets and monitoring metadata
+                </p>
+              </div>
+              <Switch
+                checked={config.allowAssetInfo}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, allowAssetInfo: checked })
+                }
+                disabled={!config.aiEnabled}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <StickyNote className="h-4 w-4" />
+                  Internal Notes in AI
+                </Label>
+                <p className="text-sm text-gray-500">
+                  Allow staff-only notes to be used in admin AI context
+                </p>
+              </div>
+              <Switch
+                checked={config.includeInternalNotesInAI}
+                onCheckedChange={(checked) =>
+                  setConfig({ ...config, includeInternalNotesInAI: checked })
+                }
+                disabled={!config.aiEnabled || !config.allowTicketSummaries}
               />
             </div>
 

@@ -5,6 +5,7 @@ import {
   MessageSquarePlus,
   Search,
   SlidersHorizontal,
+  Tags,
 } from "lucide-react";
 import type { Organization } from "@/db/schema";
 
@@ -97,15 +98,9 @@ export const adminNavSections: AdminNavSection[] = [
     items: [
       {
         href: "/app/tickets",
-        label: "Ticket Queue",
-        description: "Lifecycle and assignment",
+        label: "Tickets",
+        description: "Queue and lifecycle",
         icon: "ticket",
-      },
-      {
-        href: "/app/tickets?orgId=public",
-        label: "Public Intake",
-        description: "Unaffiliated requests",
-        icon: "messagePlus",
       },
       {
         href: "/app/tags",
@@ -381,7 +376,7 @@ export function getCustomerNavItems(
 
 export const enterpriseQuickActions = [
   { href: "/app/tickets/new", label: "Create ticket", icon: MessageSquarePlus },
-  { href: "/app/tickets?orgId=public", label: "Public intake", icon: LifeBuoy },
+  { href: "/app/tags", label: "Manage tags", icon: Tags },
   { href: "/app/admin/audit", label: "Audit search", icon: Search },
   {
     href: "/app/admin/integrations",

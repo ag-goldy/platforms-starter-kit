@@ -8,8 +8,9 @@ import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
 import { requireOrgMemberRole } from "@/lib/auth/permissions";
 import { getCustomerVisibleKBArticlesAction } from "@/app/s/[subdomain]/actions/kb";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Search, BookOpen, Plus } from "lucide-react";
+import { BookOpen, FileText, Plus, Search, ShieldCheck, Sparkles, ThumbsUp } from "lucide-react";
 import { PortalKBAdminLink } from "@/components/kb/portal-kb-admin-link";
 
 interface KBHomePageProps {
@@ -88,55 +89,61 @@ export default async function KBHomePage({
     : "Find answers to common questions and learn how to use our services";
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-orange-500" />
+    <div className="space-y-6">
+      <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-500">
+              <BookOpen className="h-4 w-4" />
+              Knowledge
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
               {displayTitle}
             </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              {displayDescription}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <PortalKBAdminLink orgId={org.id} subdomain={subdomain} />
             <Link href={`/s/${subdomain}/kb/submit`}>
-              <Button className="bg-black hover:bg-gray-800 text-white h-11 px-6 rounded-xl shadow-sm hover:shadow-md transition-all">
-                <Plus className="w-4 h-4 mr-2 text-orange-500" />
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
                 Submit Article
               </Button>
             </Link>
           </div>
         </div>
-        <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
-          {displayDescription}
-        </p>
-      </div>
 
-      <div className="max-w-2xl mx-auto mb-8">
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <PortalKbMetric icon={FileText} label="Articles" value={articles.length} detail="Visible to your account" />
+          <PortalKbMetric icon={BookOpen} label="Categories" value={categories.length} detail="Browse by topic" />
+          <PortalKbMetric icon={ThumbsUp} label="Self-service" value={articles.reduce((total, article) => total + Number(article.helpfulCount ?? 0), 0)} detail="Helpful votes" />
+        </div>
+      </section>
+
+      <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
         <form action={`/s/${subdomain}/kb`} className="relative" method="get">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             name="search"
             defaultValue={searchQuery || ""}
             placeholder="Search knowledge base..."
-            className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-xl focus:border-black focus:ring-black text-base"
+            className="h-12 w-full rounded-md border border-slate-200 bg-white pl-12 pr-4 text-base focus:border-orange-500 focus:ring-orange-500"
           />
+          {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
         </form>
-      </div>
+      </section>
 
-      {/* Category Filter Pills */}
       {categories.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
+        <section className="flex flex-wrap gap-2">
           <a
             href={`/s/${subdomain}/kb`}
-            className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+            className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
               !categorySlug
-                ? "bg-black text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                ? "border-slate-950 bg-slate-950 text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
             All Articles
@@ -145,32 +152,86 @@ export default async function KBHomePage({
             <a
               key={category.id}
               href={`/s/${subdomain}/kb?category=${category.slug}`}
-              className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+              className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                 categorySlug === category.slug
-                  ? "bg-black text-white shadow-sm"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                  ? "border-slate-950 bg-slate-950 text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               {category.name}
             </a>
           ))}
-        </div>
+        </section>
       )}
 
-      {/* Article List */}
-      <ArticleList
-        subdomain={subdomain}
-        initialArticles={articles}
-        categories={categories}
-        categorySlug={categorySlug}
-        showSearch={false}
-        showFilters={false}
-        emptyMessage={
-          selectedCategory
-            ? `No articles found in ${selectedCategory.name}.`
-            : "No articles available yet. Check back soon!"
-        }
-      />
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <ArticleList
+          subdomain={subdomain}
+          initialArticles={articles}
+          categories={categories}
+          categorySlug={categorySlug}
+          showSearch={false}
+          showFilters={false}
+          emptyMessage={
+            selectedCategory
+              ? `No articles found in ${selectedCategory.name}.`
+              : "No articles available yet. Check back soon!"
+          }
+        />
+
+        <aside className="space-y-4">
+          <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck className="h-4 w-4 text-slate-400" />
+              Knowledge scope
+            </div>
+            <div className="space-y-2 text-sm text-slate-500">
+              <p>Articles shown here are approved for your organization.</p>
+              <p>Internal support notes and staff-only articles are excluded.</p>
+            </div>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Sparkles className="h-4 w-4 text-slate-400" />
+              Need more help?
+            </div>
+            <p className="mb-3 text-sm text-slate-500">
+              If an article does not resolve the issue, create a request and include the article title.
+            </p>
+            <Button asChild variant="outline" className="w-full">
+              <Link href={`/s/${subdomain}/tickets/new`}>Create request</Link>
+            </Button>
+          </div>
+          {selectedCategory && (
+            <Badge variant="outline" className="w-full justify-center py-2">
+              Filtered by {selectedCategory.name}
+            </Badge>
+          )}
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function PortalKbMetric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof BookOpen;
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <div className="mt-1 text-xl font-semibold text-slate-950">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{detail}</div>
     </div>
   );
 }

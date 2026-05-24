@@ -194,7 +194,7 @@ run("security hardening", () => {
     await expect(canViewTicket(ticketB.id)).rejects.toThrow(AuthorizationError);
   });
 
-  test.skip("magic link tokens are single-use and expire", async () => {
+  test("magic link tokens are single-use and expire", async () => {
     // Skip probe - schema is confirmed to have token_hash column
     // Just clean up any existing test data
     try {
@@ -233,7 +233,7 @@ run("security hardening", () => {
     expect(expiredUse).toBeNull();
   });
 
-  test.skip("attachments are blocked across orgs and tokens only access matching tickets", async () => {
+  test("attachments are blocked across orgs and tokens only access matching tickets", async () => {
     // Skip probe - schema is confirmed to have token_hash column
     // Just clean up any existing test data
     try {

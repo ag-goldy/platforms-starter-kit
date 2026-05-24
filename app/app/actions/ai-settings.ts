@@ -50,6 +50,7 @@ export async function updateOrgAIConfigAction(
     allowAssetInfo?: boolean;
     allowServiceStatus?: boolean;
     blockPIIInResponses?: boolean;
+    includeInternalNotesInAI?: boolean;
     maxResponseTokens?: number;
     customerRateLimit?: number;
     systemInstructions?: string;

@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 import {
   clearImpersonationState,
+  getImpersonationState,
   logPlatformAudit,
   requirePlatformAdmin,
   setImpersonationState,
@@ -32,6 +33,13 @@ function requireSlug(value: string) {
     throw new Error("Slug must be 3-63 lowercase letters, numbers, or hyphens");
   }
   return slug;
+}
+
+function requireConfirmation(formData: FormData, expected: string) {
+  const confirmation = readString(formData, "confirmation");
+  if (confirmation !== expected) {
+    throw new Error(`Type ${expected} to confirm this platform action`);
+  }
 }
 
 export async function createTenantAction(formData: FormData) {
@@ -120,6 +128,7 @@ export async function createTenantAction(formData: FormData) {
 export async function suspendTenantAction(formData: FormData) {
   const admin = await requirePlatformAdmin();
   const orgId = readString(formData, "orgId");
+  requireConfirmation(formData, "SUSPEND");
   const reason =
     readString(formData, "reason") || "Suspended by platform admin";
 
@@ -172,6 +181,7 @@ export async function enableTenantAction(formData: FormData) {
 export async function scheduleTenantDeleteAction(formData: FormData) {
   const admin = await requirePlatformAdmin();
   const orgId = readString(formData, "orgId");
+  requireConfirmation(formData, "SCHEDULE DELETE");
   const scheduledAt = new Date();
   scheduledAt.setDate(scheduledAt.getDate() + 30);
 
@@ -280,19 +290,26 @@ export async function startImpersonationAction(formData: FormData) {
 
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, orgId),
-    columns: { slug: true },
+    columns: { subdomain: true },
   });
 
-  redirect(`/${org?.slug || orgId}/portal`);
+  redirect(`/s/${org?.subdomain || orgId}`);
 }
 
 export async function stopImpersonationAction() {
   const admin = await requirePlatformAdmin();
+  const state = await getImpersonationState();
   await clearImpersonationState();
   await logPlatformAudit({
     platformAdminId: admin.id,
+    orgId: state?.orgId,
     action: "ORG_UPDATED",
-    details: { event: "IMPERSONATION_ENDED", actor: admin.email },
+    details: {
+      event: "IMPERSONATION_ENDED",
+      impersonatedUserId: state?.userId,
+      reason: state?.reason,
+      actor: admin.email,
+    },
   });
   redirect("/admin");
 }

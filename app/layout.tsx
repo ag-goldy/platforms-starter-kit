@@ -6,6 +6,7 @@ import { validateEnv } from "@/lib/env-validation";
 // Validate environment variables on startup
 validateEnv();
 import { ToastProvider } from "@/components/ui/toast";
+import { SkipLink } from "@/components/ui/skip-link";
 import { AuthProvider } from "@/components/auth-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { PWAInstallPrompt } from "@/components/pwa/install-prompt";
@@ -33,8 +34,6 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
@@ -47,10 +46,13 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased bg-white text-gray-900`}
       >
+        <SkipLink />
         <AuthProvider>
           <ThemeProvider>
             <ToastProvider>
-              {children}
+              <main id="main-content" className="outline-none">
+                {children}
+              </main>
               <ServiceWorkerRegister />
               <PWAInstallPrompt />
             </ToastProvider>

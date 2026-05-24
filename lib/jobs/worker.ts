@@ -1,3 +1,10 @@
+/**
+ * Worker orchestration — thin wrapper over redis-worker
+ *
+ * This file exists for backward compatibility with importers.
+ * New code should import directly from `@/lib/jobs` or `@/lib/jobs/redis-worker`.
+ */
+
 import type { JobType } from "./types";
 import { getQueueDepth } from "./queue";
 

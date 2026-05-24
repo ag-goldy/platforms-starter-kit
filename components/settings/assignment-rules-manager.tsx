@@ -55,8 +55,8 @@ const STRATEGY_LABELS: Record<string, string> = {
 export function AssignmentRulesManager({
   orgId,
   initialRules,
-  users: _users,
-  groups: _groups,
+  users,
+  groups,
 }: AssignmentRulesManagerProps) {
   const router = useRouter();
   const [rules] = useState<Rule[]>(initialRules);

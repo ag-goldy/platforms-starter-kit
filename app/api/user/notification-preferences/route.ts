@@ -6,42 +6,66 @@ import { requireAuth } from "@/lib/auth/session";
 
 const EVENT_TYPES = [
   {
-    key: "ticket_assigned",
+    key: "TICKET_ASSIGNED",
     label: "Ticket assigned to you",
     defaultEmail: true,
     defaultInApp: true,
   },
   {
-    key: "ticket_comment",
+    key: "TICKET_COMMENTED",
     label: "New comment on your ticket",
     defaultEmail: true,
     defaultInApp: true,
   },
   {
-    key: "ticket_status_change",
+    key: "TICKET_STATUS_CHANGED",
     label: "Ticket status changed",
     defaultEmail: false,
     defaultInApp: true,
   },
   {
-    key: "ticket_sla_warning",
+    key: "TICKET_SLA_WARNING",
     label: "SLA deadline approaching",
     defaultEmail: true,
     defaultInApp: true,
   },
   {
-    key: "service_status_change",
-    label: "Service status changed",
+    key: "TICKET_SLA_BREACH",
+    label: "SLA deadline breached",
     defaultEmail: true,
     defaultInApp: true,
   },
   {
-    key: "team_member_joined",
-    label: "New team member joined",
+    key: "USER_MENTIONED",
+    label: "You were mentioned",
+    defaultEmail: true,
+    defaultInApp: true,
+  },
+  {
+    key: "ORG_INVITATION",
+    label: "Organization invitation",
+    defaultEmail: true,
+    defaultInApp: true,
+  },
+  {
+    key: "AUTOMATION_TRIGGERED",
+    label: "Automation triggered",
     defaultEmail: false,
     defaultInApp: true,
   },
 ] as const;
+
+function preferenceOwner(user: Awaited<ReturnType<typeof requireAuth>>) {
+  return user.isPlatformAdmin
+    ? {
+        where: eq(notificationPreferences.platformAdminId, user.user.id),
+        values: { platformAdminId: user.user.id },
+      }
+    : {
+        where: eq(notificationPreferences.userId, user.user.id),
+        values: { userId: user.user.id },
+      };
+}
 
 /**
  * GET /api/user/notification-preferences
@@ -50,10 +74,11 @@ const EVENT_TYPES = [
 export async function GET() {
   try {
     const user = await requireAuth();
+    const owner = preferenceOwner(user);
 
     // Get existing preferences or create defaults
     let prefs = await db.query.notificationPreferences.findFirst({
-      where: eq(notificationPreferences.userId, user.id),
+      where: owner.where,
     });
 
     if (!prefs) {
@@ -68,7 +93,7 @@ export async function GET() {
       const [created] = await db
         .insert(notificationPreferences)
         .values({
-          userId: user.id,
+          ...owner.values,
           emailTypes: defaultEmailTypes,
           inAppTypes: defaultInAppTypes,
         })
@@ -110,6 +135,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const user = await requireAuth();
+    const owner = preferenceOwner(user);
     const body = await request.json();
     const { eventType, emailEnabled, inAppEnabled } = body;
 
@@ -130,7 +156,7 @@ export async function PUT(request: NextRequest) {
 
     // Get current preferences
     const prefs = await db.query.notificationPreferences.findFirst({
-      where: eq(notificationPreferences.userId, user.id),
+      where: owner.where,
     });
 
     let emailTypes = prefs?.emailTypes || [];
@@ -161,7 +187,7 @@ export async function PUT(request: NextRequest) {
         .where(eq(notificationPreferences.id, prefs.id));
     } else {
       await db.insert(notificationPreferences).values({
-        userId: user.id,
+        ...owner.values,
         emailTypes,
         inAppTypes,
       });
@@ -180,23 +206,4 @@ export async function PUT(request: NextRequest) {
       { status: 500 },
     );
   }
-}
-
-/**
- * Check if a user should receive a notification
- * This is a helper function, not an API endpoint
- */
-export async function shouldNotify(
-  userId: string,
-  eventType: string,
-  channel: "email" | "inApp",
-): Promise<boolean> {
-  const prefs = await db.query.notificationPreferences.findFirst({
-    where: eq(notificationPreferences.userId, userId),
-  });
-
-  if (!prefs) return true; // Default to enabled
-
-  const types = channel === "email" ? prefs.emailTypes : prefs.inAppTypes;
-  return types?.includes(eventType) ?? true;
 }

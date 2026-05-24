@@ -6,6 +6,7 @@ import { requireOrgMemberRole } from "@/lib/auth/permissions";
 import { and, eq, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v3";
+import { auth } from "@/auth";
 
 // ============================================================================
 // KB ARTICLE VERSIONING
@@ -27,6 +28,12 @@ export async function createArticleVersionAction(
   },
 ) {
   await requireOrgMemberRole(orgId, ["CUSTOMER_ADMIN"]);
+
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) {
+    throw new Error("Authentication required");
+  }
 
   // Get the current article
   const article = await db.query.kbArticles.findFirst({
@@ -57,7 +64,7 @@ export async function createArticleVersionAction(
       excerpt: data.excerpt || data.content.slice(0, 200) + "...",
       categoryId: data.categoryId || null,
       changeSummary: data.changeSummary || null,
-      createdById: user.id,
+      createdById: userId,
     })
     .returning();
 
@@ -210,7 +217,7 @@ export async function createArticleTemplateAction(
       defaultTags: validated.defaultTags || [],
       defaultVisibility: validated.defaultVisibility,
       sortOrder: validated.sortOrder,
-      createdById: user.id,
+      createdById: userId,
     })
     .returning();
 

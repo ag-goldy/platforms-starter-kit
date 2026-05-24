@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,6 +48,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
 const RECONNECT_DELAYS = [1000, 2000, 5000, 10000, 30000];
 
 export function NotificationBell() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -189,6 +191,17 @@ export function NotificationBell() {
     }
   };
 
+  const openNotification = async (notification: Notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+
+    if (notification.link) {
+      setIsOpen(false);
+      router.push(notification.link);
+    }
+  };
+
   const markAllAsRead = async () => {
     await fetch('/api/notifications', {
       method: 'POST',
@@ -252,7 +265,7 @@ export function NotificationBell() {
                   className={`p-3 cursor-pointer hover:bg-accent ${
                     !notification.read ? 'bg-accent/50' : ''
                   }`}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
+                  onClick={() => openNotification(notification)}
                 >
                   <div className="flex items-start gap-3">
                     <span className="text-xl">{icon}</span>
@@ -273,6 +286,20 @@ export function NotificationBell() {
               );
             })
           )}
+        </div>
+        <DropdownMenuSeparator />
+        <div className="p-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              setIsOpen(false);
+              router.push('/app/notifications');
+            }}
+          >
+            Open notification center
+          </Button>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

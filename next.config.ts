@@ -1,8 +1,8 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+import withBundleAnalyzer from "@next/bundle-analyzer";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -10,28 +10,17 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true, // Temporarily ignore until all type errors are fixed
   },
   experimental: {
-    // Enable experimental features if needed
     serverActions: {
-      bodySizeLimit: "10mb", // Increase from default 1MB to 10MB for file uploads
+      bodySizeLimit: "10mb",
     },
   },
-  // Ensure proper handling of Vercel Analytics and Speed Insights
-  // headers: async () => {
-  //   return [
-  //     {
-  //       source: '/_vercel/speed-insights/script.js',
-  //       headers: [
-  //         {
-  //           key: 'Cache-Control',
-  //           value: 'public, max-age=31536000, immutable',
-  //         },
-  //       ],
-  //     },
-  //   ];
-  // },
 };
 
-export default withSentryConfig(nextConfig, {
+const config = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+})(nextConfig);
+
+export default withSentryConfig(config, {
   silent: true,
   org: "atlas-helpdesk",
   project: "atlas-helpdesk",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Server,
@@ -79,32 +79,33 @@ export function InfrastructureSlideOver({ org }: InfrastructureSlideOverProps) {
   >("all");
   const [isSyncing, setIsSyncing] = useState(false);
 
-  useEffect(() => {
-    const fetchInfrastructureData = async () => {
-      try {
-        // Check if Zabbix integration exists
-        const integrationRes = await fetch(`/api/zabbix/integration/${org.id}`);
-        if (integrationRes.ok) {
-          const integrationData = await integrationRes.json();
-          setIntegration(integrationData);
+  const fetchInfrastructureData = useCallback(async () => {
+    try {
+      // Check if Zabbix integration exists
+      const integrationRes = await fetch(`/api/zabbix/integration/${org.id}`);
+      if (integrationRes.ok) {
+        const integrationData = await integrationRes.json();
+        setIntegration(integrationData);
 
-          if (integrationData.enabled) {
-            // Fetch hosts from Zabbix
-            const hostsRes = await fetch(`/api/zabbix/hosts/${org.id}`);
-            if (hostsRes.ok) {
-              const hostsData = await hostsRes.json();
-              setHosts(hostsData.hosts || []);
-            }
+        if (integrationData.enabled) {
+          // Fetch hosts from Zabbix
+          const hostsRes = await fetch(`/api/zabbix/hosts/${org.id}`);
+          if (hostsRes.ok) {
+            const hostsData = await hostsRes.json();
+            setHosts(hostsData.hosts || []);
           }
         }
-      } catch (error) {
-        console.error("Failed to fetch infrastructure data:", error);
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchInfrastructureData();
+    } catch (error) {
+      console.error("Failed to fetch infrastructure data:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [org.id]);
+
+  useEffect(() => {
+    fetchInfrastructureData();
+  }, [fetchInfrastructureData]);
 
   const handleSync = async () => {
     setIsSyncing(true);

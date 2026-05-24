@@ -71,7 +71,7 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
         
         success('Export files downloaded successfully');
       }
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to export data');
     } finally {
       setIsExporting(false);
@@ -93,7 +93,7 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
       const result = await anonymizeUserDataAction(email.trim(), orgId);
       success(`Anonymized ${result.anonymized} tickets for ${email}`);
       setEmail('');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to anonymize data');
     } finally {
       setIsAnonymizing(false);
@@ -115,7 +115,7 @@ export function ComplianceManager({ orgId, orgName }: ComplianceManagerProps) {
       const result = await deleteUserDataAction(email.trim(), orgId);
       success(`Deleted ${result.deleted} tickets for ${email}`);
       setEmail('');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to delete data');
     } finally {
       setIsDeleting(false);

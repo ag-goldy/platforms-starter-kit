@@ -160,8 +160,8 @@ export function NewUserTour() {
           description: 'Let\'s take a quick tour to help you get started with your support platform.',
         },
         {
-          title: 'Your Ticket Queue',
-          description: 'View and manage all support requests from your customers. Use filters to find specific tickets quickly.',
+          title: 'Your Tickets',
+          description: 'View and manage all support requests. Use quick filters and search to find what you need.',
         },
         {
           title: 'Knowledge Base',

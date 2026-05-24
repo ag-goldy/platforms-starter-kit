@@ -26,7 +26,7 @@ type EditableTicket = NonNullable<
 };
 
 type CreateTicketInput = {
-  orgId: string;
+  orgId: string | null;
   subject: string;
   description: string;
   priority: string;
@@ -145,10 +145,10 @@ export async function createTicketAction(input: CreateTicketInput): Promise<{
   const subject = input.subject.trim();
   const description = input.description.trim();
 
-  if (!input.orgId || !subject || !description) {
+  if (!subject || !description) {
     return {
       success: false,
-      error: "Organization, subject, and description are required.",
+      error: "Subject and description are required.",
     };
   }
 
@@ -188,6 +188,9 @@ export async function createTicketAction(input: CreateTicketInput): Promise<{
 
     revalidatePath("/app");
     revalidatePath("/app/tickets");
+    if (input.orgId) {
+      revalidatePath(`/app/organizations/${input.orgId}`);
+    }
     return { success: true, ticketId: ticket.id };
   } catch (error) {
     console.error(

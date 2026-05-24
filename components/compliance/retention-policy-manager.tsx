@@ -48,7 +48,7 @@ export function RetentionPolicyManager({
 
       await updateAction(orgId, policy, daysNum);
       success('Retention policy updated successfully');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to update policy');
     } finally {
       setIsSaving(false);

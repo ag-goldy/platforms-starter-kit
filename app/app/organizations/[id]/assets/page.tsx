@@ -15,6 +15,16 @@ import {
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { AssetsManager } from "@/components/assets/assets-manager";
 import type { Asset, Site, Area } from "@/db/schema";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Database,
+  HardDrive,
+  LifeBuoy,
+  MapPin,
+  MonitorDot,
+  PanelTop,
+} from "lucide-react";
 
 export default async function OrganizationAssetsPage({
   params,
@@ -99,6 +109,12 @@ export default async function OrganizationAssetsPage({
   const requestTypeCount = Number(requestTypeCountRows[0]?.count ?? 0);
   const activeNoticeCount = Number(activeNoticeCountRows[0]?.count ?? 0);
   const exportCount = Number(exportCountRows[0]?.count ?? 0);
+  const monitoredAssetCount = assets.filter((asset) => asset.monitoringEnabled).length;
+  const archivedAssetCount = assets.filter((asset) => asset.archived).length;
+  const linkedTicketCount = Object.values(assetStats).reduce(
+    (total, stats) => total + stats.ticketCount,
+    0,
+  );
 
   const modules = [
     {
@@ -137,17 +153,41 @@ export default async function OrganizationAssetsPage({
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-5">
+      <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <Link
           href={`/app/organizations/${orgId}`}
-          className="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block"
+          className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-950 dark:hover:text-white"
         >
-          ← Back to organization
+          <ArrowLeft className="h-4 w-4" />
+          Back to organization
         </Link>
-        <h1 className="text-2xl font-bold">Assets</h1>
-        <p className="text-sm text-gray-600">Manage assets for {org.name}</p>
-      </div>
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-500">
+              <HardDrive className="h-4 w-4" />
+              Asset Inventory
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Infrastructure inventory, ticket linkage, location coverage, and Zabbix monitoring for {org.name}.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">{sites.length} sites</Badge>
+            <Badge variant="outline">{areas.length} areas</Badge>
+            <Badge variant="outline">{archivedAssetCount} archived</Badge>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <AssetMetric icon={Database} label="Assets" value={assets.length} detail={`${archivedAssetCount} archived`} />
+        <AssetMetric icon={MonitorDot} label="Monitored" value={monitoredAssetCount} detail="Zabbix-enabled assets" />
+        <AssetMetric icon={LifeBuoy} label="Linked tickets" value={linkedTicketCount} detail="Across inventory" />
+        <AssetMetric icon={PanelTop} label="Request types" value={requestTypeCount} detail="ITSM catalog forms" />
+      </section>
 
       <AssetsManager
         orgId={orgId}
@@ -169,6 +209,29 @@ export default async function OrganizationAssetsPage({
         assetStats={assetStats}
         modules={modules}
       />
+    </div>
+  );
+}
+
+function AssetMetric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof MapPin;
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{detail}</div>
     </div>
   );
 }

@@ -153,6 +153,13 @@ export default async function TenantDetailPage({
                   name="reason"
                   placeholder="Suspension reason"
                   className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                  required
+                />
+                <input
+                  name="confirmation"
+                  placeholder="Type SUSPEND"
+                  className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                  required
                 />
                 <Button
                   type="submit"
@@ -173,8 +180,14 @@ export default async function TenantDetailPage({
                   Enable
                 </Button>
               </form>
-              <form action={scheduleTenantDeleteAction}>
+              <form action={scheduleTenantDeleteAction} className="space-y-2">
                 <input type="hidden" name="orgId" value={org.id} />
+                <input
+                  name="confirmation"
+                  placeholder="Type SCHEDULE DELETE"
+                  className="w-full rounded-md border border-rose-900 bg-rose-950 px-3 py-2 text-sm text-rose-100 placeholder:text-rose-300/60"
+                  required
+                />
                 <Button
                   type="submit"
                   variant="outline"
@@ -203,6 +216,7 @@ export default async function TenantDetailPage({
               <select
                 name="userId"
                 className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                disabled={!members.some((member) => member.isActive)}
               >
                 {members
                   .filter((member) => member.isActive)
@@ -229,6 +243,7 @@ export default async function TenantDetailPage({
               </select>
               <Button
                 type="submit"
+                disabled={!members.some((member) => member.isActive)}
                 className="bg-orange-500 text-zinc-950 hover:bg-orange-400"
               >
                 Start impersonation

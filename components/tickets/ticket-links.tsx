@@ -151,7 +151,7 @@ export function TicketLinks({ ticketId, ticketKey }: TicketLinksProps) {
       }
       success('Link removed successfully');
       await loadLinks();
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to remove link');
     }
   }

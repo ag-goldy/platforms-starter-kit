@@ -4,9 +4,10 @@
  * ALLOWED: Answer general questions using ONLY public KB articles
  * BLOCKED: Everything else — tickets, users, orgs, assets, internal data
  *
- * Rate limit: 20 requests per hour per IP
+ * Rate limit: 20 requests per hour per IP + 5 per minute (bruteforce protection)
  * PII filtering: Maximum — strip everything
  * Audit logging: Log all interactions (no userId, capture IP)
+ * AI Provider: Kimi (Moonshot AI) with Baseten fallback
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +18,6 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { aiAuditLog, orgAIMemory } from "@/db/schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
-import OpenAI from "openai";
 import {
   detectPromptInjection,
   getSafeResponse,
@@ -26,17 +26,11 @@ import {
 import { sanitizeResponse, type AISecurityContext } from "@/lib/ai/security";
 import { fetchKBForAI } from "@/lib/ai/data-fetchers";
 import { createHash } from "crypto";
+import { getKimiResponse, isKimiAvailable, getKimiModel } from "@/lib/ai/kimi-client";
 
 const requestSchema = z.object({
   query: z.string().min(2).max(1000),
-  // Optional org context for embedded public chat widgets.
-  // When provided, policy/fact memories for that org are injected into the prompt.
   orgId: z.string().uuid().optional(),
-});
-
-const client = new OpenAI({
-  apiKey: process.env.BASETEN_API_KEY || "",
-  baseURL: process.env.BASETEN_BASE_URL || "https://inference.baseten.co/v1",
 });
 
 // System prompt hash for audit logging
@@ -64,7 +58,19 @@ export async function POST(req: NextRequest) {
   const headersList = await headers();
   const ip = getClientIP(headersList);
 
-  // 1. Rate limit by IP (20 per hour)
+  // 1. Bruteforce protection: 5 per minute per IP
+  const minuteLimit = await rateLimit(`ai:public:min:${ip}`, {
+    maxRequests: 5,
+    windowSeconds: 60,
+  });
+  if (!minuteLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      { status: 429 },
+    );
+  }
+
+  // 2. Rate limit by IP (20 per hour)
   const rateLimitResult = await rateLimit(`ai:public:${ip}`, {
     maxRequests: 20,
     windowSeconds: 60 * 60,
@@ -77,7 +83,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 2. Parse and validate request
+    // 3. Parse and validate request
     const body = await req.json();
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
@@ -86,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     const { query, orgId } = parsed.data;
 
-    // 3. Run prompt injection detection
+    // 4. Run prompt injection detection
     const guardResult = detectPromptInjection(query);
     if (guardResult.shouldBlock) {
       logSecurityEvent("prompt_injection_blocked", {
@@ -102,7 +108,7 @@ export async function POST(req: NextRequest) {
         userQuery: query,
         systemPromptHash: SYSTEM_PROMPT_HASH,
         aiResponse: getSafeResponse(guardResult.threats),
-        modelUsed: "deepseek-ai/DeepSeek-V3.1",
+        modelUsed: getKimiModel(),
         responseTimeMs: Date.now() - startTime,
         wasFiltered: true,
         ipAddress: ip,
@@ -115,7 +121,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. Fetch public KB articles only
+    // 5. Fetch public KB articles only
     const securityContext: AISecurityContext = {
       interface: "public",
       orgId: null,
@@ -131,7 +137,7 @@ export async function POST(req: NextRequest) {
       3,
     );
 
-    // 4b. Inject org policy/fact memories (public tier: only policy + fact, never instructions/preferences)
+    // 5b. Inject org policy/fact memories (public tier: only policy + fact)
     let orgMemoryContext = "";
     if (orgId) {
       const memories = await db.query.orgAIMemory.findMany({
@@ -153,35 +159,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Build system prompt
+    // 6. Build system prompt
     const systemPrompt =
       PUBLIC_SYSTEM_PROMPT.replace(
         "{kb_context}",
         kbContext || "No relevant articles found.",
       ) + orgMemoryContext;
 
-    // 6. Call OpenAI
-    const completion = await client.chat.completions.create({
-      model: "deepseek-ai/DeepSeek-V3.1",
-      messages: [
+    // 7. Call AI (Kimi primary, Baseten fallback)
+    const completion = await getKimiResponse(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: guardResult.sanitizedInput },
       ],
-      temperature: 0.3,
-      max_tokens: 500,
-    });
+      { temperature: 0.3, max_tokens: 500 },
+    );
 
     const aiResponse =
       completion.choices[0]?.message?.content ||
       "I was unable to generate a response.";
 
-    // 7. Sanitize response (maximum PII stripping for public)
+    // 8. Sanitize response (maximum PII stripping for public)
     const { sanitized, piiDetected, piiTypes } = sanitizeResponse(
       aiResponse,
       securityContext,
     );
 
-    // 8. Audit log
+    // 9. Audit log
     await db.insert(aiAuditLog).values({
       interface: "public",
       userQuery: query,

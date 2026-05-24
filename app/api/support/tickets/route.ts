@@ -1,23 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod/v3";
 import { db } from "@/db";
 import { tickets, ticketComments, organizations } from "@/db/schema";
 import { generateTicketKey } from "@/lib/tickets/keys";
 import { sendEmail } from "@/lib/email";
 import { eq } from "drizzle-orm";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
+const createTicketSchema = z.object({
+  email: z.string().email("Invalid email address").max(254),
+  name: z.string().max(100).optional(),
+  subject: z.string().min(1, "Subject is required").max(200),
+  description: z.string().min(1, "Description is required").max(10000),
+  orgId: z.string().uuid("Invalid organization ID").optional(),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email, name, subject, description, orgId } = body;
-
-    if (!email || !subject || !description) {
+    // Rate limit by IP (10 tickets per hour per IP)
+    const headersList = await headers();
+    const ip = getClientIP(headersList) ?? "unknown";
+    const rateLimitResult = await rateLimit({
+      identifier: `support:tickets:${ip}`,
+      limit: 10,
+      windowSeconds: 60 * 60,
+    });
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
-        { error: "Email, subject, and description are required" },
+        { error: "Rate limit exceeded. Please try again later." },
+        { status: 429 },
+      );
+    }
+
+    const body = await request.json();
+    const parsed = createTicketSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request", details: parsed.error.flatten() },
         { status: 400 },
       );
     }
+
+    const { email, name, subject, description, orgId } = parsed.data;
 
     let resolvedOrgId: string | null = null;
 

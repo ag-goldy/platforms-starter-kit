@@ -135,31 +135,28 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <section className="flex flex-col gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl">
-          <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-orange-600">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-orange-600">
             <Activity className="h-4 w-4" />
-            Command Center
+            Dashboard
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Enterprise service desk overview
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Service Desk Overview
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Live operational view across ticket lifecycle, public intake, SLA
-            pressure, monitored services, background jobs, audit, and tenant
-            activity.
-          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link href="/app/tickets/new">Create ticket</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/app/admin/audit">Audit search</Link>
+            <Link href="/app/tickets">Open queue</Link>
           </Button>
         </div>
       </section>
 
+      {/* Stats */}
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Active queue"
@@ -178,7 +175,7 @@ export default async function DashboardPage() {
         <StatCard
           label="SLA risk"
           value={slaRisk}
-          detail={`${resolvedToday} currently resolved`}
+          detail={`${resolvedToday} resolved today`}
           href="/app/sla"
           icon={Clock3}
         />
@@ -191,18 +188,19 @@ export default async function DashboardPage() {
         />
       </section>
 
+      {/* Main content */}
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base">Service desk activity</CardTitle>
+              <CardTitle className="text-base">Recent tickets</CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Newest ticket movement with ownership and customer context.
+                Newest ticket activity.
               </p>
             </div>
             <Button asChild variant="outline" size="sm">
               <Link href="/app/tickets">
-                Open queue
+                View all
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

@@ -113,7 +113,16 @@ export async function middleware(request: NextRequest) {
   return NextResponse.rewrite(new URL("/404", request.url));
 }
 
+function generateNonce(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode(...array));
+}
+
 function addSecurityHeaders(response: NextResponse) {
+  const nonce = generateNonce();
+  response.headers.set("x-nonce", nonce);
+
   const securityHeaders = {
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
@@ -128,6 +137,8 @@ function addSecurityHeaders(response: NextResponse) {
       "font-src 'self'",
       "connect-src 'self' wss: https:",
       "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
     ].join("; "),
   };
 

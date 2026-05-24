@@ -50,7 +50,7 @@ export function SmartSuggestions({
   className,
 }: SmartSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
-  const [, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [expanded, setExpanded] = useState(true);
 
@@ -325,7 +325,7 @@ export function AiResponseSuggestions({
   className,
 }: AiResponseSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const generateSuggestions = async () => {
     setIsLoading(true);

@@ -155,7 +155,7 @@ export function InternalGroupsManager({
       setNewGroupRoleType('PLATFORM_ADMIN');
       setNewGroupOrgId('');
       success('Internal group created');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to create group');
     } finally {
       setIsCreating(false);
@@ -172,7 +172,7 @@ export function InternalGroupsManager({
       await deleteInternalGroupAction(groupId);
       setGroups((prev) => prev.filter((group) => group.id !== groupId));
       success('Group deleted');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to delete group');
     } finally {
       setBusyGroupId(null);
@@ -205,7 +205,7 @@ export function InternalGroupsManager({
         [groupId]: { userId: '', role: selection.role },
       }));
       success('Member added');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to add member');
     } finally {
       setBusyGroupId(null);
@@ -233,7 +233,7 @@ export function InternalGroupsManager({
         )
       );
       success('Role updated');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to update role');
     } finally {
       setBusyMembershipId(null);
@@ -259,7 +259,7 @@ export function InternalGroupsManager({
         )
       );
       success('Member removed');
-    } catch (error) {
+    } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to remove member');
     } finally {
       setBusyMembershipId(null);

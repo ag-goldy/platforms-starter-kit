@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   BookOpen,
@@ -104,22 +104,23 @@ export function KBSlideOver({ data }: KBSlideOverProps) {
     fetchArticlesData();
   }, [subdomain]);
 
-  useEffect(() => {
-    const fetchArticleData = async (slug: string) => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/kb/${subdomain}/articles/${slug}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSelectedArticle(data);
-          setMode("view");
-        }
-      } catch (error) {
-        console.error("Failed to fetch article:", error);
-      } finally {
-        setLoading(false);
+  const fetchArticleData = useCallback(async (slug: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/kb/${subdomain}/articles/${slug}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedArticle(data);
+        setMode("view");
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch article:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [subdomain]);
+
+  useEffect(() => {
     if (data?.articleSlug) {
       fetchArticleData(data.articleSlug);
     } else if (data?.mode === "create") {
@@ -459,7 +460,7 @@ export function KBSlideOver({ data }: KBSlideOverProps) {
                 .map((article) => (
                   <button
                     key={article.id}
-                    onClick={() => fetchArticle(article.slug)}
+                    onClick={() => fetchArticleData(article.slug)}
                     className="w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-stone-200 hover:border-brand-300 transition-colors text-left"
                   >
                     <FileText className="w-4 h-4 text-stone-400" />
@@ -586,7 +587,7 @@ export function KBSlideOver({ data }: KBSlideOverProps) {
               >
                 <div className="flex items-start justify-between gap-3">
                   <button
-                    onClick={() => fetchArticle(article.slug)}
+                    onClick={() => fetchArticleData(article.slug)}
                     className="flex-1 text-left"
                   >
                     <span className="inline-block px-2 py-0.5 bg-brand-50 text-brand-700 text-xs font-medium rounded-full mb-2">

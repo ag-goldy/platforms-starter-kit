@@ -6,12 +6,7 @@ import { requirePlatformAdmin } from "@/lib/admin/platform";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  createTenantAction,
-  enableTenantAction,
-  scheduleTenantDeleteAction,
-  suspendTenantAction,
-} from "./actions";
+import { createTenantAction } from "./actions";
 
 function tenantStatus(org: typeof organizations.$inferSelect) {
   if (org.deletedAt) return <Badge variant="destructive">Deleted</Badge>;
@@ -152,47 +147,16 @@ export default async function PlatformAdminHome() {
                     </td>
                     <td>
                       <div className="flex justify-end gap-2">
-                        {tenant.isActive ? (
-                          <form action={suspendTenantAction}>
-                            <input
-                              type="hidden"
-                              name="orgId"
-                              value={tenant.id}
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-zinc-700 bg-zinc-950 text-zinc-200"
-                            >
-                              Suspend
-                            </Button>
-                          </form>
-                        ) : (
-                          <form action={enableTenantAction}>
-                            <input
-                              type="hidden"
-                              name="orgId"
-                              value={tenant.id}
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-zinc-700 bg-zinc-950 text-zinc-200"
-                            >
-                              Enable
-                            </Button>
-                          </form>
-                        )}
-                        <form action={scheduleTenantDeleteAction}>
-                          <input type="hidden" name="orgId" value={tenant.id} />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-rose-900 bg-rose-950 text-rose-200"
-                          >
-                            Schedule delete
-                          </Button>
-                        </form>
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="border-zinc-700 bg-zinc-950 text-zinc-200"
+                        >
+                          <Link href={`/admin/tenants/${tenant.id}`}>
+                            Review controls
+                          </Link>
+                        </Button>
                       </div>
                     </td>
                   </tr>

@@ -10,7 +10,8 @@
  * - No access to ticket data
  * - No access to user-specific information
  * - Public KB articles only
- * - Rate limited by IP
+ * - Rate limited by IP (bruteforce + hourly)
+ * - AI Provider: Kimi (Moonshot AI) with Baseten fallback
  */
 
 import { NextRequest } from "next/server";
@@ -27,7 +28,7 @@ import {
 } from "@/lib/ai/prompt-guard";
 import { sanitizeResponse } from "@/lib/ai/security";
 import { createHash, randomUUID } from "crypto";
-import { createStreamingCompletion } from "@/lib/ai/streaming";
+import { createKimiStreamingCompletion, getKimiModel } from "@/lib/ai/kimi-client";
 import { redis } from "@/lib/redis";
 
 const requestSchema = z.object({
@@ -101,10 +102,21 @@ export async function POST(req: NextRequest) {
   const ip = getClientIP(headersList);
 
   try {
-    // 1. Rate limit by IP (50 per hour for public access)
+    // 1. Bruteforce protection: 5 per minute per IP
+    const minuteLimit = await rateLimit(`ai:public:min:${ip}`, {
+      maxRequests: 5,
+      windowSeconds: 60,
+    });
+    if (!minuteLimit.allowed) {
+      return new Response("Too many requests. Please slow down.", {
+        status: 429,
+      });
+    }
+
+    // 2. Rate limit by IP (30 per hour for public streaming)
     const rateLimitKey = `ai:public:${ip}`;
     const rateLimitResult = await rateLimit(rateLimitKey, {
-      maxRequests: 50,
+      maxRequests: 30,
       windowSeconds: 60 * 60,
     });
     if (!rateLimitResult.allowed) {
@@ -113,7 +125,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Parse request
+    // 3. Parse request
     const body = await req.json();
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
@@ -123,7 +135,7 @@ export async function POST(req: NextRequest) {
     const { query, orgId, sessionId: providedSessionId } = parsed.data;
     const sessionId = providedSessionId || randomUUID();
 
-    // 3. Security check
+    // 4. Security check
     const guardResult = detectPromptInjection(query);
     if (guardResult.shouldBlock) {
       logSecurityEvent("prompt_injection_blocked", {
@@ -155,7 +167,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. Fetch public KB articles
+    // 5. Fetch public KB articles
     const kbArticles = await db.query.kbArticles.findMany({
       where: (articles, { and, eq, isNotNull }) =>
         and(
@@ -177,7 +189,7 @@ export async function POST(req: NextRequest) {
             .join("\n\n---\n\n")
         : "No public articles available.";
 
-    // 5. Get conversation history
+    // 6. Get conversation history
     const conversationHistory = await getConversationHistory(sessionId, orgId);
     const formattedHistory =
       conversationHistory.length > 0
@@ -186,7 +198,7 @@ export async function POST(req: NextRequest) {
             .join("\n\n")
         : "No previous conversation.";
 
-    // 6. Build system prompt
+    // 7. Build system prompt
     const systemPrompt = PUBLIC_SYSTEM_PROMPT.replace(
       "{kb_context}",
       kbContext,
@@ -195,7 +207,7 @@ export async function POST(req: NextRequest) {
       .update(systemPrompt)
       .digest("hex");
 
-    // 7. Save user query
+    // 8. Save user query
     await addToConversation(
       sessionId,
       orgId,
@@ -203,7 +215,7 @@ export async function POST(req: NextRequest) {
       guardResult.sanitizedInput,
     );
 
-    // 8. Build messages
+    // 9. Build messages
     const messages: Array<{
       role: "system" | "user" | "assistant";
       content: string;
@@ -213,14 +225,13 @@ export async function POST(req: NextRequest) {
     }
     messages.push({ role: "user", content: guardResult.sanitizedInput });
 
-    // 9. Create streaming completion
-    const generator = createStreamingCompletion(messages, {
+    // 10. Create streaming completion via Kimi (or fallback)
+    const generator = createKimiStreamingCompletion(messages, {
       temperature: 0.3,
       max_tokens: 1000,
-      model: "deepseek-ai/DeepSeek-V3.1",
     });
 
-    // 10. Stream with audit logging
+    // 11. Stream with audit logging
     let fullResponse = "";
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -247,12 +258,12 @@ export async function POST(req: NextRequest) {
               try {
                 await db.insert(aiAuditLog).values({
                   orgId,
-                  userId: null, // Public access
+                  userId: null,
                   interface: "public",
                   userQuery: query,
                   systemPromptHash,
                   aiResponse: fullResponse.slice(0, 5000),
-                  modelUsed: "deepseek-ai/DeepSeek-V3.1",
+                  modelUsed: getKimiModel(),
                   responseTimeMs: Date.now() - startTime,
                   ipAddress: ip,
                   userAgent: headersList.get("user-agent") || undefined,

@@ -18,12 +18,18 @@ import {
   AlertCircle,
   CheckCircle2,
   MessageSquare,
+  Lock,
+  Send,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { TicketAIInsight } from "@/components/tickets/ticket-ai-insight";
 import { getCachedOrFetch } from "@/lib/performance/cache";
+import {
+  addCustomerTicketCommentAction,
+  closeCustomerTicketAction,
+} from "../../actions/tickets";
 
 interface TicketDetailPageProps {
   params: Promise<{ subdomain: string; id: string }>;
@@ -88,91 +94,111 @@ export default async function TicketDetailPage({
     P1: "bg-red-100 text-red-700",
   };
 
+  async function addReply(formData: FormData) {
+    "use server";
+    const content = formData.get("content");
+    if (typeof content === "string" && content.trim()) {
+      await addCustomerTicketCommentAction(id, content);
+    }
+  }
+
+  async function closeTicket() {
+    "use server";
+    await closeCustomerTicketAction(id);
+  }
+
+  const canClose = typedTicket.status === "RESOLVED";
+  const isTerminal =
+    typedTicket.status === "CLOSED" || typedTicket.status === "MERGED";
+
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
+    <div className="space-y-5">
       <Link
         href={`/s/${subdomain}/tickets`}
-        className="inline-flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-slate-950"
       >
-        <ArrowLeft className="w-4 h-4" />
-        Back to tickets
+        <ArrowLeft className="h-4 w-4" />
+        Back to requests
       </Link>
 
-      {/* Header */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
+      <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.style}`}
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${statusConfig.style}`}
               >
                 {statusConfig.icon}
-                {typedTicket.status.replace("_", " ")}
+                {typedTicket.status.replaceAll("_", " ")}
               </span>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${priorityColors[typedTicket.priority] || priorityColors.P4}`}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium ${priorityColors[typedTicket.priority] || priorityColors.P4}`}
               >
-                {typedTicket.priority} Priority
+                {typedTicket.priority}
               </span>
-              <span className="text-gray-400 text-sm">
-                #{typedTicket.id.slice(0, 8)}
+              <span className="font-mono text-xs text-slate-400">
+                {typedTicket.key}
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
               {typedTicket.subject}
             </h1>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Created on</p>
-            <p className="font-medium text-gray-900">
-              {new Date(typedTicket.createdAt).toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">
+              This request timeline shows public support updates only. Internal routing, SLA, assignment, and ITSM configuration are managed by Atlas admins.
             </p>
           </div>
+          <div className="grid min-w-[260px] gap-2 text-sm">
+            <div className="rounded-md border border-slate-200 p-3">
+              <div className="text-xs text-slate-500">Created</div>
+              <div className="mt-1 font-medium text-slate-950">
+                {new Date(typedTicket.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+            {canClose && (
+              <form action={closeTicket}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Close resolved request
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Description */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-orange-500" />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-5">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-950">
+              <MessageSquare className="h-4 w-4 text-orange-500" />
               Description
             </h2>
             <div className="prose prose-gray max-w-none">
-              <p className="text-gray-700 whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
                 {typedTicket.description || "No description provided."}
               </p>
             </div>
           </div>
 
-          {/* AI Analysis */}
           <TicketAIInsight ticketId={typedTicket.id} />
 
-          {/* Comments */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-orange-500" />
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-6 flex items-center gap-2 text-base font-semibold text-slate-950">
+              <MessageSquare className="h-4 w-4 text-orange-500" />
               Conversation
-              <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-sm">
+              <span className="ml-2 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                 {typedTicket.comments.length}
               </span>
             </h2>
 
             {typedTicket.comments.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-xl">
-                <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No comments yet</p>
-                <p className="text-sm text-gray-400">
-                  Be the first to add a comment
-                </p>
+              <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 py-12 text-center">
+                <MessageSquare className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                <p className="text-sm text-slate-500">No public replies yet.</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -182,35 +208,37 @@ export default async function TicketDetailPage({
               </div>
             )}
 
-            {/* Add Comment */}
             <Separator className="my-6" />
-            <form
-              action={`/api/customer/tickets/${typedTicket.id}/comments`}
-              method="POST"
-              className="space-y-4"
-            >
-              <Textarea
-                name="content"
-                placeholder="Add a comment..."
-                className="min-h-[120px] resize-none border-gray-200 focus:border-orange-500 focus:ring-orange-500"
-              />
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  Post Comment
-                </Button>
+            {isTerminal ? (
+              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                <Lock className="h-4 w-4" />
+                This request is closed and no longer accepts replies.
               </div>
-            </form>
+            ) : (
+              <form action={addReply} className="space-y-4">
+                <Textarea
+                  name="content"
+                  placeholder={
+                    typedTicket.status === "RESOLVED"
+                      ? "Reply to reopen this resolved request..."
+                      : "Add a reply..."
+                  }
+                  className="min-h-[120px] resize-none border-slate-200 focus:border-orange-500 focus:ring-orange-500"
+                />
+                <div className="flex justify-end">
+                  <Button type="submit">
+                    <Send className="mr-2 h-4 w-4" />
+                    Post reply
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Ticket Info */}
-          <div className="bg-gray-50 rounded-2xl p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Ticket Details</h3>
+        <aside className="space-y-5">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 font-semibold text-slate-950">Request details</h3>
             <div className="space-y-4">
               <InfoRow
                 icon={<User className="w-4 h-4" />}
@@ -225,7 +253,7 @@ export default async function TicketDetailPage({
               <InfoRow
                 icon={<Clock className="w-4 h-4" />}
                 label="Status"
-                value={typedTicket.status.replace("_", " ")}
+                value={typedTicket.status.replaceAll("_", " ")}
               />
               <InfoRow
                 icon={<AlertCircle className="w-4 h-4" />}
@@ -245,9 +273,9 @@ export default async function TicketDetailPage({
           </div>
 
           {/* SLA Info */}
-          <div className="bg-black rounded-2xl p-6">
-            <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-orange-500" />
+          <div className="rounded-md bg-slate-950 p-5">
+            <h3 className="mb-4 flex items-center gap-2 font-semibold text-white">
+              <Clock className="h-5 w-5 text-orange-500" />
               Response Time
             </h3>
             <div className="space-y-3">
@@ -265,7 +293,7 @@ export default async function TicketDetailPage({
               </div>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
@@ -274,7 +302,7 @@ export default async function TicketDetailPage({
 interface Comment {
   id: string;
   content: string;
-  createdAt: string;
+  createdAt: string | Date;
   user?: {
     name: string | null;
     email: string;
@@ -347,6 +375,10 @@ function getStatusConfig(status: string) {
   const configs: Record<string, { style: string; icon: React.ReactNode }> = {
     OPEN: {
       style: "bg-orange-500 text-white border-orange-600",
+      icon: <AlertCircle className="w-4 h-4" />,
+    },
+    NEW: {
+      style: "bg-blue-50 text-blue-700 border-blue-200",
       icon: <AlertCircle className="w-4 h-4" />,
     },
     IN_PROGRESS: {

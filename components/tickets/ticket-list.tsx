@@ -4,17 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Ticket } from "@/db/schema";
 import { BulkActions } from "./bulk-actions";
 import { formatDate } from "@/lib/utils/date";
 import { SearchHighlight } from "./search-highlight";
-import {
-  assignToMeAction,
-  replyAndWaitingAction,
-  closeAndSendCSATAction,
-} from "@/app/app/actions/fast-actions";
-import { UserPlus, MessageSquare, CheckCircle } from "lucide-react";
+import { Clock3 } from "lucide-react";
 import {
   EmptyTickets,
   EmptySearch,
@@ -54,9 +48,6 @@ export function TicketList({
   const router = useRouter();
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(
     new Set(),
-  );
-  const [processingTicketId, setProcessingTicketId] = useState<string | null>(
-    null,
   );
 
   const toggleSelection = (ticketId: string) => {
@@ -109,37 +100,39 @@ export function TicketList({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "NEW":
-        return "bg-blue-100 text-blue-800";
+        return "border-blue-200 bg-blue-50 text-blue-700";
       case "OPEN":
-        return "bg-green-100 text-green-800";
+        return "border-emerald-200 bg-emerald-50 text-emerald-700";
       case "IN_PROGRESS":
-        return "bg-yellow-100 text-yellow-800";
+        return "border-amber-200 bg-amber-50 text-amber-700";
+      case "WAITING_ON_CUSTOMER":
+        return "border-purple-200 bg-purple-50 text-purple-700";
       case "RESOLVED":
-        return "bg-gray-100 text-gray-800";
+        return "border-slate-200 bg-slate-50 text-slate-700";
       case "CLOSED":
-        return "bg-gray-200 text-gray-900";
+        return "border-slate-300 bg-slate-100 text-slate-700";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "border-slate-200 bg-slate-50 text-slate-700";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "P1":
-        return "bg-red-100 text-red-800";
+        return "border-red-200 bg-red-50 text-red-700";
       case "P2":
-        return "bg-orange-100 text-orange-800";
+        return "border-orange-200 bg-orange-50 text-orange-700";
       case "P3":
-        return "bg-yellow-100 text-yellow-800";
+        return "border-amber-200 bg-amber-50 text-amber-700";
       case "P4":
-        return "bg-gray-100 text-gray-800";
+        return "border-slate-200 bg-slate-50 text-slate-700";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "border-slate-200 bg-slate-50 text-slate-700";
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {selectedTicketIds.size > 0 && internalUsers && (
         <BulkActions
           selectedTicketIds={Array.from(selectedTicketIds)}
@@ -148,16 +141,16 @@ export function TicketList({
         />
       )}
 
-      <div className="space-y-2">
+      <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
         {tickets.length > 0 && internalUsers && (
-          <div className="flex items-center gap-2 pb-2 border-b">
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
             <input
               type="checkbox"
               checked={selectedTicketIds.size === tickets.length}
               onChange={toggleSelectAll}
               className="rounded border-gray-300"
             />
-            <span className="text-sm text-gray-600">
+            <span className="text-xs font-medium text-slate-600">
               Select all ({selectedTicketIds.size} selected)
             </span>
           </div>
@@ -166,10 +159,10 @@ export function TicketList({
         {tickets.map((ticket) => (
           <div
             key={ticket.id}
-            className={`flex items-start gap-3 rounded-lg border bg-white p-4 transition-colors ${
+            className={`flex items-start gap-3 border-b border-slate-100 p-3 transition-colors last:border-b-0 ${
               selectedTicketIds.has(ticket.id)
-                ? "border-blue-500 bg-blue-50"
-                : "hover:bg-gray-50"
+                ? "bg-blue-50"
+                : "hover:bg-slate-50"
             }`}
           >
             {internalUsers && (
@@ -183,168 +176,71 @@ export function TicketList({
             )}
             <Link
               href={`${basePath}/${ticket.id}`}
-              className="flex-1 space-y-2"
+              className="grid min-w-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_180px_140px]"
             >
-              <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                <span className="font-mono text-xs md:text-sm font-semibold text-gray-900">
-                  {ticket.key}
-                </span>
-                <Badge className={getStatusColor(ticket.status)}>
-                  {ticket.status}
-                </Badge>
-                <Badge className={getPriorityColor(ticket.priority)}>
-                  {ticket.priority}
-                </Badge>
-                {ticket.tagAssignments && ticket.tagAssignments.length > 0 && (
-                  <>
-                    {ticket.tagAssignments.map(
-                      (assignment: {
-                        tag: { id: string; name: string; color: string | null };
-                      }) => (
-                        <Badge
-                          key={assignment.tag.id}
-                          className="text-xs"
-                          style={{
-                            backgroundColor: assignment.tag.color
-                              ? `${assignment.tag.color}20`
-                              : undefined,
-                            color: assignment.tag.color || undefined,
-                          }}
-                        >
-                          {assignment.tag.name}
-                        </Badge>
-                      ),
-                    )}
-                  </>
-                )}
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-semibold text-slate-900">
+                    {ticket.key}
+                  </span>
+                  <Badge variant="outline" className={getStatusColor(ticket.status)}>
+                    {ticket.status.replaceAll("_", " ")}
+                  </Badge>
+                  <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
+                    {ticket.priority}
+                  </Badge>
+                  {ticket.tagAssignments?.map((assignment) => (
+                    <Badge
+                      key={assignment.tag.id}
+                      variant="outline"
+                      className="text-xs"
+                      style={{
+                        backgroundColor: assignment.tag.color
+                          ? `${assignment.tag.color}20`
+                          : undefined,
+                        color: assignment.tag.color || undefined,
+                      }}
+                    >
+                      {assignment.tag.name}
+                    </Badge>
+                  ))}
+                </div>
+                <h3 className="truncate text-sm font-semibold text-slate-950">
+                  {searchTerm ? (
+                    <SearchHighlight text={ticket.subject} searchTerm={searchTerm} />
+                  ) : (
+                    ticket.subject
+                  )}
+                </h3>
+                <p className="line-clamp-1 text-xs text-slate-500">
+                  {searchTerm ? (
+                    <SearchHighlight text={ticket.description} searchTerm={searchTerm} />
+                  ) : (
+                    ticket.description
+                  )}
+                </p>
               </div>
-              <h3 className="font-medium text-gray-900">
-                {searchTerm ? (
-                  <SearchHighlight
-                    text={ticket.subject}
-                    searchTerm={searchTerm}
-                  />
-                ) : (
-                  ticket.subject
-                )}
-              </h3>
-              <p className="text-sm text-gray-600 line-clamp-2">
-                {searchTerm ? (
-                  <SearchHighlight
-                    text={ticket.description}
-                    searchTerm={searchTerm}
-                  />
-                ) : (
-                  ticket.description
-                )}
-              </p>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span>{ticket.organization?.name || "Public"}</span>
-                <span>
+              <div className="min-w-0 text-xs text-slate-500">
+                <div className="truncate font-medium text-slate-700">
+                  {ticket.organization?.name || "Public intake"}
+                </div>
+                <div className="truncate">
                   {ticket.requester?.name ||
                     ticket.requester?.email ||
                     ticket.requesterEmail ||
-                    "Unknown"}
-                </span>
-                {ticket.assignee && (
-                  <span>
-                    Assigned to {ticket.assignee.name || ticket.assignee.email}
-                  </span>
-                )}
-                <span>{formatDate(ticket.createdAt)}</span>
+                    "Unknown requester"}
+                </div>
+                <div className="truncate">
+                  {ticket.assignee
+                    ? ticket.assignee.name || ticket.assignee.email
+                    : "Unassigned"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-500 xl:justify-end">
+                <Clock3 className="h-3.5 w-3.5" />
+                {formatDate(ticket.updatedAt || ticket.createdAt)}
               </div>
             </Link>
-            {internalUsers && currentUserId && (
-              <div
-                className="flex flex-col gap-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {ticket.assignee?.id !== currentUserId && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      setProcessingTicketId(ticket.id);
-                      try {
-                        await assignToMeAction(ticket.id);
-                        router.refresh();
-                      } catch (error) {
-                        alert(
-                          error instanceof Error
-                            ? error.message
-                            : "Failed to assign ticket",
-                        );
-                      } finally {
-                        setProcessingTicketId(null);
-                      }
-                    }}
-                    disabled={processingTicketId === ticket.id}
-                    title="Assign to me"
-                    className="h-7 px-2 text-xs"
-                  >
-                    <UserPlus className="h-3 w-3" />
-                  </Button>
-                )}
-                {ticket.status !== "WAITING_ON_CUSTOMER" &&
-                  ticket.status !== "CLOSED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        const comment = prompt(
-                          "Add a comment (this will set status to Waiting):",
-                        );
-                        if (!comment) return;
-                        setProcessingTicketId(ticket.id);
-                        try {
-                          await replyAndWaitingAction(ticket.id, comment);
-                          router.refresh();
-                        } catch (error) {
-                          alert(
-                            error instanceof Error
-                              ? error.message
-                              : "Failed to update ticket",
-                          );
-                        } finally {
-                          setProcessingTicketId(null);
-                        }
-                      }}
-                      disabled={processingTicketId === ticket.id}
-                      title="Reply + Waiting"
-                      className="h-7 px-2 text-xs"
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                    </Button>
-                  )}
-                {ticket.status !== "CLOSED" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      if (!confirm("Close this ticket?")) return;
-                      setProcessingTicketId(ticket.id);
-                      try {
-                        await closeAndSendCSATAction(ticket.id);
-                        router.refresh();
-                      } catch (error) {
-                        alert(
-                          error instanceof Error
-                            ? error.message
-                            : "Failed to close ticket",
-                        );
-                      } finally {
-                        setProcessingTicketId(null);
-                      }
-                    }}
-                    disabled={processingTicketId === ticket.id}
-                    title="Close + CSAT"
-                    className="h-7 px-2 text-xs"
-                  >
-                    <CheckCircle className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>

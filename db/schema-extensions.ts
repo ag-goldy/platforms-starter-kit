@@ -1,7 +1,7 @@
 // ============================================
 // Schema Extensions for Comprehensive Improvements
 // ============================================
-import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, decimal, date } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, decimal, date, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { organizations, tickets, users, kbArticles, ticketComments } from './schema';
 
@@ -17,9 +17,8 @@ export const widgetConfigSchema = {
 // platformAdminId, billing fields, and uniqueDependency constraint) live in
 // schema.ts. Import and re-export them so any code that previously imported
 // from schema-extensions.ts still works.
-export {
-  timeEntries,
-} from './schema';
+import { timeEntries } from './schema';
+export { timeEntries };
 
 // Draft Autosave
 export const ticketDrafts = pgTable('ticket_drafts', {

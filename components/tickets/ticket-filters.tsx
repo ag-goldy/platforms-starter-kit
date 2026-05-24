@@ -221,10 +221,10 @@ export function TicketFilters({
   return (
     <form
       onSubmit={applyFilters}
-      className="space-y-4 rounded-lg border bg-white p-4"
+      className="space-y-4"
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Filters</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-700">Filters</h2>
         <div className="flex gap-2">
           {savedSearches.length > 0 && (
             <Popover>

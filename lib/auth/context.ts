@@ -7,6 +7,10 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { getOrgBySubdomain } from "@/lib/subdomains/org-lookup";
 import { getSessionTokenFromCookie } from "@/lib/auth/session-tracking";
+import {
+  getImpersonationState,
+  type ImpersonationState,
+} from "@/lib/admin/platform";
 
 export type RequestContext = {
   user: typeof users.$inferSelect | null;
@@ -18,6 +22,7 @@ export type RequestContext = {
   membership: typeof memberships.$inferSelect | null;
   subdomain: string | null;
   ip: string;
+  impersonation: ImpersonationState | null;
 };
 
 function extractSubdomain(host: string): string | null {
@@ -68,6 +73,7 @@ export async function getRequestContext(): Promise<RequestContext> {
   let user: typeof users.$inferSelect | null = null;
   let platformAdmin: typeof platformAdmins.$inferSelect | null = null;
   const sessionToken = await getSessionTokenFromCookie();
+  const impersonation = await getImpersonationState();
 
   if (!sessionToken && session?.user) {
     // Session without cookie token — may indicate cookie loss or SSR context
@@ -125,7 +131,33 @@ export async function getRequestContext(): Promise<RequestContext> {
   let org: typeof organizations.$inferSelect | null = null;
   let membership: typeof memberships.$inferSelect | null = null;
 
-  if (subdomain) {
+  if (isPlatformAdmin && platformAdmin && impersonation) {
+    const [impersonatedOrg, impersonatedUser, impersonatedMembership] =
+      await Promise.all([
+        db.query.organizations.findFirst({
+          where: eq(organizations.id, impersonation.orgId),
+        }),
+        db.query.users.findFirst({
+          where: eq(users.id, impersonation.userId),
+        }),
+        db.query.memberships.findFirst({
+          where: and(
+            eq(memberships.orgId, impersonation.orgId),
+            eq(memberships.userId, impersonation.userId),
+            eq(memberships.isActive, true),
+          ),
+        }),
+      ]);
+
+    if (impersonatedOrg && impersonatedUser && impersonatedMembership) {
+      org = impersonatedOrg;
+      user = impersonatedUser;
+      membership = impersonatedMembership;
+      subdomain = impersonatedOrg.subdomain;
+    }
+  }
+
+  if (!org && subdomain) {
     const foundOrg = await getOrgBySubdomain(subdomain);
     org = foundOrg || null;
 
@@ -136,7 +168,7 @@ export async function getRequestContext(): Promise<RequestContext> {
     }
   }
 
-  if (user && org) {
+  if (!membership && user && org) {
     const foundMembership = await db.query.memberships.findFirst({
       where: and(
         eq(memberships.userId, user.id),
@@ -156,5 +188,6 @@ export async function getRequestContext(): Promise<RequestContext> {
     membership,
     subdomain,
     ip,
+    impersonation,
   };
 }

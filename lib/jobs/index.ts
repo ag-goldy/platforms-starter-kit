@@ -1,4 +1,5 @@
-export type { Job, JobType } from './types';
+import type { Job, JobType } from './types';
+export type { Job, JobType };
 
 export {
   getEmailQueue,
