@@ -177,3 +177,44 @@ Since this database has no production data, the cleanest fix is:
 5. Confirm `__drizzle_migrations` count matches the number of migration files.
 
 **Do NOT attempt this on a production database.** For production, use `drizzle-kit push` with `--force` or manually reconcile the journal.
+
+
+## Deferred: Ticket Key Format Review
+
+`generateTicketKey` currently produces keys like `ACMECORP(INC)925180`.
+
+Problems with this format:
+- **URL encoding**: Parentheses require percent-encoding in some contexts, making URLs harder to read and share.
+- **Email subject lines**: Parentheses can interfere with email client parsing or filtering rules.
+- **CLI/search special characters**: Parentheses are shell metacharacters and regex grouping operators, making copy-paste into terminals or search boxes awkward.
+- **Readability**: Hard to read aloud or dictate over the phone.
+
+Recommend reviewing the format before any customer-facing rollout. Suggested alternatives to consider:
+- `ACME-925180` (simple hyphen prefix)
+- `ACME-2025-925180` (prefix + year + number)
+- `ACME925180` (prefix + number, no separator)
+
+Do not change `generateTicketKey` in this session.
+
+## Deferred: Audit canEditTicket and Similar Guard Functions
+
+The grep in Phase 2 surfaced `canEditTicket` at `lib/auth/permissions.ts:405. It was not audited in Phase 2.
+
+`canEditTicket` uses the same return-null-on-deny pattern as the old `canViewTicket`:
+```ts
+const result = await canViewTicket(ticketId);
+if (!result.ticket) {
+  throw new AuthorizationError("Ticket not found");
+}
+```
+
+It may have unsafe call sites that assume the function throws on denial rather than returning a null ticket. Recommend a sweep of all `canX` functions in `permissions.ts` after Phase 5, applying the `requireX` helper pattern (like `requireTicketAccess`) where the caller only needs a guard, not the object itself.
+
+## Deferred: Update AGENTS.md
+
+`AGENTS.md` line 210 references the old `canViewTicket` pattern for ticket-level access guards:
+```
+- `canViewTicket(ticketId)` / `canReplyTicket(ticketId)` — ticket-level access
+```
+
+Update it to recommend `requireTicketAccess` for guard-style usage (where the caller only needs to verify access and does not use the ticket object) and keep `canViewTicket` for cases where the caller actually uses the returned ticket object. Do this update in the final report-writing pass, not now.

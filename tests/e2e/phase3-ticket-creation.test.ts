@@ -38,7 +38,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const CUSTOMER_EMAIL = "john@acme.com";
 const CUSTOMER_PASSWORD = "TestPass123!";
 const ORG_SUBDOMAIN = "acme";
-const PLATFORM_ADMIN_EMAIL = "admin@atlas.com";
+const PLATFORM_ADMIN_EMAIL = "adm-atlas@agrnetworks.com";
 const PLATFORM_ADMIN_PASSWORD = "AdminPass123!";
 
 test.describe("Phase 3: Ticket creation E2E", () => {
