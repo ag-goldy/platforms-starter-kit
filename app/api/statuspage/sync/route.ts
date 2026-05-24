@@ -5,10 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireStatuspageAccess } from "@/lib/auth/statuspage-access";
 import { db } from "@/db";
 import { services, statuspageConfigs } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createStatuspageClient } from "@/lib/integrations/statuspage/client";
 import { canManageOrgSettings } from "@/lib/auth/permissions";
 
@@ -29,20 +29,12 @@ interface SyncResult {
 // POST /api/statuspage/sync
 export async function POST(_: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const client = await createStatuspageClient(session.user.orgId);
+    const client = await createStatuspageClient(access.orgId);
     if (!client) {
       return NextResponse.json(
         { error: "Statuspage not configured for this organization" },
@@ -52,7 +44,7 @@ export async function POST(_: NextRequest) {
 
     // Get config for mappings
     const config = await db.query.statuspageConfigs?.findFirst({
-      where: eq(statuspageConfigs.orgId, session.user.orgId),
+      where: eq(statuspageConfigs.orgId, access.orgId),
     });
 
     if (!config) {
@@ -64,7 +56,7 @@ export async function POST(_: NextRequest) {
 
     // Get all services for this org
     const orgServices = await db.query.services?.findMany({
-      where: eq(services.orgId, session.user.orgId),
+      where: eq(services.orgId, access.orgId),
     });
 
     if (!orgServices || orgServices.length === 0) {
@@ -96,7 +88,7 @@ export async function POST(_: NextRequest) {
         );
 
         // Check if we already have a mapping
-        const existingComponentId = config.componentMappings[service.id];
+        const existingComponentId = config.componentMappings?.[service.id];
 
         // Also check by name match
         const nameMatch = componentMap.get(service.name.toLowerCase());
@@ -176,21 +168,13 @@ export async function POST(_: NextRequest) {
 // GET /api/statuspage/sync
 export async function GET(_: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
     const config = await db.query.statuspageConfigs?.findFirst({
-      where: eq(statuspageConfigs.orgId, session.user.orgId),
+      where: eq(statuspageConfigs.orgId, access.orgId),
       columns: {
         componentMappings: true,
         lastSyncedAt: true,
@@ -210,10 +194,11 @@ export async function GET(_: NextRequest) {
     const mappedServiceCount = Object.keys(
       config.componentMappings || {},
     ).length;
-    const totalServices =
-      (await db.query.services?.count?.({
-        where: eq(services.orgId, session.user.orgId),
-      })) || 0;
+    const totalServicesResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(services)
+      .where(eq(services.orgId, access.orgId));
+    const totalServices = totalServicesResult[0]?.count ?? 0;
 
     return NextResponse.json({
       configured: true,

@@ -41,7 +41,7 @@ interface PendingInvite {
   id: string;
   email: string;
   role: string;
-  invitedAt: string;
+  createdAt: string;
   invitedBy: string;
 }
 
@@ -630,7 +630,7 @@ export function TeamSlideOver({ data, onClose: _onClose }: TeamSlideOverProps) {
                       </p>
                       <p className="text-xs text-stone-500">
                         Invited{" "}
-                        {new Date(invite.invitedAt).toLocaleDateString()} •{" "}
+                        {new Date(invite.createdAt).toLocaleDateString()} •{" "}
                         {invite.invitedBy}
                       </p>
                     </div>

@@ -51,11 +51,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
     }
 
-    // Update the invitedAt timestamp to now
+    // TODO: track last resend timestamp via a dedicated lastSentAt column or invitation_resends audit table.
+    // See deferred issue in OVERNIGHT_AGENT_REPAIR_REPORT.md.
     const [updated] = await db
       .update(userInvitations)
       .set({
-        invitedAt: new Date(),
         invitedBy: session.user.id,
       })
       .where(eq(userInvitations.id, inviteId))

@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireStatuspageAccess } from "@/lib/auth/statuspage-access";
 import { db } from "@/db";
 import { statuspageConfigs, StatuspageConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -26,22 +26,13 @@ const configSchema = z.object({
 // GET /api/statuspage/config
 export async function GET(_request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check permissions
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
     const config = await db.query.statuspageConfigs?.findFirst({
-      where: eq(statuspageConfigs.orgId, session.user.orgId),
+      where: eq(statuspageConfigs.orgId, access.orgId),
     });
 
     if (!config) {
@@ -69,18 +60,9 @@ export async function GET(_request: NextRequest) {
 // POST /api/statuspage/config
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check permissions
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
     const body = await request.json();
@@ -115,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Upsert config
     const existing = await db.query.statuspageConfigs?.findFirst({
-      where: eq(statuspageConfigs.orgId, session.user.orgId),
+      where: eq(statuspageConfigs.orgId, access.orgId),
     });
 
     let config: StatuspageConfig;
@@ -137,7 +119,7 @@ export async function POST(request: NextRequest) {
       const [created] = await db
         .insert(statuspageConfigs)
         .values({
-          orgId: session.user.orgId,
+          orgId: access.orgId,
           apiKey,
           pageId: validatedPageId,
           pageUrl: pageUrl || null,
@@ -170,23 +152,14 @@ export async function POST(request: NextRequest) {
 // DELETE /api/statuspage/config
 export async function DELETE(_request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check permissions
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
     await db
       .delete(statuspageConfigs)
-      .where(eq(statuspageConfigs.orgId, session.user.orgId));
+      .where(eq(statuspageConfigs.orgId, access.orgId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

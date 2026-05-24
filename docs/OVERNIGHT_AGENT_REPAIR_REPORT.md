@@ -236,3 +236,20 @@ Update it to recommend `requireTicketAccess` for guard-style usage (where the ca
 - **Must use `getRequestContext()`** from `lib/auth/context` for session resolution, not `auth()` directly.
 - **Must enforce `withOrgScope()`** or `requireOrgRole()` before accessing any tenant data.
 - **Must use signed URLs or token-based auth** for any URL that might be shared externally.
+
+## Deferred: Invitation Resend Tracking
+
+**Context:** `app/api/team/[subdomain]/invites/[inviteId]/resend/route.ts` previously attempted to update a nonexistent `invitedAt` column on `userInvitations` when resending an invitation.
+
+**Product need:** Tracking when an invitation was last resent is a real requirement. `createdAt` is immutable by definition (row creation time), so it cannot serve this purpose.
+
+**Current state:** The resend route no longer writes to the nonexistent `invitedAt` column. A TODO comment is left in the code.
+
+**Two options to consider:**
+
+1. **Add `lastSentAt` column to `userInvitations`** — Simplest. Update it on every resend. Does not track who clicked resend or how many times.
+2. **Create an `invitation_resends` audit table** — Preferred. Captures `invitationId`, `resentBy`, `resentAt`. Supports full audit history (who, when, how many times). Aligns with the app's existing audit log philosophy.
+
+**Recommended:** Option 2. It also supports a future "resend history" UI feature without schema changes.
+
+**Action:** Write a Drizzle migration + seed query after Phase 5. Update the resend route to insert into `invitation_resends` and optionally update a `lastSentAt` cache column on `userInvitations` if read performance becomes an issue.

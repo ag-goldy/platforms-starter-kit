@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { organizations, memberships, users, userInvitations } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
@@ -46,7 +46,6 @@ export async function GET(
             id: true,
             name: true,
             email: true,
-            image: true,
           },
         },
       },
@@ -57,7 +56,6 @@ export async function GET(
       name: m.user.name || m.user.email.split('@')[0],
       email: m.user.email,
       role: m.role,
-      avatar: m.user.image,
       isOnline: Math.random() > 0.5, // Mock - would come from presence system
       lastActive: new Date(Date.now() - Math.random() * 86400000).toISOString(),
     }));
@@ -66,15 +64,15 @@ export async function GET(
     const invitations = await db.query.userInvitations.findMany({
       where: and(
         eq(userInvitations.orgId, org.id),
-        eq(userInvitations.acceptedAt, null)
+        isNull(userInvitations.acceptedAt)
       ),
     });
 
     // Get inviter details separately
-    const inviterIds = [...new Set(invitations.map((inv) => inv.invitedBy).filter(Boolean))];
+    const inviterIds = [...new Set(invitations.map((inv) => inv.invitedBy).filter(Boolean))] as string[];
     const inviters = inviterIds.length > 0 
       ? await db.query.users.findMany({
-          where: eq(users.id, inviterIds[0]), // Drizzle doesn't support array IN directly here
+          where: inArray(users.id, inviterIds),
           columns: { id: true, name: true, email: true },
         })
       : [];
@@ -85,7 +83,7 @@ export async function GET(
         id: inv.id,
         email: inv.email,
         role: inv.role,
-        invitedAt: inv.invitedAt,
+        invitedAt: inv.createdAt,
         invitedBy: inviter?.name || inviter?.email || 'Unknown',
       };
     });

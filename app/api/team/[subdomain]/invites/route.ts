@@ -7,7 +7,7 @@ import {
   userInvitations,
   users,
 } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -99,7 +99,7 @@ export async function POST(
       where: and(
         eq(userInvitations.email, email.toLowerCase()),
         eq(userInvitations.orgId, org.id),
-        eq(userInvitations.acceptedAt, null),
+        isNull(userInvitations.acceptedAt),
       ),
     });
 
@@ -134,7 +134,7 @@ export async function POST(
         id: invitation.id,
         email: invitation.email,
         role: invitation.role,
-        invitedAt: invitation.invitedAt,
+        invitedAt: invitation.createdAt,
         invitedBy: session.user.name || session.user.email,
       },
       { status: 201 },

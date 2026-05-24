@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireStatuspageAccess } from "@/lib/auth/statuspage-access";
 import { createStatuspageClient } from "@/lib/integrations/statuspage/client";
 import { canManageOrgSettings, canManageTickets } from "@/lib/auth/permissions";
 import { z } from "zod/v3";
@@ -39,20 +39,12 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const client = await createStatuspageClient(session.user.orgId);
+    const client = await createStatuspageClient(access.orgId);
     if (!client) {
       return NextResponse.json(
         { error: "Statuspage not configured for this organization" },
@@ -75,17 +67,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const canManage = await canManageTickets(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireStatuspageAccess(canManageTickets);
+    if (!access.allowed) {
+      return access.response;
     }
 
     const body = await request.json();
@@ -98,7 +82,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const client = await createStatuspageClient(session.user.orgId);
+    const client = await createStatuspageClient(access.orgId);
     if (!client) {
       return NextResponse.json(
         { error: "Statuspage not configured for this organization" },
@@ -136,20 +120,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const client = await createStatuspageClient(session.user.orgId);
+    const client = await createStatuspageClient(access.orgId);
     if (!client) {
       return NextResponse.json(
         { error: "Statuspage not configured for this organization" },

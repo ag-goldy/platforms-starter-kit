@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireStatuspageAccess } from "@/lib/auth/statuspage-access";
 import { createStatuspageClient } from "@/lib/integrations/statuspage/client";
 import { canManageOrgSettings } from "@/lib/auth/permissions";
 import { z } from "zod/v3";
@@ -29,20 +29,12 @@ const createComponentSchema = z.object({
 // GET /api/statuspage/components
 export async function GET(_request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const client = await createStatuspageClient(session.user.orgId);
+    const client = await createStatuspageClient(access.orgId);
     if (!client) {
       return NextResponse.json(
         { error: "Statuspage not configured for this organization" },
@@ -64,17 +56,9 @@ export async function GET(_request: NextRequest) {
 // POST /api/statuspage/components
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.orgId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const canManage = await canManageOrgSettings(
-      session.user.id,
-      session.user.orgId,
-    );
-    if (!canManage) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireStatuspageAccess(canManageOrgSettings);
+    if (!access.allowed) {
+      return access.response;
     }
 
     const body = await request.json();
@@ -87,7 +71,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await createStatuspageClient(session.user.orgId);
+    const client = await createStatuspageClient(access.orgId);
     if (!client) {
       return NextResponse.json(
         { error: "Statuspage not configured for this organization" },
