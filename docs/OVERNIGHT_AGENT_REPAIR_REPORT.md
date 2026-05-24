@@ -32,7 +32,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 | `app/actions/tickets.ts` | Rewrote `createCustomerTicket` to use `generateTicketKey`, correct fields, and proper redirect. Removed broken transaction logic that relied on missing `number` column. |
 | `app/api/tickets/[id]/draft/route.ts` | Changed all route handlers to use `params: Promise<{ id: string }>` (Next.js 15 async params). |
 | `app/api/tickets/[id]/presence/route.ts` | Same async param fix for GET/POST/DELETE handlers. |
-| `app/api/files/[fileId]/route.ts` → `app/api/files/[...fileId]/route.ts` | Renamed directory to `[...fileId]` so multi-segment file paths work correctly. |
+| `app/api/files/[fileId]/route.ts` → `app/api/files/[...fileId]/route.ts` → **deleted** | Renamed to `[...fileId]` for multi-segment blob paths, then removed entirely after Phase 4 audit confirmed zero callers. |
 | `app/api/tickets/[id]/csat/route.ts` | Removed `getOrgCSATAverage` export from route file. |
 | `lib/csat/queries.ts` | Added `getOrgCSATAverage` function here instead. |
 
@@ -218,3 +218,21 @@ It may have unsafe call sites that assume the function throws on denial rather t
 ```
 
 Update it to recommend `requireTicketAccess` for guard-style usage (where the caller only needs to verify access and does not use the ticket object) and keep `canViewTicket` for cases where the caller actually uses the returned ticket object. Do this update in the final report-writing pass, not now.
+
+
+## Phase 4: Removed unused `/api/files` catch-all route
+
+**What was removed:** `app/api/files/[...fileId]/route.ts` and its parent directories.
+
+**Why it was removed:**
+1. **Zero production callers** — a full-repo grep found no application code, email templates, migrations, or DB rows referencing `/api/files/`.
+2. **Weaker auth path** — the route used Next-Auth's `auth()` directly instead of `getRequestContext()` from `lib/auth/context`, bypassing org isolation, internal membership checks, and platform admin logic.
+3. **Catch-all risk** — mapping arbitrary URL segments to blob storage paths without the app's standard auth flow is inherently risky.
+4. **Proven alternatives exist** — the app uses `/api/attachments/[id]` (with signed URLs) and `/api/exports/[id]` (with signed tokens) for all file downloads. These are scoped, audited, and proven.
+
+**Where to add a similar route back in the future if needed:**
+- Do not add a generic `/api/files/[...fileId]` catch-all.
+- Instead, add a scoped route like `/api/attachments/[id]` or `/api/kb-images/[pathname]`.
+- **Must use `getRequestContext()`** from `lib/auth/context` for session resolution, not `auth()` directly.
+- **Must enforce `withOrgScope()`** or `requireOrgRole()` before accessing any tenant data.
+- **Must use signed URLs or token-based auth** for any URL that might be shared externally.

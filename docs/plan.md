@@ -442,7 +442,7 @@ escalation_rules (
 - **automations**: trigger-condition-action JSON model; runs logged in `automation_runs` with status, duration, error.
 - **audit_log**: append-only at the DB role level (revoke UPDATE/DELETE from app role); each row has `signature` (HMAC-SHA256 of canonical row form, key rotates monthly, key id stored).
 - **ai_audit**: every AI call logged with `request_hash`, `response_hash`, `prompt_id` (sha256 of system prompt), redaction stats, injection score, tokens, latency. Body never stored, hashes only.
-- **files**: every file has `sha256`, `scan_status (pending|clean|infected|error)`, `kind`, `attached_to_kind/id`. Direct blob URLs are never exposed; downloads go through `/api/files/{id}` which checks permissions and 302s to a short-lived signed URL.
+- **files**: every file has `sha256`, `scan_status (pending|clean|infected|error)`, `kind`, `attached_to_kind/id`. Direct blob URLs are never exposed; downloads go through scoped routes (`/api/attachments/[id]` for tickets, `/api/exports/[id]` for reports) with signed URLs or session auth.
 
 ### 3.5 Migration from current system
 
@@ -818,7 +818,7 @@ Eight layers. Each is necessary, none sufficient on its own.
 - Input validation: Zod on every external boundary (form actions, API routes, webhooks).
 - Output encoding: never raw user content into HTML; sanitize on store, sanitize again on render.
 - File uploads: type whitelist (images, PDFs, common docs, logs), max 25MB, virus scan via ClamAV on VPS worker. Files unscanned are inaccessible until clean. Suspicious files quarantined.
-- File downloads: never expose Blob URLs directly. Always `/api/files/{id}` → permission check → 302 to signed URL valid 5 min.
+- File downloads: never expose Blob URLs directly. Always use scoped routes (`/api/attachments/[id]?signed=...` or `/api/exports/[id]?token=...`) → permission check → stream or 302 to signed URL valid 5 min.
 - Direct file URLs not enumerable: file IDs are UUIDv7, links signed.
 - SSRF protection: all outbound HTTP from server (webhooks, AI, Zabbix) goes through a hardened fetch wrapper that blocks private IPs, link-local, metadata service.
 - Secrets management: Vercel env for app, VPS env file with 600 permissions for workers. Never committed. Rotate quarterly.
