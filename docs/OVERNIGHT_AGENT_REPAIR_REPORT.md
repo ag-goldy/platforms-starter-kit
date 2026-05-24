@@ -91,27 +91,39 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - 59 migration files exist; only 9 are tracked in `__drizzle_migrations`.
    - Drop schema, re-run all migrations, confirm journal matches. DB has no real data; safe to do now.
 
+4. **Route `/api/support/tickets` through `sendWithOutbox` for delivery tracking**
+   - Currently calls `sendEmail()` directly, bypassing the `email_outbox` audit trail.
+   - Same fix likely needed for other public API send sites. Audit and consolidate.
+
 ### MEDIUM — Do before public launch
 
-4. **Review ticket key format**
+5. **Review ticket key format**
    - Current `generateTicketKey` produces `ACMECORP(INC)925180`.
    - Parentheses cause URL encoding, email parsing, CLI, and readability issues.
    - Recommend `ACME-925180` style.
 
-5. **Address remaining 224 TypeScript errors**
+6. **Address remaining 224 TypeScript errors**
    - Concentrated in `app/app/actions`, `app/api/tickets`, `components/reports`, `lib/jobs`.
    - Required to remove `ignoreBuildErrors: true` from `next.config.ts` permanently.
 
-6. **Re-enable `INTERNAL_ADMIN_EMAILS` skipped test**
+7. **Re-enable `INTERNAL_ADMIN_EMAILS` skipped test**
    - Implement the env-gated allowlist in `requireInternalAdmin`, or delete the test if the feature is dropped.
+
+8. **Rewrite remaining email templates to use `renderBase`**
+   - Remaining templates: `customer-reply`, `agent-reply`, `status-changed`, `ticket-assigned`, `ticket-resolved`, `ticket-priority-changed`, `sla-breach`, `mention-notification`, `invitation`.
+   - Pattern documented in `lib/email/templates/base.ts`.
+
+9. **Build tenant logo upload UI**
+   - Use Vercel Blob and the org settings page.
+   - Template supports `org.logoUrl` but no UI feeds it. Required before onboarding tenant #2.
 
 ### LOW — Polish
 
-7. **Update `AGENTS.md` line 210**
+10. **Update `AGENTS.md` line 210**
    - Recommend `requireTicketAccess` for guard-style usage.
    - Reserve `canViewTicket` for callers that actually use the returned ticket object.
 
-8. **Track invitation resend events properly**
+11. **Track invitation resend events properly**
    - Add a `lastSentAt` column to `userInvitations`, or create an `invitation_resends` audit table.
    - Preferred: audit table (`invitationId`, `resentBy`, `resentAt`) for full history.
 
@@ -166,8 +178,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 | HIGH | `fix/drizzle-journal-reset` — Reset migrations journal, re-run all 59 migrations, re-seed DB. |
 | HIGH | `fix/permissions-canX-audit` — Audit all `canX` functions, add `requireX` helpers, fix unsafe call sites. |
 | HIGH | `fix/drizzle-null-comparison` — Grep sweep for `eq(field, null)`, replace with `isNull`/`isNotNull`. |
+| HIGH | `fix/support-ticket-outbox` — Route `/api/support/tickets` through `sendWithOutbox` for `email_outbox` tracking. |
 | MEDIUM | `fix/typescript-remaining-224` — Fix remaining 224 TypeScript errors to remove `ignoreBuildErrors`. |
 | MEDIUM | `feat/ticket-key-format` — Change `generateTicketKey` to hyphenated format (`ACME-925180`). |
+| MEDIUM | `feat/email-template-base-rollout` — Rewrite remaining email templates to use `renderBase`. |
+| MEDIUM | `feat/tenant-logo-upload` — Add Vercel Blob tenant logo upload UI in org settings. |
 | LOW | `docs/agents-md-update` — Update `AGENTS.md` to recommend `requireTicketAccess` for guards. |
 | LOW | `feat/invitation-resend-tracking` — Add `invitation_resends` audit table and wire into resend route. |
 
