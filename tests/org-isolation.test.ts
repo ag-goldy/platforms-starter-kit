@@ -17,7 +17,9 @@ import { getAssetById, getAssets } from '@/lib/assets/queries';
 import { withOrgScope, OrgScopeError } from '@/lib/db/with-org-scope';
 import { eq, sql } from 'drizzle-orm';
 
-describe('Organization Isolation', () => {
+const run = process.env.DATABASE_URL ? describe : describe.skip;
+
+run('Organization Isolation', () => {
   let org1Id: string;
   let org2Id: string;
   let user1Id: string;

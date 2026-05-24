@@ -204,3 +204,11 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
 **Recommended fix:** Since this database has no production data, drop the schema, delete `drizzle/meta/_journal.json` and snapshots, regenerate from current schema, and re-seed.
 
 **Do NOT attempt this on a production database.**
+
+## MEDIUM Priority Addition: Wire DATABASE_URL Secret to GitHub Actions
+
+**Context:** 5 test files require a live PostgreSQL database. Three already skip gracefully when `DATABASE_URL` is missing (`permissions.test.ts`, `request-types.test.ts`, `security.test.ts`). Two now also skip gracefully after the Option C fix (`org-isolation.test.ts`, `reply-matching.test.ts`).
+
+**Recommendation:** Create a dedicated Neon test branch (Neon supports free branching) and add `DATABASE_URL` as a GitHub Actions repository secret. Once configured, all 5 live-DB test files will run in CI instead of being skipped, giving full 24/24 test file coverage in CI.
+
+**Why Neon:** The project already uses Neon (`@neondatabase/serverless`). A branch is isolated, free, and can be reset independently of any production data.

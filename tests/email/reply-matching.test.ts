@@ -15,7 +15,9 @@ import { db } from '@/db';
 import { organizations, tickets, ticketComments } from '@/db/schema';
 import { matchEmailToTicket } from '@/lib/email/reply-handler';
 
-describe('Email Reply Matching', () => {
+const run = process.env.DATABASE_URL ? describe : describe.skip;
+
+run('Email Reply Matching', () => {
   let orgId: string;
   let ticketId: string;
   let ticketKey: string;
