@@ -19,6 +19,7 @@ import { processEmailReply } from "./reply-handler";
 import { getOrgSLATargets } from "@/lib/tickets/sla";
 import { sendCustomerTicketCreatedNotification } from "./notifications";
 import { renderTicketCreatedEmail } from "./templates/ticket-created";
+import { DEFAULT_EMAIL_ORG } from "./templates/defaults";
 import { sendWithOutbox } from "./outbox";
 import { getTicketById } from "@/lib/tickets/queries";
 
@@ -321,18 +322,16 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
     const magicLink = supportBaseUrl + "/ticket/" + token;
 
     const emailContent = renderTicketCreatedEmail({
-      ticketKey,
-      subject: subject.trim(),
-      magicLink,
-      senderEmail,
-      createdAt: new Date().toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      ticket: { key: ticketKey, subject: subject.trim() },
+      ticketUrl: magicLink,
+      org: org
+        ? {
+            name: org.branding?.nameOverride || org.name,
+            logoUrl: org.branding?.logoUrl,
+            supportEmail: org.intakeEmailAddress || DEFAULT_EMAIL_ORG.supportEmail,
+            brandColor: org.branding?.primaryColor,
+          }
+        : DEFAULT_EMAIL_ORG,
     });
 
     await sendWithOutbox({

@@ -11,6 +11,7 @@ import { generateTicketKey } from "@/lib/tickets/keys";
 import { createTicketToken } from "@/lib/tickets/magic-links";
 import { sendWithOutbox } from "@/lib/email/outbox";
 import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
+import { DEFAULT_EMAIL_ORG } from "@/lib/email/templates/defaults";
 import { sendCustomerTicketCreatedNotification } from "@/lib/email/notifications";
 import { getTicketById } from "@/lib/tickets/queries";
 import { eq } from "drizzle-orm";
@@ -380,18 +381,16 @@ export async function POST(request: NextRequest) {
 
     // Send confirmation email to sender
     const emailContent = renderTicketCreatedEmail({
-      ticketKey,
-      subject: subject.trim(),
-      magicLink,
-      senderEmail,
-      createdAt: new Date().toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      ticket: { key: ticketKey, subject: subject.trim() },
+      ticketUrl: magicLink,
+      org: org
+        ? {
+            name: org.branding?.nameOverride || org.name,
+            logoUrl: org.branding?.logoUrl,
+            supportEmail: org.intakeEmailAddress || DEFAULT_EMAIL_ORG.supportEmail,
+            brandColor: org.branding?.primaryColor,
+          }
+        : DEFAULT_EMAIL_ORG,
     });
 
     await sendWithOutbox({

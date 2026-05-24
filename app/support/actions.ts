@@ -12,6 +12,7 @@ import { sendWithOutbox } from "@/lib/email/outbox";
 import { supportBaseUrl } from "@/lib/utils";
 import { headers } from "next/headers";
 import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
+import { DEFAULT_EMAIL_ORG } from "@/lib/email/templates/defaults";
 import { redis } from "@/lib/redis";
 import crypto from "crypto";
 
@@ -170,9 +171,10 @@ export async function createPublicTicketAction(formData: FormData) {
 
   // Send email with magic link
   const emailContent = renderTicketCreatedEmail({
-    ticketKey,
-    subject,
-    magicLink,
+    ticket: { key: ticketKey, subject },
+    ticketUrl: magicLink,
+    requester: { name: null },
+    org: DEFAULT_EMAIL_ORG,
   });
   const sendResult = await sendWithOutbox({
     type: "ticket_created",
