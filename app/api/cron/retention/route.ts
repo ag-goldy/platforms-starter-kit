@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyRetentionPoliciesToAllOrgs } from "@/lib/compliance/retention";
+import { cleanupExpiredTokens } from "@/lib/auth/password-reset";
 import { getCorrelationId } from "@/lib/monitoring/correlation";
 import { verifyCronAuth } from "@/lib/auth/cron";
 
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
   try {
     const correlationId = await getCorrelationId();
     const results = await applyRetentionPoliciesToAllOrgs();
+    const tokensDeleted = await cleanupExpiredTokens();
 
     const summary = {
       totalOrgs: Object.keys(results).length,
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Retention policies applied",
       summary,
+      tokensDeleted,
       correlationId,
     });
   } catch (error) {
