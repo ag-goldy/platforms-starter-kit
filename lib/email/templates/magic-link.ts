@@ -23,7 +23,7 @@ export function renderMagicLinkEmail({
   const contentHtml = `
     <p style="margin:0 0 16px 0;">Hi,</p>
     <p style="margin:0 0 16px 0;">Click the link below to sign in to ${escapeHtml(productName)}.</p>
-    <p style="margin:0 0 16px 0;"><a href="${escapeHtml(url)}" style="color:${escapeHtml(brandColor)};text-decoration:underline;">${escapeHtml(url)}</a></p>
+    <p style="margin:0 0 16px 0;"><a href="${escapeHtml(url)}" style="color:${escapeHtml(brandColor)};text-decoration:underline;">Sign in to ${escapeHtml(productName)}</a></p>
     <p style="margin:0 0 16px 0;">This link will expire in ${expiresInMinutes} minutes.</p>
     <p style="margin:0 0 16px 0;">If you did not request this, you can ignore this email.</p>
     <p style="margin:0;">Thanks,<br>the ${escapeHtml(signOffName)} team</p>

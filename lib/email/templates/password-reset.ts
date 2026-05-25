@@ -23,7 +23,7 @@ export function renderPasswordResetEmail({
   const contentHtml = `
     <p style="margin:0 0 16px 0;">Hi,</p>
     <p style="margin:0 0 16px 0;">We received a request to reset the password for ${escapeHtml(email)}.</p>
-    <p style="margin:0 0 16px 0;"><a href="${escapeHtml(url)}" style="color:${escapeHtml(brandColor)};text-decoration:underline;">${escapeHtml(url)}</a></p>
+    <p style="margin:0 0 16px 0;"><a href="${escapeHtml(url)}" style="color:${escapeHtml(brandColor)};text-decoration:underline;">Reset your password</a></p>
     <p style="margin:0 0 16px 0;">This link will expire in ${expiresInMinutes} minutes.</p>
     <p style="margin:0 0 16px 0;">If you did not request this, you can ignore this email and your password will remain unchanged.</p>
     <p style="margin:0;">Thanks,<br>the ${escapeHtml(signOffName)} team</p>

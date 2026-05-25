@@ -121,7 +121,9 @@ describe("auth email templates", () => {
 
     expect(rendered.subject).toBe("Sign in to Acme Help");
     expect(rendered.html).toContain("Click the link below to sign in to Acme Help.");
-    expect(rendered.html).toContain("https://atlas.example.com/api/auth/magic-link/verify?token=test");
+    expect(rendered.html).toContain('href="https://atlas.example.com/api/auth/magic-link/verify?token=test"');
+    expect(rendered.html).toContain(">Sign in to Acme Help</a>");
+    expect(rendered.html).not.toContain(">https://atlas.example.com/api/auth/magic-link/verify?token=test</a>");
     expect(rendered.html).toContain("This link will expire in 5 minutes.");
     expect(rendered.text).toContain("Click the link below to sign in to Acme Help.");
     expect(rendered.text).toContain("https://atlas.example.com/api/auth/magic-link/verify?token=test");
@@ -153,9 +155,12 @@ describe("auth email templates", () => {
 
     expect(rendered.subject).toBe("Reset your password");
     expect(rendered.html).toContain("We received a request to reset the password for avery@example.com.");
-    expect(rendered.html).toContain("https://atlas.example.com/reset-password/token");
+    expect(rendered.html).toContain('href="https://atlas.example.com/reset-password/token"');
+    expect(rendered.html).toContain(">Reset your password</a>");
+    expect(rendered.html).not.toContain(">https://atlas.example.com/reset-password/token</a>");
     expect(rendered.html).toContain("This link will expire in 60 minutes.");
     expect(rendered.text).toContain("We received a request to reset the password for avery@example.com.");
+    expect(rendered.text).toContain("https://atlas.example.com/reset-password/token");
     expect(rendered.text).toContain("your password will remain unchanged");
     expect(rendered.html).not.toContain("display:inline-block");
     expect(rendered.html).not.toContain("border-radius");
