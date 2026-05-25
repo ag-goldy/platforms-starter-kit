@@ -41,6 +41,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Explicit 404 for removed routes before any routing logic
+  if (pathname === "/signup") {
+    const response = new NextResponse(null, { status: 404 });
+    addSecurityHeaders(response);
+    return response;
+  }
+
   // Define root/platform routes that do not have a slug
   const rootRoutes = [
     "/",
@@ -48,7 +55,6 @@ export async function middleware(request: NextRequest) {
 
     "/forgot-password",
     "/reset-password",
-    "/signup",
     "/magic",
     "/passkey/register",
   ];
@@ -149,5 +155,5 @@ function addSecurityHeaders(response: NextResponse) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|static|.*\..*).*)"],
+  matcher: ["/signup", "/((?!api|_next|static|.*\..*).*)"],
 };
