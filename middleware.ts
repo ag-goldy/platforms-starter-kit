@@ -48,6 +48,7 @@ export async function middleware(request: NextRequest) {
 
     "/forgot-password",
     "/reset-password",
+    "/signup",
     "/magic",
     "/passkey/register",
   ];
