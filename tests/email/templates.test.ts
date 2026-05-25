@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderBase } from "@/lib/email/templates/base";
+import { renderMagicLinkEmail } from "@/lib/email/templates/magic-link";
+import { renderPasswordResetEmail } from "@/lib/email/templates/password-reset";
 import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
 
 describe("email base template", () => {
@@ -104,3 +106,58 @@ describe("ticket-created email template", () => {
   });
 });
 
+describe("auth email templates", () => {
+  it("renders magic link email with org context in HTML and text", () => {
+    const rendered = renderMagicLinkEmail({
+      email: "avery@example.com",
+      url: "https://atlas.example.com/api/auth/magic-link/verify?token=test",
+      expiresInMinutes: 5,
+      org: {
+        name: "Acme Help",
+        supportEmail: "support@example.com",
+        brandColor: "#123456",
+      },
+    });
+
+    expect(rendered.subject).toBe("Sign in to Acme Help");
+    expect(rendered.html).toContain("Click the link below to sign in to Acme Help.");
+    expect(rendered.html).toContain("https://atlas.example.com/api/auth/magic-link/verify?token=test");
+    expect(rendered.html).toContain("This link will expire in 5 minutes.");
+    expect(rendered.text).toContain("Click the link below to sign in to Acme Help.");
+    expect(rendered.text).toContain("https://atlas.example.com/api/auth/magic-link/verify?token=test");
+    expect(rendered.html).not.toContain("display:inline-block");
+    expect(rendered.html).not.toContain("border-radius");
+  });
+
+  it("renders magic link email with default org when no org is passed", () => {
+    const rendered = renderMagicLinkEmail({
+      email: "avery@example.com",
+      url: "https://atlas.example.com/api/auth/magic-link/verify?token=test",
+    });
+
+    expect(rendered.subject).toBe("Sign in to Atlas");
+    expect(rendered.html).toContain("Click the link below to sign in to Atlas.");
+    expect(rendered.text).toContain("the AGR Networks team");
+  });
+
+  it("renders password reset email in HTML and text", () => {
+    const rendered = renderPasswordResetEmail({
+      email: "avery@example.com",
+      url: "https://atlas.example.com/reset-password/token",
+      expiresInMinutes: 60,
+      org: {
+        name: "Acme Help",
+        supportEmail: "support@example.com",
+      },
+    });
+
+    expect(rendered.subject).toBe("Reset your password");
+    expect(rendered.html).toContain("We received a request to reset the password for avery@example.com.");
+    expect(rendered.html).toContain("https://atlas.example.com/reset-password/token");
+    expect(rendered.html).toContain("This link will expire in 60 minutes.");
+    expect(rendered.text).toContain("We received a request to reset the password for avery@example.com.");
+    expect(rendered.text).toContain("your password will remain unchanged");
+    expect(rendered.html).not.toContain("display:inline-block");
+    expect(rendered.html).not.toContain("border-radius");
+  });
+});

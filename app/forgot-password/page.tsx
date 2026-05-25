@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,17 +18,24 @@ export default function ForgotPasswordPage() {
     setError(null);
     setSuccess(false);
 
-    const { error: resetError } = await authClient.forgetPassword({
-      email,
-      redirectTo: "/reset-password",
-    });
+    try {
+      const response = await fetch("/api/password-reset/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    if (resetError) {
-      setError(resetError.message || "Failed to send reset email");
-    } else {
-      setSuccess(true);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setError(data?.error || "Failed to send reset email");
+      } else {
+        setSuccess(true);
+      }
+    } catch {
+      setError("Unable to reach the reset service. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
