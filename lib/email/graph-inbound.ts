@@ -41,9 +41,18 @@ interface GraphEmail {
   body: { contentType: "text" | "html"; content: string };
   receivedDateTime: string;
   internetMessageId?: string;
-  inReplyTo?: string;
+  internetMessageHeaders?: Array<{ name: string; value: string }>;
   conversationId?: string;
   isRead: boolean;
+}
+
+export function getHeader(
+  headers: Array<{ name: string; value: string }> | undefined,
+  name: string,
+): string | undefined {
+  return headers?.find(
+    (header) => header.name.toLowerCase() === name.toLowerCase(),
+  )?.value;
 }
 
 /**
@@ -193,7 +202,7 @@ export async function fetchEmail(
     const email = await client
       .api("/users/" + FROM_EMAIL + "/messages/" + messageId)
       .select(
-        "id,subject,from,toRecipients,body,receivedDateTime,internetMessageId,inReplyTo,conversationId,isRead",
+        "id,subject,from,toRecipients,body,receivedDateTime,internetMessageId,internetMessageHeaders,conversationId,isRead",
       )
       .get();
 
@@ -255,6 +264,22 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
       return { success: true, error: "Automated email skipped" };
     }
 
+    const inReplyTo = getHeader(email.internetMessageHeaders, "In-Reply-To");
+    const references = getHeader(email.internetMessageHeaders, "References");
+
+    if (!email.internetMessageHeaders?.length) {
+      console.warn("[Graph Inbound] No internetMessageHeaders on message", {
+        messageId: email.id,
+      });
+    } else {
+      console.log("[Graph Inbound] Parsed internetMessageHeaders", {
+        messageId: email.id,
+        count: email.internetMessageHeaders.length,
+        hasInReplyTo: Boolean(inReplyTo),
+        hasReferences: Boolean(references),
+      });
+    }
+
     const replyResult = await processEmailReply({
       from: senderEmail,
       subject,
@@ -262,8 +287,8 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
       htmlBody:
         email.body.contentType === "html" ? email.body.content : undefined,
       messageId: email.internetMessageId,
-      inReplyTo: email.inReplyTo,
-      references: email.conversationId,
+      inReplyTo,
+      references,
     });
 
     if (replyResult && !replyResult.isNewTicket) {
