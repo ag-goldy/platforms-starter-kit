@@ -8,6 +8,7 @@ import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
 import { DEFAULT_EMAIL_ORG } from "@/lib/email/templates/defaults";
 import { eq } from "drizzle-orm";
 import { rateLimit, getClientIP } from "@/lib/rate-limit";
+import { supportBaseUrl } from "@/lib/utils";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -99,9 +100,7 @@ export async function POST(request: NextRequest) {
       expiresInDays: 30,
     });
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://atlas.agrnetworks.com";
-    const ticketUrl = `${baseUrl}/ticket/${token}`;
+    const ticketUrl = `${supportBaseUrl}/ticket/${token}`;
 
     try {
       const emailContent = renderTicketCreatedEmail({

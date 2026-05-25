@@ -61,3 +61,72 @@ describe('Error Utilities', () => {
     });
   });
 });
+
+describe('URL Helpers', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function importUtils() {
+    const mod = await import('@/lib/utils');
+    return mod;
+  }
+
+  it('trims trailing whitespace from APP_BASE_URL', async () => {
+    vi.stubEnv('APP_BASE_URL', 'https://app.example.com  ');
+    vi.stubEnv('SUPPORT_BASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'example.com');
+    vi.stubEnv('NODE_ENV', 'production');
+    const { appBaseUrl } = await importUtils();
+    expect(appBaseUrl).toBe('https://app.example.com');
+  });
+
+  it('trims trailing newlines from SUPPORT_BASE_URL', async () => {
+    vi.stubEnv('APP_BASE_URL', '');
+    vi.stubEnv('SUPPORT_BASE_URL', 'https://support.example.com\n');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'example.com');
+    vi.stubEnv('NODE_ENV', 'production');
+    const { supportBaseUrl } = await importUtils();
+    expect(supportBaseUrl).toBe('https://support.example.com');
+  });
+
+  it('preserves trailing slashes (current behavior)', async () => {
+    vi.stubEnv('APP_BASE_URL', 'https://app.example.com/');
+    vi.stubEnv('SUPPORT_BASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'example.com');
+    vi.stubEnv('NODE_ENV', 'production');
+    const { appBaseUrl } = await importUtils();
+    expect(appBaseUrl).toBe('https://app.example.com/');
+  });
+
+  it('preserves http:// prefix when set in env', async () => {
+    vi.stubEnv('APP_BASE_URL', 'http://localhost:3000');
+    vi.stubEnv('SUPPORT_BASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'localhost:3000');
+    vi.stubEnv('NODE_ENV', 'development');
+    const { appBaseUrl, supportBaseUrl } = await importUtils();
+    expect(appBaseUrl).toBe('http://localhost:3000');
+    expect(supportBaseUrl).toBe('http://localhost:3000');
+  });
+
+  it('uses https:// fallback in production when env is missing', async () => {
+    vi.stubEnv('APP_BASE_URL', '');
+    vi.stubEnv('SUPPORT_BASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'example.com');
+    vi.stubEnv('NODE_ENV', 'production');
+    const { appBaseUrl, supportBaseUrl } = await importUtils();
+    expect(appBaseUrl).toBe('https://example.com');
+    expect(supportBaseUrl).toBe('https://example.com');
+  });
+
+  it('uses http:// fallback in development when env is missing', async () => {
+    vi.stubEnv('APP_BASE_URL', '');
+    vi.stubEnv('SUPPORT_BASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'localhost:3000');
+    vi.stubEnv('NODE_ENV', 'development');
+    const { appBaseUrl, supportBaseUrl } = await importUtils();
+    expect(appBaseUrl).toBe('http://localhost:3000');
+    expect(supportBaseUrl).toBe('http://localhost:3000');
+  });
+});

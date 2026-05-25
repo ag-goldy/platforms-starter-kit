@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendCSATReminders, incrementReminderCount } from "@/lib/csat/queries";
 import { sendEmail } from "@/lib/email";
 import { verifyCronAuth } from "@/lib/auth/cron";
+import { appBaseUrl } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   // Fail-closed: rejects if CRON_SECRET not set or header mismatch
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     for (const { survey } of reminders) {
       try {
         // Send reminder email
-        const surveyUrl = `${process.env.APP_BASE_URL}/csat/${survey.tokenHash}`;
+        const surveyUrl = `${appBaseUrl}/csat/${survey.tokenHash}`;
 
         await sendEmail({
           to: survey.requesterId || "", // Would need to look up email
