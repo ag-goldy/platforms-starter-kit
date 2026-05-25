@@ -249,3 +249,13 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
 **Recommendation:** Create a dedicated Neon test branch (Neon supports free branching) and add `DATABASE_URL` as a GitHub Actions repository secret. Once configured, all 5 live-DB test files will run in CI instead of being skipped, giving full 24/24 test file coverage in CI.
 
 **Why Neon:** The project already uses Neon (`@neondatabase/serverless`). A branch is isolated, free, and can be reset independently of any production data.
+
+### HIGH — Discovered During Phase 1 Auth Cleanup
+
+17. **Middleware matcher regex is broken, middleware does not run for most routes**
+    - The `config.matcher` in `middleware.ts` has a regex (`/((?!api|_next|static|.*\..*).*)`) that fails to match any non-empty path due to how the negative lookahead `.*\..*` interacts with the lookahead engine.
+    - In practice: middleware only runs for `/` and any path explicitly added as a separate matcher entry (currently only `/signup`).
+    - Affected: security headers, tenant org resolution, disabled-org redirects, all middleware-layer protections.
+    - The app still functions because page-level org lookups exist in `app/[slug]/portal/page.tsx` and similar, but the security layer is incomplete.
+    - Fixing this is high-impact and requires careful planning: re-enabling middleware on routes that have been bypassing it for months may expose latent bugs.
+    - Recommended approach: rewrite the matcher to use a simpler exclusion pattern, then test in staging before pushing to production. Watch for unexpected redirects, header behavior changes, and tenant routing regressions.
