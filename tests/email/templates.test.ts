@@ -147,6 +147,7 @@ describe("auth email templates", () => {
       email: "avery@example.com",
       url: "https://atlas.example.com/reset-password/token",
       expiresInMinutes: 60,
+      requestedAt: new Date("2026-05-25T05:30:00.000Z"),
       org: {
         name: "Acme Help",
         supportEmail: "support@example.com",
@@ -159,8 +160,10 @@ describe("auth email templates", () => {
     expect(rendered.html).toContain(">Reset your password</a>");
     expect(rendered.html).not.toContain(">https://atlas.example.com/reset-password/token</a>");
     expect(rendered.html).toContain("This link will expire in 60 minutes.");
+    expect(rendered.html).toContain("Requested at");
     expect(rendered.text).toContain("We received a request to reset the password for avery@example.com.");
     expect(rendered.text).toContain("https://atlas.example.com/reset-password/token");
+    expect(rendered.text).toContain("Requested at");
     expect(rendered.text).toContain("your password will remain unchanged");
     expect(rendered.html).not.toContain("display:inline-block");
     expect(rendered.html).not.toContain("border-radius");

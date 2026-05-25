@@ -7,6 +7,7 @@ type PasswordResetEmailOptions = {
   email: string;
   org?: EmailTemplateOrg;
   expiresInMinutes?: number;
+  requestedAt?: Date;
 };
 
 export function renderPasswordResetEmail({
@@ -14,17 +15,24 @@ export function renderPasswordResetEmail({
   email,
   org,
   expiresInMinutes = 60,
+  requestedAt = new Date(),
 }: PasswordResetEmailOptions) {
   const resolvedOrg = org || DEFAULT_EMAIL_ORG;
   const signOffName = org?.name || DEFAULT_EMAIL_ORG.name;
   const brandColor =
     resolvedOrg.brandColor || DEFAULT_EMAIL_ORG.brandColor || "#f97316";
+  const requestedAtText = requestedAt.toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Singapore",
+  });
 
   const contentHtml = `
     <p style="margin:0 0 16px 0;">Hi,</p>
     <p style="margin:0 0 16px 0;">We received a request to reset the password for ${escapeHtml(email)}.</p>
     <p style="margin:0 0 16px 0;"><a href="${escapeHtml(url)}" style="color:${escapeHtml(brandColor)};text-decoration:underline;">Reset your password</a></p>
     <p style="margin:0 0 16px 0;">This link will expire in ${expiresInMinutes} minutes.</p>
+    <p style="margin:0 0 16px 0;">Requested at ${escapeHtml(requestedAtText)}.</p>
     <p style="margin:0 0 16px 0;">If you did not request this, you can ignore this email and your password will remain unchanged.</p>
     <p style="margin:0;">Thanks,<br>the ${escapeHtml(signOffName)} team</p>
   `;
@@ -36,6 +44,8 @@ We received a request to reset the password for ${email}.
 ${url}
 
 This link will expire in ${expiresInMinutes} minutes.
+
+Requested at ${requestedAtText}.
 
 If you did not request this, you can ignore this email and your password will remain unchanged.
 

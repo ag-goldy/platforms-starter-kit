@@ -36,17 +36,6 @@ export async function generatePasswordResetToken(
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + TOKEN_EXPIRY_HOURS);
 
-  // Insert token (delete any existing tokens for this principal first)
-  if (user) {
-    await db
-      .delete(passwordResetTokens)
-      .where(eq(passwordResetTokens.userId, user.id));
-  } else if (platformAdmin) {
-    await db
-      .delete(passwordResetTokens)
-      .where(eq(passwordResetTokens.platformAdminId, platformAdmin.id));
-  }
-
   await db.insert(passwordResetTokens).values({
     userId: user?.id ?? null,
     platformAdminId: platformAdmin?.id ?? null,
