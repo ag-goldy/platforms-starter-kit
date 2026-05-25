@@ -1,15 +1,33 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
-/**
- * Resolve organization ID by slug
- */
-async function resolveOrgBySlug(slug: string): Promise<{
+type ResolvedOrg = {
   id: string;
   subdomain: string;
   isActive: boolean;
   deletedAt: Date | null;
-} | null> {
+};
+
+const ORG_CACHE_TTL_MS = 60_000;
+const orgBySlugCache = new Map<
+  string,
+  { value: ResolvedOrg | null; expiresAt: number }
+>();
+
+/**
+ * Resolve organization ID by slug
+ *
+ * Cache is per edge instance and will be cold on cold starts. That is expected:
+ * it reduces repeated DB lookups within a warm instance without introducing
+ * cross-instance consistency assumptions.
+ */
+async function resolveOrgBySlug(slug: string): Promise<ResolvedOrg | null> {
+  const cached = orgBySlugCache.get(slug);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
   try {
     const sql = neon(process.env.DATABASE_URL || "");
     const result = await sql`
@@ -18,13 +36,9 @@ async function resolveOrgBySlug(slug: string): Promise<{
       WHERE slug = ${slug} OR subdomain = ${slug}
       LIMIT 1
     `;
-    if (result.length === 0) return null;
-    return result[0] as {
-      id: string;
-      subdomain: string;
-      isActive: boolean;
-      deletedAt: Date | null;
-    };
+    const value = result.length === 0 ? null : (result[0] as ResolvedOrg);
+    orgBySlugCache.set(slug, { value, expiresAt: now + ORG_CACHE_TTL_MS });
+    return value;
   } catch {
     return null;
   }
@@ -155,5 +169,5 @@ function addSecurityHeaders(response: NextResponse) {
 }
 
 export const config = {
-  matcher: ["/signup", "/((?!api|_next|static|.*\..*).*)"],
+  matcher: ["/signup", "/((?!api|_next|static|.*[.].*).*)"],
 };

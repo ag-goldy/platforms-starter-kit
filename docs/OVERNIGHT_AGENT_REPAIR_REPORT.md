@@ -151,6 +151,12 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - All three skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
    - Each migration is small, but they touch different call paths (automation engine, scheduled cron, scheduled cron), so track them separately for staged rollout.
 
+18. **Add security headers to invalid tenant slug rewrites**
+   - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.
+   - This branch was effectively dead code before the matcher fix; it now runs for every invalid tenant slug.
+   - Fix: add `addSecurityHeaders(response)` before the rewrite return.
+   - One-line change, separate commit for clarity.
+
 ### LOW — Polish
 
 15. **Update `AGENTS.md` line 210**
@@ -265,13 +271,11 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
 
 ### HIGH — Discovered During Phase 1 Auth Cleanup
 
-17. **Middleware matcher regex is broken, middleware does not run for most routes**
-    - The `config.matcher` in `middleware.ts` has a regex (`/((?!api|_next|static|.*\..*).*)`) that fails to match any non-empty path due to how the negative lookahead `.*\..*` interacts with the lookahead engine.
-    - In practice: middleware only runs for `/` and any path explicitly added as a separate matcher entry (currently only `/signup`).
-    - Affected: security headers, tenant org resolution, disabled-org redirects, all middleware-layer protections.
-    - The app still functions because page-level org lookups exist in `app/[slug]/portal/page.tsx` and similar, but the security layer is incomplete.
-    - Fixing this is high-impact and requires careful planning: re-enabling middleware on routes that have been bypassing it for months may expose latent bugs.
-    - Recommended approach: rewrite the matcher to use a simpler exclusion pattern, then test in staging before pushing to production. Watch for unexpected redirects, header behavior changes, and tenant routing regressions.
+17. **~~Middleware matcher regex is broken, middleware does not run for most routes~~** ✅ DONE (2026-05-25, commit `this commit`)
+    - Fixed the matcher by replacing the fragile escaped-dot exclusion with `[.]`, so middleware now runs for non-static, non-API routes.
+    - Added a 60-second per-edge-instance cache for tenant slug resolution to avoid repeated organization DB lookups on warm edge instances.
+    - Side effect: security headers now apply to many more routes than before, including `/login`, `/app/*`, `/s/*`, and tenant slug paths.
+    - Known follow-up: invalid tenant slug rewrites still need `addSecurityHeaders` before returning the `/404` rewrite.
 
 ---
 
