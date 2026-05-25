@@ -6,11 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { validatePasswordResetToken } from "@/lib/auth/password-reset";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -151,34 +150,7 @@ export default async function ResetPasswordPage({
               {error}
             </div>
           )}
-          <form action={resetPasswordAction} className="space-y-4">
-            <input type="hidden" name="token" value={token} />
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Enter new password"
-                minLength={8}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                placeholder="Confirm new password"
-                minLength={8}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Reset Password
-            </Button>
-          </form>
+          <ResetPasswordForm token={token} action={resetPasswordAction} />
         </CardContent>
       </Card>
     </div>
