@@ -128,9 +128,20 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const hasGraphCredentials = Boolean(
+    process.env.MICROSOFT_GRAPH_TENANT_ID &&
+      process.env.MICROSOFT_GRAPH_CLIENT_ID &&
+      process.env.MICROSOFT_GRAPH_CLIENT_SECRET,
+  );
+  const hasWebhookSecret = Boolean(process.env.GRAPH_WEBHOOK_SECRET);
+
   return NextResponse.json({
     status: "ok",
     message: "Microsoft Graph webhook endpoint",
-    configured: !!process.env.MICROSOFT_GRAPH_TENANT_ID,
+    configured: hasGraphCredentials && hasWebhookSecret,
+    checks: {
+      graphCredentials: hasGraphCredentials,
+      webhookSecret: hasWebhookSecret,
+    },
   });
 }
