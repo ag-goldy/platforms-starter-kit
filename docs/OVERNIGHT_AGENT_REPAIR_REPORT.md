@@ -143,6 +143,14 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - All three should be dropped via Drizzle migration after a final grep confirms zero references.
    - Recommended approach: rename schema entries to `*_orphaned` first, deploy, verify no errors for 1 week, then drop. This catches any code path the grep missed.
 
+17. **Migrate remaining direct `sendEmail()` bypasses to `sendWithOutbox`**
+   - Three additional `sendEmail()` bypasses were identified during the public tickets outbox fix:
+   - `lib/automation/actions.ts:325` — automation action emails skip outbox.
+   - `app/api/cron/email-digest/route.ts:60` — digest emails skip outbox.
+   - `app/api/cron/csat-reminders/route.ts:24` — CSAT reminder emails skip outbox.
+   - All three skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
+   - Each migration is small, but they touch different call paths (automation engine, scheduled cron, scheduled cron), so track them separately for staged rollout.
+
 ### LOW — Polish
 
 15. **Update `AGENTS.md` line 210**

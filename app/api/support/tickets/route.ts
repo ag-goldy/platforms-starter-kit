@@ -3,7 +3,7 @@ import { z } from "zod/v3";
 import { db } from "@/db";
 import { tickets, ticketComments, organizations } from "@/db/schema";
 import { generateTicketKey } from "@/lib/tickets/keys";
-import { sendEmail } from "@/lib/email";
+import { sendWithOutbox } from "@/lib/email/outbox";
 import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
 import { DEFAULT_EMAIL_ORG } from "@/lib/email/templates/defaults";
 import { eq } from "drizzle-orm";
@@ -110,7 +110,8 @@ export async function POST(request: NextRequest) {
         org: DEFAULT_EMAIL_ORG,
       });
 
-      await sendEmail({
+      await sendWithOutbox({
+        type: "ticket_created",
         to: email,
         subject: emailContent.subject,
         html: emailContent.html,
