@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { timeEntries, tickets, activeTimers } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth/permissions";
 
@@ -167,7 +167,7 @@ export async function getActiveTimerAction(ticketId: string) {
     where: and(
       eq(timeEntries.ticketId, ticketId),
       eq(timeEntries.userId, user.id),
-      eq(timeEntries.endedAt, null),
+      isNull(timeEntries.endedAt),
     ),
   });
 

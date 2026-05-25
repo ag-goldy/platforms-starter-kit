@@ -83,9 +83,9 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - `canEditTicket` and any other guard functions use the return-null-on-deny pattern.
    - Apply `requireX` helpers (like `requireTicketAccess`) where callers only need a guard, not the object itself.
 
-2. **Sweep for `eq(field, null)` Drizzle pattern**
-   - Known case: `app/app/actions/time-tracking.ts:170` — `eq(timeEntries.endedAt, null)`.
-   - Replace with `isNull()` / `isNotNull()` across `app/` and `lib/`.
+2. **~~Sweep for `eq(field, null)` Drizzle pattern~~** ✅ DONE (2026-05-25, commit `TBD`)
+   - Fixed: `app/app/actions/time-tracking.ts:170` — `eq(timeEntries.endedAt, null)` → `isNull(timeEntries.endedAt)`.
+   - Grep sweep of `app/`, `lib/`, `scripts/`, `drizzle/`, `db/` found zero additional occurrences.
 
 3. **Reset Drizzle migrations journal**
    - 59 migration files exist; only 9 are tracked in `__drizzle_migrations`.
@@ -191,7 +191,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 
 **Remaining blockers (none merge-blocking, but high priority for next branch):**
 1. Drizzle journal drift (59 files, 9 tracked) — blocks reliable schema management.
-2. `eq(field, null)` pattern in `app/app/actions/time-tracking.ts` — may cause runtime query failures.
+2. ~~`eq(field, null)` pattern in `app/app/actions/time-tracking.ts`~~ — ✅ Fixed (2026-05-25).
 3. `canEditTicket` audit — potential privilege escalation if call sites discard return values.
 
 **Recommended follow-up branches:**
@@ -199,7 +199,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 |----------|---------------|
 | HIGH | `fix/drizzle-journal-reset` — Reset migrations journal, re-run all 59 migrations, re-seed DB. |
 | HIGH | `fix/permissions-canX-audit` — Audit all `canX` functions, add `requireX` helpers, fix unsafe call sites. |
-| HIGH | `fix/drizzle-null-comparison` — Grep sweep for `eq(field, null)`, replace with `isNull`/`isNotNull`. |
+| ~~HIGH~~ | ~~`fix/drizzle-null-comparison`~~ — ✅ Done 2026-05-25. Only 1 occurrence found (`time-tracking.ts:170`). |
 | HIGH | `fix/support-ticket-outbox` — Route `/api/support/tickets` through `sendWithOutbox` for `email_outbox` tracking. |
 | MEDIUM | `fix/typescript-remaining-224` — Fix remaining 224 TypeScript errors to remove `ignoreBuildErrors`. |
 | MEDIUM | `feat/ticket-key-format` — Change `generateTicketKey` to hyphenated format (`ACME-925180`). |
