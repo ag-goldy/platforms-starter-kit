@@ -95,31 +95,48 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Currently calls `sendEmail()` directly, bypassing the `email_outbox` audit trail.
    - Same fix likely needed for other public API send sites. Audit and consolidate.
 
+5. **Add inbound webhook idempotency**
+   - Flow 3 testing showed a single Graph reply created two duplicate tickets: `PUBLIC(INC)426910` (`248b208a-f36f-4612-86be-0b9ab4efea8c`) and `PUBLIC(INC)302102` (`fc2ef5d8-429c-46ce-9497-c01157c7d08e`).
+   - Graph delivers notifications at least once, not exactly once. Atlas must dedupe inbound emails on `internetMessageId` before processing.
+   - Suggested approach: add a unique constraint on `processed_emails(internet_message_id)` or check `ticket_messages` for an existing `internet_message_id` before creating rows.
+   - Do not delete the duplicate tickets yet; leave them in the DB as evidence for the Flow 3 repair session.
+
+6. **Persist outbound confirmation email Message-IDs for reply matching**
+   - The `In-Reply-To` matcher now correctly parses RFC headers from Microsoft Graph after `ed0d233`, but it searches `ticket_comments.message_id` for matches.
+   - Outbound confirmation emails receive a Graph-assigned Message-ID, but Atlas does not persist that ID anywhere the matcher can find.
+   - To fix: when `sendEmail` / `sendWithOutbox` completes, capture the Graph response Message-ID and write it to a `sent_emails` table or ticket comment row that the matcher checks.
+   - Without this, `In-Reply-To` matching cannot work for replies to Atlas-originated emails.
+
+7. **Fix subject key extraction for current ticket key format**
+   - Current keys like `PUBLIC(INC)025829` contain parentheses, which the subject matcher does not handle.
+   - This is connected to the existing ticket key format review item. Either fix the regex or change the key format to `ACME-925180` style.
+   - Recommend changing the key format, since the current format is already flagged as problematic.
+
 ### MEDIUM — Do before public launch
 
-5. **Review ticket key format**
+8. **Review ticket key format**
    - Current `generateTicketKey` produces `ACMECORP(INC)925180`.
    - Parentheses cause URL encoding, email parsing, CLI, and readability issues.
    - Recommend `ACME-925180` style.
 
-6. **Address remaining 224 TypeScript errors**
+9. **Address remaining 224 TypeScript errors**
    - Concentrated in `app/app/actions`, `app/api/tickets`, `components/reports`, `lib/jobs`.
    - Required to remove `ignoreBuildErrors: true` from `next.config.ts` permanently.
 
-7. **Re-enable `INTERNAL_ADMIN_EMAILS` skipped test**
+10. **Re-enable `INTERNAL_ADMIN_EMAILS` skipped test**
    - Implement the env-gated allowlist in `requireInternalAdmin`, or delete the test if the feature is dropped.
 
-8. **Rewrite remaining email templates to use `renderBase`**
+11. **Rewrite remaining email templates to use `renderBase`**
    - Remaining templates: `customer-reply`, `agent-reply`, `status-changed`, `ticket-assigned`, `ticket-resolved`, `ticket-priority-changed`, `sla-breach`, `mention-notification`, `invitation`.
    - Pattern documented in `lib/email/templates/base.ts`.
 
-9. **Build tenant logo upload UI**
+12. **Build tenant logo upload UI**
    - Use Vercel Blob and the org settings page.
    - Template supports `org.logoUrl` but no UI feeds it. Required before onboarding tenant #2.
 
 ### LOW — Polish
 
-10. **Update `AGENTS.md` line 210**
+13. **Update `AGENTS.md` line 210**
    - Recommend `requireTicketAccess` for guard-style usage.
    - Reserve `canViewTicket` for callers that actually use the returned ticket object.
 
