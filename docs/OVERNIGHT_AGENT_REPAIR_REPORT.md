@@ -134,13 +134,18 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Use Vercel Blob and the org settings page.
    - Template supports `org.logoUrl` but no UI feeds it. Required before onboarding tenant #2.
 
+14. **Drop orphaned Better Auth tables**
+   - After P0 auth cleanup, three tables in `db/schema/identity.ts` have no code references: `magic_links` (was for Better Auth auth-flow links, distinct from ticket magic links in `ticket_tokens` table), `passkeys` (WebAuthn, no UI exists), `sessions` (Better Auth session shape, distinct from NextAuth `user_sessions`/`user_sessions_extended`).
+   - All three should be dropped via Drizzle migration after a final grep confirms zero references.
+   - Recommended approach: rename schema entries to `*_orphaned` first, deploy, verify no errors for 1 week, then drop. This catches any code path the grep missed.
+
 ### LOW — Polish
 
-13. **Update `AGENTS.md` line 210**
+15. **Update `AGENTS.md` line 210**
    - Recommend `requireTicketAccess` for guard-style usage.
    - Reserve `canViewTicket` for callers that actually use the returned ticket object.
 
-11. **Track invitation resend events properly**
+16. **Track invitation resend events properly**
    - Add a `lastSentAt` column to `userInvitations`, or create an `invitation_resends` audit table.
    - Preferred: audit table (`invitationId`, `resentBy`, `resentAt`) for full history.
 
