@@ -3,6 +3,8 @@ import { users, platformAdmins, passwordResetTokens } from "@/db/schema";
 import { eq, and, gt, isNull, lt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { sendWithOutbox } from "@/lib/email/outbox";
+import { renderPasswordResetConfirmationEmail } from "@/lib/email/templates/password-reset-confirmation";
 
 const TOKEN_EXPIRY_HOURS = 24;
 
@@ -145,11 +147,30 @@ export async function resetPasswordWithToken(
     return { success: false, error: "Invalid reset token" };
   }
 
+  const resetAt = new Date();
+
   // Mark token as used
   await db
     .update(passwordResetTokens)
-    .set({ usedAt: new Date() })
+    .set({ usedAt: resetAt })
     .where(eq(passwordResetTokens.id, validation.tokenId));
+
+  try {
+    const rendered = renderPasswordResetConfirmationEmail({
+      email: validation.email,
+      resetAt,
+    });
+
+    await sendWithOutbox({
+      type: "password_reset_confirmation",
+      to: validation.email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+    });
+  } catch (error) {
+    console.error("[Password Reset] Failed to send reset confirmation:", error);
+  }
 
   return { success: true };
 }

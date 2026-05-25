@@ -22,7 +22,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    const resetUrl = `${appBaseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetUrl = new URL(
+      `/reset-password?token=${encodeURIComponent(token)}`,
+      appBaseUrl,
+    ).toString();
     const rendered = renderPasswordResetEmail({
       email,
       url: resetUrl,

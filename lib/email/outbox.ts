@@ -96,7 +96,10 @@ export async function sendWithOutbox(params: {
 
   // In development or if Redis is not configured, deliver immediately
   const isDevelopment = process.env.NODE_ENV === "development";
-  const alwaysImmediate = params.type === "password_reset";
+  const alwaysImmediate = [
+    "password_reset",
+    "password_reset_confirmation",
+  ].includes(params.type);
   const useJobs =
     !alwaysImmediate &&
     process.env.USE_EMAIL_JOBS !== "false" &&

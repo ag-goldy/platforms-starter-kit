@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderBase } from "@/lib/email/templates/base";
 import { renderMagicLinkEmail } from "@/lib/email/templates/magic-link";
+import { renderPasswordResetConfirmationEmail } from "@/lib/email/templates/password-reset-confirmation";
 import { renderPasswordResetEmail } from "@/lib/email/templates/password-reset";
 import { renderTicketCreatedEmail } from "@/lib/email/templates/ticket-created";
 
@@ -167,5 +168,23 @@ describe("auth email templates", () => {
     expect(rendered.text).toContain("your password will remain unchanged");
     expect(rendered.html).not.toContain("display:inline-block");
     expect(rendered.html).not.toContain("border-radius");
+  });
+
+  it("renders password reset confirmation email in HTML and text", () => {
+    const rendered = renderPasswordResetConfirmationEmail({
+      email: "avery@example.com",
+      resetAt: new Date("2026-05-25T05:50:00.000Z"),
+      org: {
+        name: "Acme Help",
+        supportEmail: "support@example.com",
+      },
+    });
+
+    expect(rendered.subject).toBe("Your password was reset");
+    expect(rendered.html).toContain("The password for avery@example.com was reset successfully.");
+    expect(rendered.html).toContain("Reset at");
+    expect(rendered.html).toContain("contact support immediately");
+    expect(rendered.text).toContain("The password for avery@example.com was reset successfully.");
+    expect(rendered.text).toContain("contact support immediately");
   });
 });
