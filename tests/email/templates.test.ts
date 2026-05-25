@@ -111,7 +111,7 @@ describe("auth email templates", () => {
   it("renders magic link email with org context in HTML and text", () => {
     const rendered = renderMagicLinkEmail({
       email: "avery@example.com",
-      url: "https://atlas.example.com/api/auth/magic-link/verify?token=test",
+      url: "https://atlas.example.com/ticket/test-token",
       expiresInMinutes: 5,
       org: {
         name: "Acme Help",
@@ -122,12 +122,12 @@ describe("auth email templates", () => {
 
     expect(rendered.subject).toBe("Sign in to Acme Help");
     expect(rendered.html).toContain("Click the link below to sign in to Acme Help.");
-    expect(rendered.html).toContain('href="https://atlas.example.com/api/auth/magic-link/verify?token=test"');
+    expect(rendered.html).toContain('href="https://atlas.example.com/ticket/test-token"');
     expect(rendered.html).toContain(">Sign in to Acme Help</a>");
-    expect(rendered.html).not.toContain(">https://atlas.example.com/api/auth/magic-link/verify?token=test</a>");
+    expect(rendered.html).not.toContain(">https://atlas.example.com/ticket/test-token</a>");
     expect(rendered.html).toContain("This link will expire in 5 minutes.");
     expect(rendered.text).toContain("Click the link below to sign in to Acme Help.");
-    expect(rendered.text).toContain("https://atlas.example.com/api/auth/magic-link/verify?token=test");
+    expect(rendered.text).toContain("https://atlas.example.com/ticket/test-token");
     expect(rendered.html).not.toContain("display:inline-block");
     expect(rendered.html).not.toContain("border-radius");
   });
@@ -135,7 +135,7 @@ describe("auth email templates", () => {
   it("renders magic link email with default org when no org is passed", () => {
     const rendered = renderMagicLinkEmail({
       email: "avery@example.com",
-      url: "https://atlas.example.com/api/auth/magic-link/verify?token=test",
+      url: "https://atlas.example.com/ticket/test-token",
     });
 
     expect(rendered.subject).toBe("Sign in to Atlas");

@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
   const rootRoutes = [
     "/",
     "/login",
-    "/signup",
+
     "/forgot-password",
     "/reset-password",
     "/magic",

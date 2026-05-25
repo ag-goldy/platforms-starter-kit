@@ -52,7 +52,6 @@ const REQUIRED_TABLES = [
   "internal_group_memberships",
   "audit_logs",
   "sessions",
-  "magic_link_tokens",
   "notification_preferences",
   "email_outbox",
   "failed_jobs",
