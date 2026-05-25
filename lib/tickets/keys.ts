@@ -1,10 +1,11 @@
 import { db } from "@/db";
 import { organizations, tickets } from "@/db/schema";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { resolvePrefix } from "@/lib/tickets/prefix";
 
 /**
  * Normalize customer IDs for use in ticket keys.
- * Example ticket key: CUSTOMERID(INC)123456
+ * Example ticket key: AGRN-925180
  */
 export function normalizeCustomerId(value: string): string {
   return value
@@ -15,52 +16,52 @@ export function normalizeCustomerId(value: string): string {
 
 async function resolveTicketPrefix(orgId?: string | null): Promise<string> {
   if (!orgId) {
-    return "PUBLIC";
+    return "SUP";
   }
 
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, orgId),
     columns: {
-      customerId: true,
+      id: true,
       slug: true,
+      ticketPrefix: true,
     },
   });
 
-  const normalizedCustomerId = org?.customerId
-    ? normalizeCustomerId(org.customerId)
-    : "";
-  if (normalizedCustomerId) {
-    return normalizedCustomerId;
+  if (!org) {
+    throw new Error(`Organization ${orgId} not found`);
   }
 
-  const normalizedSlug = org?.slug ? normalizeCustomerId(org.slug) : "";
-  return normalizedSlug || "ORG";
+  return resolvePrefix(org);
 }
 
 /**
- * Generate a unique ticket key in format: CUSTOMERID(INC)RANDOM6.
- * Examples: ACME(INC)104382, PUBLIC(INC)849201
+ * Generate a unique ticket key in format: PREFIX-NNNNNN.
+ * Examples: ACME-104382, SUP-849201
  *
  * Features:
- * - customer ID prefix when the ticket belongs to an organization
- * - PUBLIC prefix for public/no-organization intake
- * - six-digit random number
- * - collision detection on the full key and numeric suffix
+ * - organization ticket prefix when the ticket belongs to an organization
+ * - SUP prefix for public/no-organization intake
+ * - six-digit random number from 100000 to 999999
+ * - exact-key collision retry before the ticket insert's unique constraint
+ *
+ * Note: this is still a pre-insert key generator. The database unique
+ * constraint remains the final guard, so callers that insert tickets should
+ * eventually retry the INSERT itself on Postgres 23505 to close the concurrent
+ * collision race window.
  */
 export async function generateTicketKey(
   orgId?: string | null,
 ): Promise<string> {
   const prefix = await resolveTicketPrefix(orgId);
-  const maxAttempts = 100;
+  const maxAttempts = 5;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const random = Math.floor(Math.random() * 1_000_000)
-      .toString()
-      .padStart(6, "0");
-    const key = `${prefix}(INC)${random}`;
+    const random = Math.floor(Math.random() * 900_000) + 100_000;
+    const key = `${prefix}-${random}`;
 
     const existing = await db.query.tickets.findFirst({
-      where: like(tickets.key, `%${random}`),
+      where: eq(tickets.key, key),
       columns: { id: true, key: true },
     });
 

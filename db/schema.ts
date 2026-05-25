@@ -1,6 +1,7 @@
 import {
   pgTable,
   text,
+  varchar,
   timestamp,
   uuid,
   integer,
@@ -245,6 +246,7 @@ export const organizations = pgTable("organizations", {
   deletedAt: timestamp("deleted_at"),
   deletionScheduledAt: timestamp("deletion_scheduled_at"),
   deletionScheduledBy: text("deletion_scheduled_by"),
+  ticketPrefix: varchar("ticket_prefix", { length: 8 }).unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -563,56 +565,62 @@ export const memberships = pgTable("memberships", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const tickets = pgTable("tickets", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  key: text("key").notNull().unique(),
-  orgId: uuid("org_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  serviceId: uuid("service_id").references(() => services.id, {
-    onDelete: "set null",
-  }),
-  requestTypeId: uuid("request_type_id").references(() => requestTypes.id, {
-    onDelete: "set null",
-  }),
-  requestPayload: jsonb("request_payload").$type<Record<
-    string,
-    unknown
-  > | null>(),
-  siteId: uuid("site_id").references(() => sites.id, { onDelete: "set null" }),
-  areaId: uuid("area_id").references(() => areas.id, { onDelete: "set null" }),
-  subject: text("subject").notNull(),
-  description: text("description").notNull(),
-  status: ticketStatusEnum("status").default("NEW").notNull(),
-  priority: ticketPriorityEnum("priority").default("P3").notNull(),
-  category: ticketCategoryEnum("category").default("INCIDENT").notNull(),
-  requesterId: uuid("requester_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  requesterEmail: text("requester_email"),
-  ccEmails: jsonb("cc_emails").$type<string[] | null>(),
-  assigneeId: uuid("assignee_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  mergedIntoId: uuid("merged_into_id").references(
-    (): AnyPgColumn => tickets.id,
-    { onDelete: "set null" },
-  ),
-  emailThreadId: text("email_thread_id"),
-  firstResponseAt: timestamp("first_response_at"),
-  resolvedAt: timestamp("resolved_at"),
-  slaResponseTargetHours: integer("sla_response_target_hours"),
-  slaResolutionTargetHours: integer("sla_resolution_target_hours"),
-  slaPausedAt: timestamp("sla_paused_at"),
-  slaPauseReason: text("sla_pause_reason"),
-  deletedAt: timestamp("deleted_at"),
-  isAnonymized: boolean("is_anonymized").default(false),
-  // Asset reference for quick lookup by serial/hostname
-  assetSerialNumber: text("asset_serial_number"),
-  assetHostname: text("asset_hostname"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    key: text("key").notNull().unique(),
+    orgId: uuid("org_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    serviceId: uuid("service_id").references(() => services.id, {
+      onDelete: "set null",
+    }),
+    requestTypeId: uuid("request_type_id").references(() => requestTypes.id, {
+      onDelete: "set null",
+    }),
+    requestPayload: jsonb("request_payload").$type<Record<
+      string,
+      unknown
+    > | null>(),
+    siteId: uuid("site_id").references(() => sites.id, { onDelete: "set null" }),
+    areaId: uuid("area_id").references(() => areas.id, { onDelete: "set null" }),
+    subject: text("subject").notNull(),
+    description: text("description").notNull(),
+    status: ticketStatusEnum("status").default("NEW").notNull(),
+    priority: ticketPriorityEnum("priority").default("P3").notNull(),
+    category: ticketCategoryEnum("category").default("INCIDENT").notNull(),
+    requesterId: uuid("requester_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    requesterEmail: text("requester_email"),
+    ccEmails: jsonb("cc_emails").$type<string[] | null>(),
+    assigneeId: uuid("assignee_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    mergedIntoId: uuid("merged_into_id").references(
+      (): AnyPgColumn => tickets.id,
+      { onDelete: "set null" },
+    ),
+    emailThreadId: text("email_thread_id"),
+    firstResponseAt: timestamp("first_response_at"),
+    resolvedAt: timestamp("resolved_at"),
+    slaResponseTargetHours: integer("sla_response_target_hours"),
+    slaResolutionTargetHours: integer("sla_resolution_target_hours"),
+    slaPausedAt: timestamp("sla_paused_at"),
+    slaPauseReason: text("sla_pause_reason"),
+    deletedAt: timestamp("deleted_at"),
+    isAnonymized: boolean("is_anonymized").default(false),
+    // Asset reference for quick lookup by serial/hostname
+    assetSerialNumber: text("asset_serial_number"),
+    assetHostname: text("asset_hostname"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("tickets_org_id_key_unique").on(table.orgId, table.key),
+  ],
+);
 
 export const ticketComments = pgTable("ticket_comments", {
   id: uuid("id").defaultRandom().primaryKey(),

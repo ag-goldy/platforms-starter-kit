@@ -358,7 +358,7 @@ export function OnboardingWizard({
                 required
               />
               <p className="text-xs text-gray-500">
-                Used for ticket IDs, for example ACME(INC)123456.
+                Used for ticket IDs, for example AGRN-925180.
               </p>
             </div>
 

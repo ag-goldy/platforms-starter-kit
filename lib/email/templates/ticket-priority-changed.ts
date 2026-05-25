@@ -52,7 +52,7 @@ View Ticket: ${ticketUrl}
 `;
 
   return {
-    subject: `Ticket ${ticketKey} Priority Updated`,
+    subject: `[${ticketKey}] Priority updated`,
     html: renderBaseTemplate({
       title: "Priority Updated",
       preheader: `Priority changed to ${newPriority} for ticket ${ticketKey}`,

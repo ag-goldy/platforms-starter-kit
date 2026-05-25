@@ -52,7 +52,7 @@ View Ticket: ${ticketUrl}
 `;
 
   return {
-    subject: `Ticket ${ticketKey} Status Updated`,
+    subject: `[${ticketKey}] Status updated`,
     html: renderBaseTemplate({
       title: "Status Updated",
       preheader: `Status updated to ${newStatus} for ticket ${ticketKey}`,

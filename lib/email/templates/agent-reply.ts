@@ -37,7 +37,7 @@ export function renderAgentReplyEmail(options: {
   `;
 
   return {
-    subject: `Re: ${subject} (${ticketKey})`,
+    subject: `[${ticketKey}] Re: ${subject}`,
     html: renderBaseTemplate({
       title: "New Reply",
       preheader: `${agentName} replied to ticket ${ticketKey}`,

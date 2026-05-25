@@ -114,10 +114,10 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 
 ### MEDIUM — Do before public launch
 
-8. **Review ticket key format**
-   - Current `generateTicketKey` produces `ACMECORP(INC)925180`.
-   - Parentheses cause URL encoding, email parsing, CLI, and readability issues.
-   - Recommend `ACME-925180` style.
+8. **~~Review ticket key format~~** ✅ DONE (2026-05-25, commit `this commit`)
+   - Changed `generateTicketKey` from `ACMECORP(INC)925180` style to `PREFIX-NNNNNN` style.
+   - Public tickets use `SUP-NNNNNN`.
+   - Email subjects now use bracketed keys like `[AGRN-925180] Ticket received`.
 
 9. **Address remaining 224 TypeScript errors**
    - Concentrated in `app/app/actions`, `app/api/tickets`, `components/reports`, `lib/jobs`.
@@ -133,6 +133,10 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 12. **Build tenant logo upload UI**
    - Use Vercel Blob and the org settings page.
    - Template supports `org.logoUrl` but no UI feeds it. Required before onboarding tenant #2.
+
+13. **Refactor ticket creation insert retry**
+   - Refactor ticket creation call sites to retry around `INSERT` on Postgres `23505` instead of pre-checking key existence.
+   - Current `generateTicketKey` does an exact-key pre-insert SELECT loop, but concurrent collisions can still race and surface as insert failures.
 
 14. **Drop orphaned Better Auth tables**
    - After P0 auth cleanup, three tables in `db/schema/identity.ts` have no code references: `magic_links` (was for Better Auth auth-flow links, distinct from ticket magic links in `ticket_tokens` table), `passkeys` (WebAuthn, no UI exists), `sessions` (Better Auth session shape, distinct from NextAuth `user_sessions`/`user_sessions_extended`).
@@ -202,7 +206,8 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 | ~~HIGH~~ | ~~`fix/drizzle-null-comparison`~~ — ✅ Done 2026-05-25. Only 1 occurrence found (`time-tracking.ts:170`). |
 | HIGH | `fix/support-ticket-outbox` — Route `/api/support/tickets` through `sendWithOutbox` for `email_outbox` tracking. |
 | MEDIUM | `fix/typescript-remaining-224` — Fix remaining 224 TypeScript errors to remove `ignoreBuildErrors`. |
-| MEDIUM | `feat/ticket-key-format` — Change `generateTicketKey` to hyphenated format (`ACME-925180`). |
+| ~~MEDIUM~~ | ~~`feat/ticket-key-format`~~ — ✅ Done 2026-05-25 in this commit. Changed `generateTicketKey` to hyphenated format (`ACME-925180`). |
+| MEDIUM | `fix/ticket-insert-retry-23505` — Refactor ticket creation call sites to retry around `INSERT` on Postgres `23505` instead of pre-checking key existence. |
 | MEDIUM | `feat/email-template-base-rollout` — Rewrite remaining email templates to use `renderBase`. |
 | MEDIUM | `feat/tenant-logo-upload` — Add Vercel Blob tenant logo upload UI in org settings. |
 | LOW | `docs/agents-md-update` — Update `AGENTS.md` to recommend `requireTicketAccess` for guards. |

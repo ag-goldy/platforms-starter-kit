@@ -223,7 +223,7 @@ export default async function OrganizationDetailPage({
                 pattern="[A-Za-z0-9]+"
               />
               <p className="text-xs text-gray-500">
-                Used for new ticket IDs, for example ACME(INC)123456.
+                Used for new ticket IDs, for example AGRN-925180.
               </p>
             </div>
             <Button type="submit">Save</Button>

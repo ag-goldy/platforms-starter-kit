@@ -2,7 +2,7 @@
  * Email threading utilities
  * 
  * Handles matching incoming emails to existing tickets based on:
- * - Ticket key in subject line (e.g., "Re: [AGR-2024-000123] Issue")
+ * - Ticket key in subject line (e.g., "Re: [AGRN-925180] Issue")
  * - Message-ID references
  * - In-Reply-To headers
  */
@@ -21,22 +21,14 @@ export interface EmailHeaders {
 /**
  * Extract ticket key from email subject
  * Matches patterns like:
- * - "Re: [AGR-2024-000123] Issue"
- * - "Fwd: [AGR-2024-000123] Original subject"
- * - "[AGR-2024-000123]"
+ * - "Re: [AGRN-925180] Issue"
+ * - "Fwd: [AGRN-925180] Original subject"
+ * - "[AGRN-925180]"
  */
 export function extractTicketKeyFromSubject(subject: string): string | null {
-  // Pattern: [KEY-YYYY-NNNNNN] or [KEY-NNNNNN]
-  const patterns = [
-    /\[([A-Z]+-\d{4}-\d+)\]/i,  // [AGR-2024-000123]
-    /\[([A-Z]+-\d+)\]/i,         // [AGR-123]
-  ];
-
-  for (const pattern of patterns) {
-    const match = subject.match(pattern);
-    if (match && match[1]) {
-      return match[1].toUpperCase();
-    }
+  const match = subject.match(/\[([A-Z]{2,6}-\d{6})\]/);
+  if (match && match[1]) {
+    return match[1];
   }
 
   return null;

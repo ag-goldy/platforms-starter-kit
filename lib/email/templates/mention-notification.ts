@@ -40,7 +40,7 @@ View Ticket: ${ticketUrl}
 `;
 
   return {
-    subject: `You were mentioned in ${ticketKey}`,
+    subject: `[${ticketKey}] You were mentioned`,
     html: renderBaseTemplate({
       title: "New Mention",
       preheader: `${mentionedBy} mentioned you in ticket ${ticketKey}`,

@@ -30,27 +30,27 @@ function extractInReplyTo(headers: Record<string, string>): string | null {
 describe('Email Threading', () => {
   describe('extractTicketKeyFromSubject', () => {
     it('should extract ticket key from Re: subject', () => {
-      const subject = 'Re: [AGR-2024-000123] Issue with login';
+      const subject = 'Re: [AGRN-925180] Issue with login';
       const key = extractTicketKeyFromSubject(subject);
-      expect(key).toBe('AGR-2024-000123');
+      expect(key).toBe('AGRN-925180');
     });
 
     it('should extract ticket key from Fwd: subject', () => {
-      const subject = 'Fwd: [AGR-2024-000456] Feature request';
+      const subject = 'Fwd: [ACME-100456] Feature request';
       const key = extractTicketKeyFromSubject(subject);
-      expect(key).toBe('AGR-2024-000456');
+      expect(key).toBe('ACME-100456');
     });
 
     it('should extract ticket key from subject with multiple prefixes', () => {
-      const subject = 'Re: Re: [AGR-2024-000789] Follow up';
+      const subject = 'Re: Re: [SUPP-100789] Follow up';
       const key = extractTicketKeyFromSubject(subject);
-      expect(key).toBe('AGR-2024-000789');
+      expect(key).toBe('SUPP-100789');
     });
 
     it('should extract ticket key from subject without prefix', () => {
-      const subject = '[AGR-2024-000321] New issue';
+      const subject = '[AGRN-100321] New issue';
       const key = extractTicketKeyFromSubject(subject);
-      expect(key).toBe('AGR-2024-000321');
+      expect(key).toBe('AGRN-100321');
     });
 
     it('should return null for subject without ticket key', () => {
@@ -60,16 +60,15 @@ describe('Email Threading', () => {
     });
 
     it('should handle malformed ticket key format', () => {
-      const subject = '[INVALID-KEY] Some subject';
+      const subject = '[AGR-2024-000123] Some subject';
       const key = extractTicketKeyFromSubject(subject);
-      // Pattern doesn't match (needs numbers), so should return null
       expect(key).toBeNull();
     });
 
     it('should extract first ticket key if multiple present', () => {
-      const subject = '[AGR-2024-000111] See also [AGR-2024-000222]';
+      const subject = '[AGRN-100111] See also [ACME-100222]';
       const key = extractTicketKeyFromSubject(subject);
-      expect(key).toBe('AGR-2024-000111');
+      expect(key).toBe('AGRN-100111');
     });
   });
 
@@ -168,4 +167,3 @@ describe('Email Threading', () => {
     });
   });
 });
-

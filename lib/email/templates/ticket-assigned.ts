@@ -49,7 +49,7 @@ View Ticket: ${ticketUrl}
 `;
 
   return {
-    subject: `Ticket ${ticketKey} Assigned to ${assigneeName}`,
+    subject: `[${ticketKey}] Ticket assigned to ${assigneeName}`,
     html: renderBaseTemplate({
       title: "Ticket Assigned",
       preheader: `Ticket ${ticketKey} has been assigned to ${assigneeName}`,

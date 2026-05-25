@@ -45,7 +45,7 @@ Thanks,
 the ${org.name} team`;
 
   return {
-    subject: `Ticket received: ${ticketKey}`,
+    subject: `[${ticketKey}] Ticket received`,
     ...renderBase({
       org,
       preheader: `Ticket ${ticketKey} received`,

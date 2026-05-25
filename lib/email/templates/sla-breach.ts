@@ -55,7 +55,7 @@ View Ticket: ${ticketUrl}
 `;
 
   return {
-    subject: `[SLA BREACH] Ticket ${ticketKey}`,
+    subject: `[${ticketKey}] SLA breach alert`,
     html: renderBaseTemplate({
       title: "SLA Breach Alert",
       preheader: `SLA Breach detected for ticket ${ticketKey}`,

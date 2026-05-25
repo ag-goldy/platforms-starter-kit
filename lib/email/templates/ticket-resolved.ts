@@ -63,7 +63,7 @@ View Ticket: ${ticketUrl}
 `;
 
   return {
-    subject: `Ticket ${ticketKey} Resolved`,
+    subject: `[${ticketKey}] Ticket resolved`,
     html: renderBaseTemplate({
       title: "Ticket Resolved",
       preheader: `Ticket ${ticketKey} has been resolved`,

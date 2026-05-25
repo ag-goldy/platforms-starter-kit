@@ -41,7 +41,7 @@ run('Email Reply Matching', () => {
     orgId = org.id;
 
     // Create test ticket
-    ticketKey = 'AGR-2024-000123';
+    ticketKey = 'AGRN-925180';
     const [ticket] = await db
       .insert(tickets)
       .values({
@@ -109,7 +109,7 @@ run('Email Reply Matching', () => {
     it('should not match email with wrong ticket key', async () => {
       const email = {
         from: 'customer@example.com',
-        subject: '[AGR-2024-999999] Wrong ticket',
+        subject: '[AGRN-999999] Wrong ticket',
         textBody: 'Wrong ticket',
       };
 
@@ -293,7 +293,7 @@ run('Email Reply Matching', () => {
       const [ticket2] = await db
         .insert(tickets)
         .values({
-          key: 'AGR-2024-000456',
+          key: 'ACME-100456',
           orgId: orgId,
           subject: 'Another Issue',
           description: 'Another description',
@@ -317,7 +317,7 @@ run('Email Reply Matching', () => {
       // Email with subject matching ticket2 but threading matching ticket1
       const email = {
         from: 'other@example.com',
-        subject: '[AGR-2024-000456] Another Issue',
+        subject: '[ACME-100456] Another Issue',
         textBody: 'Reply',
         inReplyTo: messageId, // This would match ticket1
       };

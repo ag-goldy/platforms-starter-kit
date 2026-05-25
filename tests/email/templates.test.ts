@@ -69,7 +69,7 @@ describe("ticket-created email template", () => {
   it("renders ticket key, subject, and link in both HTML and text", () => {
     const rendered = renderTicketCreatedEmail({
       ticket: {
-        key: "ACME-123",
+        key: "ACME-123456",
         subject: "Printer is offline",
       },
       ticketUrl: "https://support.example.com/ticket/test-token",
@@ -80,11 +80,11 @@ describe("ticket-created email template", () => {
       },
     });
 
-    expect(rendered.subject).toBe("Ticket received: ACME-123");
-    expect(rendered.html).toContain("ACME-123");
+    expect(rendered.subject).toBe("[ACME-123456] Ticket received");
+    expect(rendered.html).toContain("ACME-123456");
     expect(rendered.html).toContain("Printer is offline");
     expect(rendered.html).toContain("https://support.example.com/ticket/test-token");
-    expect(rendered.text).toContain("ACME-123");
+    expect(rendered.text).toContain("ACME-123456");
     expect(rendered.text).toContain("Printer is offline");
     expect(rendered.text).toContain("https://support.example.com/ticket/test-token");
   });
