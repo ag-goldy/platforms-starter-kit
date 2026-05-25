@@ -259,3 +259,46 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
     - The app still functions because page-level org lookups exist in `app/[slug]/portal/page.tsx` and similar, but the security layer is incomplete.
     - Fixing this is high-impact and requires careful planning: re-enabling middleware on routes that have been bypassing it for months may expose latent bugs.
     - Recommended approach: rewrite the matcher to use a simpler exclusion pattern, then test in staging before pushing to production. Watch for unexpected redirects, header behavior changes, and tenant routing regressions.
+
+---
+
+## canX Security Audit Result
+
+**Date:** 2026-05-25
+
+### Functions Audited
+
+| # | Function | File | Signature | Return Type |
+|---|----------|------|-----------|-------------|
+| 1 | `canViewTicket` | `lib/auth/permissions.ts:350` | `async (ticketId: string)` | `Promise<{ ticket: Ticket \| null }>` |
+| 2 | `canEditTicket` | `lib/auth/permissions.ts:404` | `async (ticketId: string)` | `Promise<{ ticket: NonNullable<Ticket> }>` |
+| 3 | `canManageOrgSettings` | `lib/auth/permissions.ts:413` | `async (userId, orgId)` | `Promise<boolean>` |
+| 4 | `canManageTickets` | `lib/auth/permissions.ts:426` | `async (userId, orgId)` | `Promise<boolean>` |
+| 5 | `canDownloadAttachment` | `lib/auth/permissions.ts:439` | `async (attachmentId: string)` | `Promise<{ attachment: Attachment }>` |
+| 6 | `canTransitionTicketStatus` | `lib/tickets/lifecycle.ts:51` | `(params: {ticket, actor, targetStatus})` | `TransitionCheck` (`{allowed, reason?}`) |
+
+### Classification Table
+
+| Function | Deny Pattern | # Call Sites | # Unsafe | Risk Level |
+|----------|-------------|--------------|----------|------------|
+| `canViewTicket` | **INCONSISTENT** (returns null for internal users without membership; throws for customers via `requireOrgRole`) | 6 + tests | 0 | **CRITICAL** (pattern) / LOW (callers) |
+| `canEditTicket` | DENY-BY-THROW | 4 | 0 | LOW |
+| `canManageOrgSettings` | DENY-BY-BOOLEAN | 10 | 0 | LOW |
+| `canManageTickets` | DENY-BY-BOOLEAN | 2 | 0 | LOW |
+| `canDownloadAttachment` | DENY-BY-THROW | 1 + tests | 0 | LOW |
+| `canTransitionTicketStatus` | DENY-BY-OBJECT | 1 internal + tests | 0 | LOW |
+
+### Summary
+
+No DENY-BY-NULL with unsafe callers found. All canX functions either throw on deny, are wrapped by a `require*` helper, or return structured results that callers handle.
+
+- `canViewTicket` exhibits an inconsistent deny pattern (null for internal users without membership, throw for customers) but all 6 callers are safe and the `requireTicketAccess` wrapper converts null to throw.
+- `canEditTicket` throws on deny via a thin wrapper over `canViewTicket`.
+- `canManageOrgSettings` and `canManageTickets` return booleans and are only invoked through `requireStatuspageAccess`, which explicitly checks `if (!canManage) return forbidden`.
+- `canDownloadAttachment` throws on deny.
+- `canTransitionTicketStatus` returns a structured `{ allowed, reason? }` object; its single production caller checks `!check.allowed` and throws before proceeding.
+
+### Follow-up Items (LOW Backlog)
+
+1. **Rename `canEditTicket`** to reflect what it actually checks (view access, not edit permission). The current name implies a permission check that doesn't exist.
+2. **Consider hardening `canViewTicket`** to always throw on deny, then deleting `requireTicketAccess`. Current state has two deny paths through one function (throw for customers, null for internal users) which is architectural debt even though all callers are mitigated.
