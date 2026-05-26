@@ -99,6 +99,7 @@ export async function sendWithOutbox(params: {
   const alwaysImmediate = [
     "password_reset",
     "password_reset_confirmation",
+    "email_digest",
   ].includes(params.type);
   const useJobs =
     !alwaysImmediate &&

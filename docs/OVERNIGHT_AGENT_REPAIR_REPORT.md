@@ -120,6 +120,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Audit which of the 32 missing indexes are still needed and create a new clean replacement migration.
    - Do not re-add the archived file to `_journal.json`.
 
+9. **Fix queued email outbox status tracking**
+   - BullMQ email worker delivers queued emails but does not update the corresponding `email_outbox` row from `PENDING` to `SENT` or `FAILED` because the job payload does not carry the outbox row id.
+   - Any email sent via queued `sendWithOutbox` for non-`alwaysImmediate` types can leave a permanently `PENDING` outbox row.
+   - Fix: include `outboxId` in the `SEND_EMAIL` job payload and have the worker update the row by id after delivery.
+
 ### MEDIUM — Do before public launch
 
 8. **~~Review ticket key format~~** ✅ DONE (2026-05-25, commit `this commit`)
@@ -154,15 +159,17 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 17. **Migrate remaining direct `sendEmail()` bypasses to `sendWithOutbox`**
    - Three additional `sendEmail()` bypasses were identified during the public tickets outbox fix:
    - `lib/automation/actions.ts:325` — automation action emails skip outbox.
-   - `app/api/cron/email-digest/route.ts:60` — digest emails skip outbox.
+   - ~~`app/api/cron/email-digest/route.ts:60` — digest emails skip outbox.~~ ✅ DONE (2026-05-26, commit `this commit`) — now uses `sendWithOutbox` with `type = "email_digest"` and immediate delivery so the outbox row reaches `SENT`.
    - `app/api/cron/csat-reminders/route.ts:24` — CSAT reminder emails skip outbox.
+   - Automation emails and CSAT reminder emails remain pending.
+   - CSAT reminders are also blocked by the known requesterId vs email bug.
+   - All remaining bypasses skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
+   - Each migration is small, but they touch different call paths (automation engine, scheduled cron), so track them separately for staged rollout.
 
 18. **Audit stray SQL files outside `_journal.json`**
    - 46 stray SQL files exist in `drizzle/` that are not in `_journal.json`.
    - Each should be audited for production schema impact and classified as: archive to preserve history, integrate into the journal if already applied, or delete if never used.
    - Do not mass-add these files to the journal without verifying schema impact.
-   - All three skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
-   - Each migration is small, but they touch different call paths (automation engine, scheduled cron, scheduled cron), so track them separately for staged rollout.
 
 18. **Add security headers to invalid tenant slug rewrites**
    - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.

@@ -3,7 +3,7 @@ import { and, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { notificationPreferences, notifications, users } from "@/db/schema";
 import { verifyCronAuth } from "@/lib/auth/cron";
-import { sendEmail } from "@/lib/email";
+import { sendWithOutbox } from "@/lib/email/outbox";
 
 const DIGEST_WINDOW_HOURS = 24;
 
@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
       )
       .join("");
 
-    await sendEmail({
+    await sendWithOutbox({
+      type: "email_digest",
       to: user.email,
       subject: `Atlas digest: ${rows.length} unread notification${rows.length === 1 ? "" : "s"}`,
       text: rows
