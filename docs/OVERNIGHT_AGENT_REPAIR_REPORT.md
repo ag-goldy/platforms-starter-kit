@@ -87,9 +87,12 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Fixed: `app/app/actions/time-tracking.ts:170` — `eq(timeEntries.endedAt, null)` → `isNull(timeEntries.endedAt)`.
    - Grep sweep of `app/`, `lib/`, `scripts/`, `drizzle/`, `db/` found zero additional occurrences.
 
-3. **Reset Drizzle migrations journal**
-   - 59 migration files exist; only 9 are tracked in `__drizzle_migrations`.
-   - Drop schema, re-run all migrations, confirm journal matches. DB has no real data; safe to do now.
+3. **~~Reset Drizzle migrations journal~~** ✅ DONE (2026-05-26, Flavor A reconciliation, commit `this commit`)
+   - Reconciled production `drizzle.__drizzle_migrations` without schema changes or data loss.
+   - Back-filled 5 verified missing rows: `023_add_zabbix_to_services`, `024_add_asset_archive`, `025_fix_asset_type_enum`, `026_custom_asset_types_statuses`, `027_advanced_features`.
+   - Repaired 1 malformed row: `0015_ticket_prefix_and_composite_unique` had the tag string in `hash`; replaced it with the SHA-256 of raw SQL file content and the journal `when` timestamp.
+   - Archived 1 partial migration: `028_performance_indexes` was only partially applied in production and was removed from `_journal.json`.
+   - Verification: production journal count is 15, and `pnpm db:migrate` exits cleanly with no new journal rows.
 
 4. **Route `/api/support/tickets` through `sendWithOutbox` for delivery tracking**
    - Currently calls `sendEmail()` directly, bypassing the `email_outbox` audit trail.
@@ -111,6 +114,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Current keys like `PUBLIC(INC)025829` contain parentheses, which the subject matcher does not handle.
    - This is connected to the existing ticket key format review item. Either fix the regex or change the key format to `ACME-925180` style.
    - Recommend changing the key format, since the current format is already flagged as problematic.
+
+8. **Review archived migration `028_performance_indexes`**
+   - `drizzle/archive/028_performance_indexes_PARTIAL.sql` claims 38 performance indexes, but only 6 exist in production.
+   - Audit which of the 32 missing indexes are still needed and create a new clean replacement migration.
+   - Do not re-add the archived file to `_journal.json`.
 
 ### MEDIUM — Do before public launch
 
@@ -148,6 +156,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - `lib/automation/actions.ts:325` — automation action emails skip outbox.
    - `app/api/cron/email-digest/route.ts:60` — digest emails skip outbox.
    - `app/api/cron/csat-reminders/route.ts:24` — CSAT reminder emails skip outbox.
+
+18. **Audit stray SQL files outside `_journal.json`**
+   - 46 stray SQL files exist in `drizzle/` that are not in `_journal.json`.
+   - Each should be audited for production schema impact and classified as: archive to preserve history, integrate into the journal if already applied, or delete if never used.
+   - Do not mass-add these files to the journal without verifying schema impact.
    - All three skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
    - Each migration is small, but they touch different call paths (automation engine, scheduled cron, scheduled cron), so track them separately for staged rollout.
 
@@ -208,15 +221,16 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 - No manual QA blockers identified.
 
 **Remaining blockers (none merge-blocking, but high priority for next branch):**
-1. Drizzle journal drift (59 files, 9 tracked) — blocks reliable schema management.
+1. ~~Drizzle journal drift~~ — ✅ Reconciled with Flavor A on 2026-05-26; remaining work is targeted audit of archived/stray SQL files.
 2. ~~`eq(field, null)` pattern in `app/app/actions/time-tracking.ts`~~ — ✅ Fixed (2026-05-25).
 3. `canEditTicket` audit — potential privilege escalation if call sites discard return values.
 
 **Recommended follow-up branches:**
 | Priority | Branch purpose |
 |----------|---------------|
-| HIGH | `fix/drizzle-journal-reset` — Reset migrations journal, re-run all 59 migrations, re-seed DB. |
+| ~~HIGH~~ | ~~`fix/drizzle-journal-reset`~~ — ✅ Done 2026-05-26 via Flavor A reconciliation: 5 rows added, 1 malformed row repaired, partial `028` archived. |
 | HIGH | `fix/permissions-canX-audit` — Audit all `canX` functions, add `requireX` helpers, fix unsafe call sites. |
+| HIGH | `fix/performance-indexes-028-cleanup` — Review archived `028_performance_indexes`; create a clean replacement migration for any still-needed missing indexes. |
 | ~~HIGH~~ | ~~`fix/drizzle-null-comparison`~~ — ✅ Done 2026-05-25. Only 1 occurrence found (`time-tracking.ts:170`). |
 | HIGH | `fix/support-ticket-outbox` — Route `/api/support/tickets` through `sendWithOutbox` for `email_outbox` tracking. |
 | MEDIUM | `fix/typescript-remaining-224` — Fix remaining 224 TypeScript errors to remove `ignoreBuildErrors`. |
@@ -224,6 +238,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 | MEDIUM | `fix/ticket-insert-retry-23505` — Refactor ticket creation call sites to retry around `INSERT` on Postgres `23505` instead of pre-checking key existence. |
 | MEDIUM | `feat/email-template-base-rollout` — Rewrite remaining email templates to use `renderBase`. |
 | MEDIUM | `feat/tenant-logo-upload` — Add Vercel Blob tenant logo upload UI in org settings. |
+| MEDIUM | `chore/drizzle-stray-sql-audit` — Audit 46 SQL files in `drizzle/` that are not in `_journal.json`; archive, integrate, or delete each one. |
 | LOW | `docs/agents-md-update` — Update `AGENTS.md` to recommend `requireTicketAccess` for guards. |
 | LOW | `feat/invitation-resend-tracking` — Add `invitation_resends` audit table and wire into resend route. |
 

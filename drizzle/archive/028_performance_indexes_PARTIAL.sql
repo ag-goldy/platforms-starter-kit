@@ -1,3 +1,8 @@
+-- ARCHIVED: This migration was only partially applied to production.
+-- 6 of 38 claimed indexes exist; 32 are missing.
+-- Do NOT add to drizzle/_journal.json.
+-- See OVERNIGHT_AGENT_REPAIR_REPORT.md backlog for cleanup plan.
+
 -- Performance Indexes for 3-Tier Architecture
 -- Created: 2025-02-25
 -- 
