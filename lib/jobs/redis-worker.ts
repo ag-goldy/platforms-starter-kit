@@ -77,7 +77,11 @@ export async function processEmailJob(job: BullJob<EmailJobData>): Promise<{ suc
       html: job.data.html,
       text: job.data.text,
       replyTo: job.data.replyTo,
-      attachments: job.data.attachments,
+      attachments: job.data.attachments?.map(att => ({
+        filename: att.filename,
+        content: Buffer.from(att.content, 'base64'),
+        contentType: att.contentType ?? 'application/octet-stream',
+      })),
     });
 
     const internetMessageId = result.internetMessageId ?? null;
