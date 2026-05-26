@@ -171,6 +171,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Each should be audited for production schema impact and classified as: archive to preserve history, integrate into the journal if already applied, or delete if never used.
    - Do not mass-add these files to the journal without verifying schema impact.
 
+19. **Investigate missing `notification_preferences` table**
+   - `notification_preferences` is missing from the production schema.
+   - The email digest cron iterates this table, so it has been non-functional despite the outbox send path now being wired correctly.
+   - Decide product intent: create the table via migration if the feature is intended, gate the cron to skip cleanly if the table does not exist, or remove the cron entirely if the feature was never intended.
+
 18. **Add security headers to invalid tenant slug rewrites**
    - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.
    - This branch was effectively dead code before the matcher fix; it now runs for every invalid tenant slug.
