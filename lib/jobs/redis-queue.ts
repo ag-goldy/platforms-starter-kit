@@ -54,6 +54,7 @@ export interface EmailJobData {
     content: string;
     contentType?: string;
   }>;
+  outboxId: string;
 }
 
 export interface ExportJobData {

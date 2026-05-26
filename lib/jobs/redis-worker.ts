@@ -10,6 +10,9 @@
 
 import { Worker, Job as BullJob } from 'bullmq';
 import { QUEUE_NAMES, EmailJobData, ExportJobData, ZabbixSyncJobData, MaintenanceJobData } from './redis-queue';
+import { db } from '@/db';
+import { emailOutbox } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 // Redis connection (same as queue)
 const getConnection = () => {
@@ -41,14 +44,33 @@ const workerStatus = new Map<string, 'running' | 'stopped' | 'error'>();
 
 /**
  * Process email job
+ *
+ * Updates the corresponding email_outbox row before and after sending.
+ * BullMQ retry semantics are the source of truth: we re-throw on failure
+ * so BullMQ handles retry/backoff, and we increment attempts at the start
+ * of each invocation so the count reflects reality even on crashes.
  */
-async function processEmailJob(job: BullJob<EmailJobData>): Promise<{ success: boolean; messageId?: string }> {
+export async function processEmailJob(job: BullJob<EmailJobData>): Promise<{ success: boolean; messageId?: string }> {
   console.log(`[Worker:Email] Processing job ${job.id}: ${job.data.subject}`);
-  
+  const outboxId = job.data.outboxId;
+
+  // Increment attempts at the start of processing
+  try {
+    await db
+      .update(emailOutbox)
+      .set({
+        attempts: sql`${emailOutbox.attempts} + 1`,
+        lastAttemptAt: new Date(),
+      })
+      .where(eq(emailOutbox.id, outboxId));
+  } catch (dbErr) {
+    console.warn(`[Worker:Email] Failed to increment attempts for outbox ${outboxId}:`, dbErr);
+  }
+
   try {
     // Import email service dynamically to avoid circular deps
     const { sendEmail } = await import('@/lib/email');
-    
+
     const result = await sendEmail({
       to: job.data.to,
       subject: job.data.subject,
@@ -58,16 +80,44 @@ async function processEmailJob(job: BullJob<EmailJobData>): Promise<{ success: b
       attachments: job.data.attachments,
     });
 
-    if (result.success) {
-      console.log(`[Worker:Email] Job ${job.id} completed: ${result.messageId}`);
-      return { success: true, messageId: result.messageId };
-    } else {
-      throw new Error(result.error || 'Email send failed');
+    const internetMessageId = result.internetMessageId ?? null;
+
+    // Mark outbox row as SENT
+    try {
+      await db
+        .update(emailOutbox)
+        .set({
+          status: 'SENT',
+          sentAt: new Date(),
+          messageId: internetMessageId,
+          lastError: null,
+        })
+        .where(eq(emailOutbox.id, outboxId));
+    } catch (dbErr) {
+      console.warn(`[Worker:Email] Failed to update SENT status for outbox ${outboxId}:`, dbErr);
     }
+
+    console.log(`[Worker:Email] Job ${job.id} completed: ${internetMessageId}`);
+    return { success: true, messageId: internetMessageId ?? undefined };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const truncated = message.length > 1000 ? message.slice(0, 1000) + '...' : message;
+
+    // Mark outbox row as FAILED
+    try {
+      await db
+        .update(emailOutbox)
+        .set({
+          status: 'FAILED',
+          lastError: truncated,
+        })
+        .where(eq(emailOutbox.id, outboxId));
+    } catch (dbErr) {
+      console.warn(`[Worker:Email] Failed to update FAILED status for outbox ${outboxId}:`, dbErr);
+    }
+
     console.error(`[Worker:Email] Job ${job.id} failed:`, message);
-    throw error; // Re-throw to trigger BullMQ retry
+    throw error; // Re-throw so BullMQ handles retry
   }
 }
 

@@ -189,6 +189,7 @@ export async function sendWithOutbox(params: {
           html: params.html,
           text: params.text ?? undefined,
           ticketId: params.ticketId,
+          outboxId: record.id,
         },
       };
 

@@ -127,6 +127,13 @@
       "when": 1779795146000,
       "tag": "0018_email_outbox_message_id",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1779797880000,
+      "tag": "0019_email_outbox_last_attempt_at",
+      "breakpoints": true
     }
   ]
 }

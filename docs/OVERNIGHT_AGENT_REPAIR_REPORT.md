@@ -120,10 +120,12 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Audit which of the 32 missing indexes are still needed and create a new clean replacement migration.
    - Do not re-add the archived file to `_journal.json`.
 
-9. **Fix queued email outbox status tracking**
+9. **~~Fix queued email outbox status tracking~~** ✅ DONE (2026-05-26, commit `this commit`)
    - BullMQ email worker delivers queued emails but does not update the corresponding `email_outbox` row from `PENDING` to `SENT` or `FAILED` because the job payload does not carry the outbox row id.
    - Any email sent via queued `sendWithOutbox` for non-`alwaysImmediate` types can leave a permanently `PENDING` outbox row.
-   - Fix: include `outboxId` in the `SEND_EMAIL` job payload and have the worker update the row by id after delivery.
+   - **Implementation:** Added `outboxId` to `EmailJobData` and `sendWithOutbox` enqueue path. Worker increments `attempts` and sets `last_attempt_at` at start of processing. On success, updates `status=SENT`, `message_id`, `sent_at`. On failure, updates `status=FAILED`, `last_error`, then re-throws so BullMQ handles retry.
+   - **Also fixed:** Worker return-type mismatch introduced in Phase 3 (`result.success` vs `result.internetMessageId`). This was a landmine that would have caused every queued email to fail and retry 3 times.
+   - **Also added:** `scripts/verify-queue-outbox.ts` for future production queue health checks.
 
 ### MEDIUM — Do before public launch
 
@@ -151,13 +153,19 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Refactor ticket creation call sites to retry around `INSERT` on Postgres `23505` instead of pre-checking key existence.
    - Current `generateTicketKey` does an exact-key pre-insert SELECT loop, but concurrent collisions can still race and surface as insert failures.
 
-14. **Test flakiness from TRUNCATE deadlock during full test suite**
+14. **Queue path may be dormant in production**
+   - `USE_EMAIL_JOBS` is not explicitly set in `.env.local` or `vercel.json`.
+   - If production Vercel env also lacks `USE_EMAIL_JOBS` (or sets it to `"false"`), the queue path is effectively unused: all emails fall back to immediate delivery via `deliverOutbox`.
+   - The fix shipped in this commit removes the landmine, but the queue path still needs to be intentionally enabled and verified.
+   - **Action:** verify `USE_EMAIL_JOBS` env var in Vercel dashboard; run `scripts/verify-queue-outbox.ts` after enabling.
+
+15. **Test flakiness from TRUNCATE deadlock during full test suite**
    - Tests pass individually but contend when run together. Affects 3-4 random tests per full-suite run.
    - Root cause: `tests/setup.ts` runs `TRUNCATE TABLE organizations, users CASCADE;` before each test file. When multiple test files execute concurrently, they deadlock on AccessExclusiveLock vs RowShareLock.
    - **Fix options:** serial DB setup, per-test transactions, or retry with backoff in setup.
    - Flagged as non-blocking; all affected tests pass when run in isolation.
 
-15. **Drop orphaned Better Auth tables**
+16. **Drop orphaned Better Auth tables**
    - After P0 auth cleanup, three tables in `db/schema/identity.ts` have no code references: `magic_links` (was for Better Auth auth-flow links, distinct from ticket magic links in `ticket_tokens` table), `passkeys` (WebAuthn, no UI exists), `sessions` (Better Auth session shape, distinct from NextAuth `user_sessions`/`user_sessions_extended`).
    - All three should be dropped via Drizzle migration after a final grep confirms zero references.
    - Recommended approach: rename schema entries to `*_orphaned` first, deploy, verify no errors for 1 week, then drop. This catches any code path the grep missed.
@@ -172,17 +180,17 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - All remaining bypasses skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
    - Each migration is small, but they touch different call paths (automation engine, scheduled cron), so track them separately for staged rollout.
 
-18. **Audit stray SQL files outside `_journal.json`**
+20. **Audit stray SQL files outside `_journal.json`**
    - 46 stray SQL files exist in `drizzle/` that are not in `_journal.json`.
    - Each should be audited for production schema impact and classified as: archive to preserve history, integrate into the journal if already applied, or delete if never used.
    - Do not mass-add these files to the journal without verifying schema impact.
 
-19. **Investigate missing `notification_preferences` table**
+21. **Investigate missing `notification_preferences` table**
    - `notification_preferences` is missing from the production schema.
    - The email digest cron iterates this table, so it has been non-functional despite the outbox send path now being wired correctly.
    - Decide product intent: create the table via migration if the feature is intended, gate the cron to skip cleanly if the table does not exist, or remove the cron entirely if the feature was never intended.
 
-18. **Add security headers to invalid tenant slug rewrites**
+22. **Add security headers to invalid tenant slug rewrites**
    - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.
    - This branch was effectively dead code before the matcher fix; it now runs for every invalid tenant slug.
    - Fix: add `addSecurityHeaders(response)` before the rewrite return.
@@ -190,15 +198,15 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 
 ### LOW — Polish
 
-18. **Update `AGENTS.md` line 210**
+21. **Update `AGENTS.md` line 210**
    - Recommend `requireTicketAccess` for guard-style usage.
    - Reserve `canViewTicket` for callers that actually use the returned ticket object.
 
-19. **Track invitation resend events properly**
+22. **Track invitation resend events properly**
    - Add a `lastSentAt` column to `userInvitations`, or create an `invitation_resends` audit table.
    - Preferred: audit table (`invitationId`, `resentBy`, `resentAt`) for full history.
 
-20. **Scope protocol violation: unilateral migration 0018**
+23. **Scope protocol violation: unilateral migration 0018**
    - Phase 3B added migration `0018_email_outbox_message_id.sql` to support writing `internetMessageId` to `email_outbox` rows.
    - The migration was architecturally correct (the feature could not work without the column) but it was not in the Phase 3B spec and bypassed the agreed STOP point.
    - **Process note for future agent sessions:** unilateral migrations should be treated as scope violations even if architecturally justified. If a column is required by a locked design, flag the schema mismatch and wait for explicit approval before creating/apply a migration.

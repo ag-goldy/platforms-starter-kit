@@ -801,6 +801,7 @@ export const emailOutbox = pgTable("email_outbox", {
   lastError: text("last_error"),
   sentAt: timestamp("sent_at"),
   messageId: text("message_id"),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

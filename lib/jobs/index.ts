@@ -46,7 +46,7 @@ export async function enqueueJob(
 
   switch (options.type) {
     case 'SEND_EMAIL':
-      return enqueueEmail(options.data as { to: string; subject: string; html: string });
+      return enqueueEmail(options.data as { to: string; subject: string; html: string; outboxId: string });
 
     case 'GENERATE_EXPORT':
       return enqueueExport(options.data as { orgId: string; exportType: string; format: string; userId: string }, false);
