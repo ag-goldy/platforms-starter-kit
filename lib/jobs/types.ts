@@ -3,16 +3,16 @@
  */
 
 export type JobType =
-  | "SEND_EMAIL"
-  | "GENERATE_EXPORT"
-  | "GENERATE_ORG_EXPORT"
-  | "RECALCULATE_SLA"
-  | "PROCESS_ATTACHMENT"
-  | "AUDIT_COMPACTION"
-  | "SLA_WARNING_CHECK"
-  | "CLEANUP_ORG_STORAGE";
+  | 'SEND_EMAIL'
+  | 'GENERATE_EXPORT'
+  | 'GENERATE_ORG_EXPORT'
+  | 'RECALCULATE_SLA'
+  | 'PROCESS_ATTACHMENT'
+  | 'AUDIT_COMPACTION'
+  | 'SLA_WARNING_CHECK'
+  | 'CLEANUP_ORG_STORAGE';
 
-export type JobStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+export type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
 export interface BaseJob {
   id: string;
@@ -28,7 +28,7 @@ export interface BaseJob {
 }
 
 export interface SendEmailJob extends BaseJob {
-  type: "SEND_EMAIL";
+  type: 'SEND_EMAIL';
   data: {
     type: string;
     to: string;
@@ -41,9 +41,9 @@ export interface SendEmailJob extends BaseJob {
 }
 
 export interface GenerateExportJob extends BaseJob {
-  type: "GENERATE_EXPORT";
+  type: 'GENERATE_EXPORT';
   data: {
-    format: "CSV" | "JSON";
+    format: 'CSV' | 'JSON';
     filters: unknown;
     userId: string;
     orgId?: string;
@@ -51,7 +51,7 @@ export interface GenerateExportJob extends BaseJob {
 }
 
 export interface GenerateOrgExportJob extends BaseJob {
-  type: "GENERATE_ORG_EXPORT";
+  type: 'GENERATE_ORG_EXPORT';
   data: {
     exportRequestId: string;
     orgId: string;
@@ -60,7 +60,7 @@ export interface GenerateOrgExportJob extends BaseJob {
 }
 
 export interface RecalculateSLAJob extends BaseJob {
-  type: "RECALCULATE_SLA";
+  type: 'RECALCULATE_SLA';
   data: {
     ticketIds?: string[];
     orgId?: string;
@@ -68,15 +68,15 @@ export interface RecalculateSLAJob extends BaseJob {
 }
 
 export interface ProcessAttachmentJob extends BaseJob {
-  type: "PROCESS_ATTACHMENT";
+  type: 'PROCESS_ATTACHMENT';
   data: {
     attachmentId: string;
-    action: "SCAN" | "GENERATE_THUMBNAIL";
+    action: 'SCAN' | 'GENERATE_THUMBNAIL';
   };
 }
 
 export interface AuditCompactionJob extends BaseJob {
-  type: "AUDIT_COMPACTION";
+  type: 'AUDIT_COMPACTION';
   data: {
     orgId?: string;
     retentionDays: number;
@@ -84,14 +84,14 @@ export interface AuditCompactionJob extends BaseJob {
 }
 
 export interface SLAWarningCheckJob extends BaseJob {
-  type: "SLA_WARNING_CHECK";
+  type: 'SLA_WARNING_CHECK';
   data: {
     orgId?: string; // Optional: check specific org, or all if not provided
   };
 }
 
 export interface CleanupOrgStorageJob extends BaseJob {
-  type: "CLEANUP_ORG_STORAGE";
+  type: 'CLEANUP_ORG_STORAGE';
   data: {
     orgId: string;
   };

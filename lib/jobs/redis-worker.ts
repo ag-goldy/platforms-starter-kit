@@ -8,32 +8,32 @@
  * - Maintenance worker: Audit compaction, SLA checks
  */
 
-import { Worker, Job as BullJob } from "bullmq";
+import { Worker, Job as BullJob } from 'bullmq';
 import {
   QUEUE_NAMES,
   EmailJobData,
   ExportJobData,
   ZabbixSyncJobData,
   MaintenanceJobData,
-} from "./redis-queue";
-import { db } from "@/db";
-import { emailOutbox } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+} from './redis-queue';
+import { db } from '@/db';
+import { emailOutbox } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 // Redis connection (same as queue)
 const getConnection = () => {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    throw new Error("REDIS_URL environment variable is not set");
+    throw new Error('REDIS_URL environment variable is not set');
   }
 
   const url = new URL(redisUrl);
   return {
     host: url.hostname,
-    port: parseInt(url.port || "6379"),
+    port: parseInt(url.port || '6379'),
     username: url.username || undefined,
     password: url.password || undefined,
-    tls: url.protocol === "rediss:" ? {} : undefined,
+    tls: url.protocol === 'rediss:' ? {} : undefined,
     maxRetriesPerRequest: 3,
     enableReadyCheck: true,
   };
@@ -46,7 +46,7 @@ let syncWorker: Worker<ZabbixSyncJobData> | null = null;
 let maintenanceWorker: Worker<MaintenanceJobData> | null = null;
 
 // Track worker status
-const workerStatus = new Map<string, "running" | "stopped" | "error">();
+const workerStatus = new Map<string, 'running' | 'stopped' | 'error'>();
 
 /**
  * Process email job
@@ -80,7 +80,7 @@ export async function processEmailJob(
 
   try {
     // Import email service dynamically to avoid circular deps
-    const { sendEmail } = await import("@/lib/email");
+    const { sendEmail } = await import('@/lib/email');
 
     const result = await sendEmail({
       to: job.data.to,
@@ -90,8 +90,8 @@ export async function processEmailJob(
       replyTo: job.data.replyTo,
       attachments: job.data.attachments?.map((att) => ({
         filename: att.filename,
-        content: Buffer.from(att.content, "base64"),
-        contentType: att.contentType ?? "application/octet-stream",
+        content: Buffer.from(att.content, 'base64'),
+        contentType: att.contentType ?? 'application/octet-stream',
       })),
     });
 
@@ -102,7 +102,7 @@ export async function processEmailJob(
       await db
         .update(emailOutbox)
         .set({
-          status: "SENT",
+          status: 'SENT',
           sentAt: new Date(),
           messageId: internetMessageId,
           lastError: null,
@@ -120,14 +120,14 @@ export async function processEmailJob(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const truncated =
-      message.length > 1000 ? message.slice(0, 1000) + "..." : message;
+      message.length > 1000 ? message.slice(0, 1000) + '...' : message;
 
     // Mark outbox row as FAILED
     try {
       await db
         .update(emailOutbox)
         .set({
-          status: "FAILED",
+          status: 'FAILED',
           lastError: truncated,
         })
         .where(eq(emailOutbox.id, outboxId));
@@ -155,47 +155,47 @@ async function processExportJob(
 
   try {
     // Import export handlers dynamically
-    if (job.data.type === "GENERATE_ORG_EXPORT") {
+    if (job.data.type === 'GENERATE_ORG_EXPORT') {
       const { processGenerateOrgExportJob } =
-        await import("./handlers/generate-org-export");
+        await import('./handlers/generate-org-export');
       const result = await processGenerateOrgExportJob({
         id: job.id!,
-        type: "GENERATE_ORG_EXPORT",
+        type: 'GENERATE_ORG_EXPORT',
         data: {
-          exportRequestId: (job.data.filters?.exportRequestId as string) || "",
+          exportRequestId: (job.data.filters?.exportRequestId as string) || '',
           orgId: job.data.orgId,
           requestedById: job.data.userId,
         },
-        status: "PROCESSING",
+        status: 'PROCESSING',
         createdAt: new Date(job.timestamp),
         attempts: job.attemptsMade,
         maxAttempts: 2,
       });
 
       if (!result.success) {
-        throw new Error(result.error || "Export failed");
+        throw new Error(result.error || 'Export failed');
       }
       return { success: true };
     } else {
       const { processGenerateExportJob } =
-        await import("./handlers/generate-export");
+        await import('./handlers/generate-export');
       const result = await processGenerateExportJob({
         id: job.id!,
-        type: "GENERATE_EXPORT",
+        type: 'GENERATE_EXPORT',
         data: {
-          format: job.data.format === "csv" ? "CSV" : "JSON",
+          format: job.data.format === 'csv' ? 'CSV' : 'JSON',
           filters: job.data.filters || {},
           userId: job.data.userId,
           orgId: job.data.orgId,
         },
-        status: "PROCESSING",
+        status: 'PROCESSING',
         createdAt: new Date(job.timestamp),
         attempts: job.attemptsMade,
         maxAttempts: 2,
       });
 
       if (!result.success) {
-        throw new Error(result.error || "Export failed");
+        throw new Error(result.error || 'Export failed');
       }
       return { success: true };
     }
@@ -217,7 +217,7 @@ async function processSyncJob(
   );
 
   try {
-    const { syncOrgServices } = await import("@/lib/zabbix/sync");
+    const { syncOrgServices } = await import('@/lib/zabbix/sync');
     const result = await syncOrgServices(job.data.orgId);
 
     console.log(
@@ -243,65 +243,65 @@ async function processMaintenanceJob(
 
   try {
     switch (job.data.type) {
-      case "AUDIT_COMPACTION": {
+      case 'AUDIT_COMPACTION': {
         const { processAuditCompactionJob } =
-          await import("./handlers/audit-compaction");
+          await import('./handlers/audit-compaction');
         const result = await processAuditCompactionJob({
           id: job.id!,
-          type: "AUDIT_COMPACTION",
+          type: 'AUDIT_COMPACTION',
           data: {
             orgId: job.data.orgId,
             retentionDays: job.data.retentionDays || 90,
           },
-          status: "PROCESSING",
+          status: 'PROCESSING',
           createdAt: new Date(job.timestamp),
           attempts: job.attemptsMade,
           maxAttempts: 2,
         });
 
         if (!result.success) {
-          throw new Error(result.error || "Audit compaction failed");
+          throw new Error(result.error || 'Audit compaction failed');
         }
         break;
       }
 
-      case "SLA_WARNING_CHECK": {
+      case 'SLA_WARNING_CHECK': {
         const { processSLAWarningCheckJob } =
-          await import("./handlers/sla-warning-check");
+          await import('./handlers/sla-warning-check');
         const result = await processSLAWarningCheckJob({
           id: job.id!,
-          type: "SLA_WARNING_CHECK",
+          type: 'SLA_WARNING_CHECK',
           data: { orgId: job.data.orgId },
-          status: "PROCESSING",
+          status: 'PROCESSING',
           createdAt: new Date(job.timestamp),
           attempts: job.attemptsMade,
           maxAttempts: 2,
         });
 
         if (!result.success) {
-          throw new Error(result.error || "SLA warning check failed");
+          throw new Error(result.error || 'SLA warning check failed');
         }
         break;
       }
 
-      case "RECALCULATE_SLA": {
+      case 'RECALCULATE_SLA': {
         const { processRecalculateSLAJob } =
-          await import("./handlers/recalculate-sla");
+          await import('./handlers/recalculate-sla');
         const result = await processRecalculateSLAJob({
           id: job.id!,
-          type: "RECALCULATE_SLA",
+          type: 'RECALCULATE_SLA',
           data: {
             orgId: job.data.orgId,
             ticketIds: job.data.ticketIds,
           },
-          status: "PROCESSING",
+          status: 'PROCESSING',
           createdAt: new Date(job.timestamp),
           attempts: job.attemptsMade,
           maxAttempts: 2,
         });
 
         if (!result.success) {
-          throw new Error(result.error || "SLA recalculation failed");
+          throw new Error(result.error || 'SLA recalculation failed');
         }
         break;
       }
@@ -323,22 +323,22 @@ async function processMaintenanceJob(
 
 // Worker event handlers
 function attachWorkerEvents(worker: Worker, name: string) {
-  worker.on("completed", (job) => {
+  worker.on('completed', (job) => {
     console.log(`[Worker:${name}] Job ${job.id} completed`);
   });
 
-  worker.on("failed", (job, err) => {
+  worker.on('failed', (job, err) => {
     console.error(`[Worker:${name}] Job ${job?.id} failed:`, err.message);
   });
 
-  worker.on("error", (err) => {
+  worker.on('error', (err) => {
     console.error(`[Worker:${name}] Error:`, err.message);
-    workerStatus.set(name, "error");
+    workerStatus.set(name, 'error');
   });
 
-  worker.on("ready", () => {
+  worker.on('ready', () => {
     console.log(`[Worker:${name}] Ready`);
-    workerStatus.set(name, "running");
+    workerStatus.set(name, 'running');
   });
 }
 
@@ -357,7 +357,7 @@ export function startWorkers(): void {
       duration: 1000, // 10 emails per second max
     },
   });
-  attachWorkerEvents(emailWorker, "Email");
+  attachWorkerEvents(emailWorker, 'Email');
 
   // Export worker - CPU intensive, process 2 concurrently
   exportWorker = new Worker<ExportJobData>(
@@ -368,7 +368,7 @@ export function startWorkers(): void {
       concurrency: 2,
     },
   );
-  attachWorkerEvents(exportWorker, "Export");
+  attachWorkerEvents(exportWorker, 'Export');
 
   // Sync worker - external API calls, process 3 concurrently
   syncWorker = new Worker<ZabbixSyncJobData>(QUEUE_NAMES.SYNC, processSyncJob, {
@@ -379,7 +379,7 @@ export function startWorkers(): void {
       duration: 1000, // 5 syncs per second max
     },
   });
-  attachWorkerEvents(syncWorker, "Sync");
+  attachWorkerEvents(syncWorker, 'Sync');
 
   // Maintenance worker - background tasks, process 1 at a time
   maintenanceWorker = new Worker<MaintenanceJobData>(
@@ -390,16 +390,16 @@ export function startWorkers(): void {
       concurrency: 1,
     },
   );
-  attachWorkerEvents(maintenanceWorker, "Maintenance");
+  attachWorkerEvents(maintenanceWorker, 'Maintenance');
 
-  console.log("[Workers] All workers started");
+  console.log('[Workers] All workers started');
 }
 
 /**
  * Stop all workers gracefully
  */
 export async function stopWorkers(): Promise<void> {
-  console.log("[Workers] Stopping all workers...");
+  console.log('[Workers] Stopping all workers...');
 
   await Promise.all([
     emailWorker?.close(),
@@ -409,7 +409,7 @@ export async function stopWorkers(): Promise<void> {
   ]);
 
   workerStatus.clear();
-  console.log("[Workers] All workers stopped");
+  console.log('[Workers] All workers stopped');
 }
 
 /**
@@ -417,7 +417,7 @@ export async function stopWorkers(): Promise<void> {
  */
 export function getWorkerStatus(): Record<
   string,
-  "running" | "stopped" | "error"
+  'running' | 'stopped' | 'error'
 > {
   return Object.fromEntries(workerStatus);
 }
@@ -428,6 +428,6 @@ export function getWorkerStatus(): Record<
 export function areWorkersRunning(): boolean {
   return (
     workerStatus.size === 4 &&
-    Array.from(workerStatus.values()).every((s) => s === "running")
+    Array.from(workerStatus.values()).every((s) => s === 'running')
   );
 }
