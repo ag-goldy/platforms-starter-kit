@@ -19,6 +19,10 @@ import { supportBaseUrl } from "@/lib/utils";
 import { headers } from "next/headers";
 import { getClientIP } from "@/lib/rate-limit";
 import { processEmailReply } from "@/lib/email/reply-handler";
+import {
+  claimInboundEmailProcessing,
+  recordInboundEmailProcessingResult,
+} from "@/lib/email/inbound-idempotency";
 import { getOrgSLATargets } from "@/lib/tickets/sla";
 import { bearerTokenMatches, constantTimeEquals } from "@/lib/security/secrets";
 
@@ -308,6 +312,18 @@ export async function POST(request: NextRequest) {
     );
     const senderEmail = emailMatch ? emailMatch[1] : from;
 
+    const idempotencyClaim = await claimInboundEmailProcessing({
+      internetMessageId: emailData.messageId,
+      source: "generic_inbound",
+    });
+    if (!idempotencyClaim.claimed) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "Inbound email already processed",
+      });
+    }
+
     // Try to process as a reply first
     const replyResult = await processEmailReply({
       from,
@@ -320,6 +336,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (replyResult && !replyResult.isNewTicket) {
+      await recordInboundEmailProcessingResult({
+        internetMessageId: emailData.messageId,
+        ticketId: replyResult.ticket.id,
+        orgId: replyResult.ticket.orgId,
+      });
       // This was a reply to an existing ticket
       return NextResponse.json({
         success: true,
@@ -422,6 +443,12 @@ export async function POST(request: NextRequest) {
         `[Inbound Email] Public ticket created: ${ticketKey} from ${senderEmail}`,
       );
     }
+
+    await recordInboundEmailProcessingResult({
+      internetMessageId: emailData.messageId,
+      ticketId: ticket.id,
+      orgId: org?.id ?? null,
+    });
 
     return NextResponse.json({
       success: true,

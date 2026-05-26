@@ -8,12 +8,14 @@ import {
   boolean,
   pgEnum,
   unique,
+  index,
+  check,
   jsonb,
   date,
   decimal,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // Zabbix Types
 export interface ZabbixTrigger {
@@ -799,6 +801,33 @@ export const emailOutbox = pgTable("email_outbox", {
   sentAt: timestamp("sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const processedInboundEmails = pgTable(
+  "processed_inbound_emails",
+  {
+    internetMessageId: text("internet_message_id").primaryKey(),
+    processedAt: timestamp("processed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    ticketId: uuid("ticket_id").references(() => tickets.id, {
+      onDelete: "set null",
+    }),
+    orgId: uuid("org_id").references(() => organizations.id, {
+      onDelete: "set null",
+    }),
+    source: text("source").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "processed_inbound_emails_source_check",
+      sql`${table.source} IN ('graph', 'generic_inbound')`,
+    ),
+    index("idx_processed_inbound_emails_processed_at").on(table.processedAt),
+  ],
+);
 
 export const ticketTemplates = pgTable("ticket_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1591,6 +1620,10 @@ export type Ticket = typeof tickets.$inferSelect;
 export type NewTicket = typeof tickets.$inferInsert;
 export type TicketComment = typeof ticketComments.$inferSelect;
 export type NewTicketComment = typeof ticketComments.$inferInsert;
+export type ProcessedInboundEmail =
+  typeof processedInboundEmails.$inferSelect;
+export type NewProcessedInboundEmail =
+  typeof processedInboundEmails.$inferInsert;
 export type Attachment = typeof attachments.$inferSelect;
 export type NewAttachment = typeof attachments.$inferInsert;
 export type TicketAsset = typeof ticketAssets.$inferSelect;

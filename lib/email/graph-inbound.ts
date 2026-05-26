@@ -22,6 +22,10 @@ import { renderTicketCreatedEmail } from "./templates/ticket-created";
 import { DEFAULT_EMAIL_ORG } from "./templates/defaults";
 import { sendWithOutbox } from "./outbox";
 import { getTicketById } from "@/lib/tickets/queries";
+import {
+  claimInboundEmailProcessing,
+  recordInboundEmailProcessingResult,
+} from "./inbound-idempotency";
 
 // Microsoft Graph Configuration
 const TENANT_ID = process.env.MICROSOFT_GRAPH_TENANT_ID;
@@ -247,6 +251,17 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
       return { success: true, error: "Email already processed" };
     }
 
+    const idempotencyClaim = await claimInboundEmailProcessing({
+      internetMessageId: email.internetMessageId,
+      source: "graph",
+    });
+    if (!idempotencyClaim.claimed) {
+      return {
+        success: true,
+        error: "Inbound email already processed",
+      };
+    }
+
     const senderEmail = email.from.emailAddress.address;
     const subject = email.subject || "(No Subject)";
 
@@ -293,6 +308,11 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
 
     if (replyResult && !replyResult.isNewTicket) {
       await markEmailAsRead(email.id);
+      await recordInboundEmailProcessingResult({
+        internetMessageId: email.internetMessageId,
+        ticketId: replyResult.ticket.id,
+        orgId: replyResult.ticket.orgId,
+      });
       return {
         success: true,
         ticketId: replyResult.ticket.id,
@@ -380,6 +400,11 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
     }
 
     await markEmailAsRead(email.id);
+    await recordInboundEmailProcessingResult({
+      internetMessageId: email.internetMessageId,
+      ticketId: ticket.id,
+      orgId: org?.id ?? null,
+    });
 
     console.log(
       "[Graph Inbound] Created ticket:",
