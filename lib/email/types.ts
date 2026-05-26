@@ -14,6 +14,6 @@ export interface EmailOptions {
 }
 
 export interface EmailService {
-  send(options: EmailOptions): Promise<void>;
+  send(options: EmailOptions): Promise<{ internetMessageId?: string }>;
 }
 

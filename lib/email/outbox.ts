@@ -1,7 +1,7 @@
 import { db } from "@/db";
-import { emailOutbox } from "@/db/schema";
+import { emailOutbox, ticketComments } from "@/db/schema";
 import { emailService } from "@/lib/email";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and, isNull } from "drizzle-orm";
 import { enqueueJob } from "@/lib/jobs";
 import type { SendEmailJob } from "@/lib/jobs/types";
 
@@ -36,16 +36,21 @@ export async function queueEmail(params: {
   return record;
 }
 
-export async function deliverOutbox(record: typeof emailOutbox.$inferSelect) {
+export async function deliverOutbox(
+  record: typeof emailOutbox.$inferSelect,
+  ticketId?: string,
+) {
   const attempts = record.attempts + 1;
 
   try {
-    await emailService.send({
+    const sendResult = await emailService.send({
       to: record.to,
       subject: record.subject,
       html: record.html,
       text: record.text ?? undefined,
     });
+
+    const internetMessageId = sendResult.internetMessageId ?? null;
 
     await db
       .update(emailOutbox)
@@ -54,8 +59,14 @@ export async function deliverOutbox(record: typeof emailOutbox.$inferSelect) {
         sentAt: new Date(),
         attempts,
         lastError: null,
+        messageId: internetMessageId,
       })
       .where(eq(emailOutbox.id, record.id));
+
+    // Persist outbound Message-ID to ticket_comments for reply threading
+    if (ticketId && internetMessageId) {
+      await persistOutboundMessageId(ticketId, internetMessageId, record.html);
+    }
 
     return { status: "SENT" as const, outboxId: record.id };
   } catch (error) {
@@ -80,6 +91,59 @@ export async function deliverOutbox(record: typeof emailOutbox.$inferSelect) {
 }
 
 /**
+ * Persist outbound Message-ID to ticket_comments for reply threading.
+ * Tries to update an existing system comment first; creates one if none exists.
+ */
+async function persistOutboundMessageId(
+  ticketId: string,
+  internetMessageId: string,
+  body: string,
+) {
+  try {
+    // Look for an existing system comment on this ticket without an outbound_message_id
+    const existing = await db.query.ticketComments.findFirst({
+      where: and(
+        eq(ticketComments.ticketId, ticketId),
+        isNull(ticketComments.userId),
+        isNull(ticketComments.platformAdminId),
+        isNull(ticketComments.outboundMessageId),
+      ),
+    });
+
+    if (existing) {
+      await db
+        .update(ticketComments)
+        .set({ outboundMessageId: internetMessageId })
+        .where(eq(ticketComments.id, existing.id));
+      console.log(
+        `[Outbox] Updated comment ${existing.id} with outbound_message_id ${internetMessageId}`,
+      );
+      return;
+    }
+
+    // No existing system comment; create one
+    const [comment] = await db
+      .insert(ticketComments)
+      .values({
+        ticketId,
+        content: body,
+        isInternal: false,
+        outboundMessageId: internetMessageId,
+      })
+      .returning();
+
+    console.log(
+      `[Outbox] Created comment ${comment.id} with outbound_message_id ${internetMessageId}`,
+    );
+  } catch (err) {
+    console.error(
+      `[Outbox] Failed to persist outbound_message_id for ticket ${ticketId}:`,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+/**
  * Send email via background job
  * Returns immediately after enqueueing the job
  * In development, falls back to immediate delivery if job queue fails
@@ -90,6 +154,7 @@ export async function sendWithOutbox(params: {
   subject: string;
   html: string;
   text?: string | null;
+  ticketId?: string;
 }): Promise<OutboxSendResult> {
   // Store in outbox for tracking
   const record = await queueEmail(params);
@@ -108,7 +173,7 @@ export async function sendWithOutbox(params: {
 
   if (!useJobs) {
     // Deliver immediately (development mode or jobs disabled)
-    return deliverOutbox(record);
+    return deliverOutbox(record, params.ticketId);
   }
 
   // Enqueue background job (production)
@@ -123,6 +188,7 @@ export async function sendWithOutbox(params: {
           subject: params.subject,
           html: params.html,
           text: params.text ?? undefined,
+          ticketId: params.ticketId,
         },
       };
 
@@ -143,7 +209,7 @@ export async function sendWithOutbox(params: {
       "[Email] Failed to enqueue job, delivering immediately:",
       error,
     );
-    return deliverOutbox(record);
+    return deliverOutbox(record, params.ticketId);
   }
 }
 

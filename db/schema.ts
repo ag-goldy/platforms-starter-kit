@@ -640,6 +640,7 @@ export const ticketComments = pgTable("ticket_comments", {
   messageId: text("message_id"),
   inReplyTo: text("in_reply_to"),
   references: text("references"),
+  outboundMessageId: text("outbound_message_id"),
   deletedAt: timestamp("deleted_at"),
   isAnonymized: boolean("is_anonymized").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -799,6 +800,7 @@ export const emailOutbox = pgTable("email_outbox", {
   attempts: integer("attempts").default(0).notNull(),
   lastError: text("last_error"),
   sentAt: timestamp("sent_at"),
+  messageId: text("message_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

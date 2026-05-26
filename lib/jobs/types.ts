@@ -35,6 +35,7 @@ export interface SendEmailJob extends BaseJob {
     subject: string;
     html: string;
     text?: string;
+    ticketId?: string;
   };
 }
 

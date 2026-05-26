@@ -420,6 +420,7 @@ export async function POST(request: NextRequest) {
       subject: emailContent.subject,
       html: emailContent.html,
       text: emailContent.text,
+      ticketId: ticket.id,
     });
 
     // Send notification to internal support queue (only if org exists)

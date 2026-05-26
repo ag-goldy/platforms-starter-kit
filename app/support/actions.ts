@@ -182,6 +182,7 @@ export async function createPublicTicketAction(formData: FormData) {
     subject: emailContent.subject,
     html: emailContent.html,
     text: emailContent.text,
+    ticketId: ticket.id,
   });
 
   const emailStatus =

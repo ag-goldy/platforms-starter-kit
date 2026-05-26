@@ -69,7 +69,7 @@ export class SmtpEmailService implements EmailService {
     });
   }
 
-  async send(options: EmailOptions): Promise<void> {
+  async send(options: EmailOptions): Promise<{ internetMessageId?: string }> {
     const info = await this.transporter.sendMail({
       from: this.from,
       to: options.to,
@@ -101,5 +101,7 @@ export class SmtpEmailService implements EmailService {
         `SMTP delivery issue: accepted=${accepted.length}, rejected=${rejected.length}`
       );
     }
+
+    return { internetMessageId: info.messageId };
   }
 }

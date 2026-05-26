@@ -1,6 +1,6 @@
 import { ConsoleEmailService } from './console';
 import { SmtpEmailService, isSmtpConfigured } from './smtp';
-import { isGraphEmailConfigured, sendEmailViaGraph } from './graph-client';
+import { isGraphEmailConfigured, sendEmailViaDraft } from './graph-client';
 import type { EmailService, EmailOptions } from './types';
 
 /**
@@ -14,7 +14,7 @@ function createEmailService(): EmailService {
     return {
       send: async (options: EmailOptions) => {
         try {
-          await sendEmailViaGraph({
+          return await sendEmailViaDraft({
             to: options.to,
             cc: options.cc,
             bcc: options.bcc,
@@ -57,7 +57,7 @@ export const emailService: EmailService = createEmailService();
 /**
  * Send an email using the configured email service
  */
-export async function sendEmail(options: EmailOptions): Promise<void> {
+export async function sendEmail(options: EmailOptions): Promise<{ internetMessageId?: string }> {
   return emailService.send(options);
 }
 

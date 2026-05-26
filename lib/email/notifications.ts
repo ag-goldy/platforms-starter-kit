@@ -56,6 +56,7 @@ export async function sendAgentReplyNotification(
       subject: email.subject,
       html: email.html,
       text: email.text,
+      ticketId: ticket.id,
     });
   }
 }
@@ -98,6 +99,7 @@ export async function sendCustomerReplyNotification(
     subject: email.subject,
     html: email.html,
     text: email.text,
+    ticketId: ticketId,
   });
 }
 
@@ -132,6 +134,7 @@ export async function sendCustomerTicketCreatedNotification(
     subject: `New Ticket: ${ticket.key} - ${ticket.subject}`,
     html: email.html,
     text: email.text,
+    ticketId: ticket.id,
   });
 }
 
@@ -177,6 +180,7 @@ export async function sendTicketStatusChangedNotification(
       subject: email.subject,
       html: email.html,
       text: email.text,
+      ticketId: ticket.id,
     });
   }
 }
@@ -224,6 +228,7 @@ export async function sendAdminCreatedTicketNotification(
         subject: `New Ticket Created for ${ticket.organization.name}: ${ticket.key}`,
         html: emailContent.html,
         text: emailContent.text,
+        ticketId: ticket.id,
       });
     })
   );

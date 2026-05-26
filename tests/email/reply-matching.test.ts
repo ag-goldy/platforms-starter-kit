@@ -119,6 +119,76 @@ run('Email Reply Matching', () => {
   });
 
   describe('Message-ID threading', () => {
+    it('should match email with In-Reply-To against outbound_message_id', async () => {
+      const outboundMessageId = '<outbound-confirmation@example.com>';
+      await db.insert(ticketComments).values({
+        ticketId: ticketId,
+        content: 'Confirmation email sent',
+        isInternal: false,
+        outboundMessageId: outboundMessageId,
+      });
+
+      const email = {
+        from: 'customer@example.com',
+        subject: 'Re: Some subject',
+        textBody: 'Reply to confirmation',
+        inReplyTo: outboundMessageId,
+      };
+
+      const matched = await matchEmailToTicket(email);
+      expect(matched).not.toBeNull();
+      expect(matched?.id).toBe(ticketId);
+    });
+
+    it('should prioritize outbound_message_id over message_id for In-Reply-To', async () => {
+      const outboundMessageId = '<outbound-priority@example.com>';
+      const inboundMessageId = '<inbound-priority@example.com>';
+
+      // Create a second ticket with an inbound comment that has the same messageId as outbound
+      const [ticket2] = await db
+        .insert(tickets)
+        .values({
+          key: 'ACME-200001',
+          orgId: orgId,
+          subject: 'Another ticket',
+          description: 'Another description',
+          requesterEmail: 'other@example.com',
+          status: 'OPEN',
+          priority: 'P3',
+          category: 'INCIDENT',
+        })
+        .returning();
+
+      // Ticket 1 has outbound_message_id
+      await db.insert(ticketComments).values({
+        ticketId: ticketId,
+        content: 'Confirmation',
+        isInternal: false,
+        outboundMessageId: outboundMessageId,
+      });
+
+      // Ticket 2 has message_id (the old strategy would match this)
+      await db.insert(ticketComments).values({
+        ticketId: ticket2.id,
+        authorEmail: 'other@example.com',
+        content: 'Inbound message',
+        messageId: outboundMessageId,
+        isInternal: false,
+      });
+
+      const email = {
+        from: 'customer@example.com',
+        subject: 'Re: Some subject',
+        textBody: 'Reply',
+        inReplyTo: outboundMessageId,
+      };
+
+      const matched = await matchEmailToTicket(email);
+      expect(matched).not.toBeNull();
+      // Should match ticket 1 because outbound_message_id is checked first
+      expect(matched?.id).toBe(ticketId);
+    });
+
     it('should read Graph internetMessageHeaders case-insensitively', () => {
       const headers = [
         { name: 'message-id', value: '<message@example.com>' },

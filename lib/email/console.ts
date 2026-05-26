@@ -1,7 +1,7 @@
 import type { EmailService, EmailOptions } from './types';
 
 export class ConsoleEmailService implements EmailService {
-  async send(options: EmailOptions): Promise<void> {
+  async send(options: EmailOptions): Promise<{ internetMessageId?: string }> {
     console.log('='.repeat(60));
     console.log('📧 EMAIL (Console Fallback)');
     console.log('='.repeat(60));
@@ -22,6 +22,7 @@ export class ConsoleEmailService implements EmailService {
       console.log('Attachments:', options.attachments.map(a => a.filename).join(', '));
     }
     console.log('='.repeat(60));
+    return {};
   }
 }
 

@@ -175,7 +175,149 @@ function buildEmailMessage(options: SendEmailOptions): unknown {
 }
 
 /**
- * Send email via Microsoft Graph with retry logic
+ * Send email via Microsoft Graph draft-then-send pattern
+ * Captures the outbound Message-ID for reply threading
+ *
+ * Flow:
+ * 1. POST /users/{mailbox}/messages (creates draft)
+ * 2. POST /users/{mailbox}/messages/{draftId}/send (sends draft)
+ * 3. If step 2 fails, best-effort DELETE the orphan draft
+ */
+export async function sendEmailViaDraft(
+  options: SendEmailOptions,
+): Promise<{ internetMessageId: string }> {
+  const client = getGraphClient();
+  const toRecipients = Array.isArray(options.to) ? options.to : [options.to];
+
+  // Build the message payload (without saveToSentItems wrapper — Graph messages endpoint expects raw message)
+  const messagePayload = buildDraftMessage(options);
+
+  let draftId: string | null = null;
+  let internetMessageId: string | null = null;
+
+  try {
+    // Step 1: Create draft
+    const draftResponse = (await client
+      .api(`/users/${FROM_EMAIL}/messages`)
+      .post(messagePayload)) as {
+      id: string;
+      internetMessageId?: string;
+    };
+
+    draftId = draftResponse.id;
+    internetMessageId = draftResponse.internetMessageId || null;
+
+    if (!draftId) {
+      throw new Error("Graph draft creation returned no id");
+    }
+
+    console.log(`[Graph Email] Draft created: ${draftId}`);
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error(`[Graph Email] Draft creation failed:`, err.message);
+    throw err;
+  }
+
+  // Step 2: Send the draft
+  try {
+    await client.api(`/users/${FROM_EMAIL}/messages/${draftId}/send`).post({});
+    console.log(
+      `[Graph Email] ✅ Sent to ${toRecipients.join(", ")}: "${options.subject}" (Message-ID: ${internetMessageId})`,
+    );
+  } catch (sendError: unknown) {
+    const err =
+      sendError instanceof Error ? sendError : new Error(String(sendError));
+    console.error(
+      `[Graph Email] Send failed for draft ${draftId}:`,
+      err.message,
+    );
+
+    // Best-effort cleanup: delete the orphan draft
+    try {
+      await client.api(`/users/${FROM_EMAIL}/messages/${draftId}`).delete();
+      console.log(`[Graph Email] Cleaned up orphan draft ${draftId}`);
+    } catch (cleanupError: unknown) {
+      console.warn(
+        `[Graph Email] Failed to clean up orphan draft ${draftId}:`,
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : String(cleanupError),
+      );
+    }
+
+    throw err;
+  }
+
+  if (!internetMessageId) {
+    // This shouldn't happen, but handle gracefully
+    console.warn(
+      `[Graph Email] Draft ${draftId} sent but no internetMessageId was returned`,
+    );
+    throw new Error("Graph sent email but did not return internetMessageId");
+  }
+
+  return { internetMessageId };
+}
+
+/**
+ * Build raw message payload for Graph /messages endpoint (draft creation)
+ */
+function buildDraftMessage(options: SendEmailOptions): unknown {
+  const toRecipients = Array.isArray(options.to) ? options.to : [options.to];
+  const ccRecipients = options.cc
+    ? Array.isArray(options.cc)
+      ? options.cc
+      : [options.cc]
+    : [];
+  const bccRecipients = options.bcc
+    ? Array.isArray(options.bcc)
+      ? options.bcc
+      : [options.bcc]
+    : [];
+
+  const body: { contentType: string; content: string } = options.html
+    ? { contentType: "HTML", content: options.html }
+    : { contentType: "text", content: options.text || "" };
+
+  const attachments =
+    options.attachments?.map((att) => ({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: att.filename,
+      contentType: att.contentType,
+      contentBytes: att.content.toString("base64"),
+    })) || [];
+
+  return {
+    subject: options.subject,
+    body,
+    from: {
+      emailAddress: {
+        address: FROM_EMAIL,
+      },
+    },
+    toRecipients: toRecipients.map((email) => ({
+      emailAddress: { address: email },
+    })),
+    ccRecipients: ccRecipients.map((email) => ({
+      emailAddress: { address: email },
+    })),
+    bccRecipients: bccRecipients.map((email) => ({
+      emailAddress: { address: email },
+    })),
+    replyTo: options.replyTo
+      ? [
+          {
+            emailAddress: { address: options.replyTo },
+          },
+        ]
+      : undefined,
+    attachments: attachments.length > 0 ? attachments : undefined,
+  };
+}
+
+/**
+ * Send email via Microsoft Graph with retry logic (legacy direct-send)
+ * Kept for backward compatibility; prefer sendEmailViaDraft for Message-ID capture
  */
 export async function sendEmailViaGraph(
   options: SendEmailOptions,

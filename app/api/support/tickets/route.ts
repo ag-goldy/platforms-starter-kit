@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
         subject: emailContent.subject,
         html: emailContent.html,
         text: emailContent.text,
+        ticketId: ticket.id,
       });
     } catch (emailError) {
       console.error("[Support Ticket] Email failed:", emailError);

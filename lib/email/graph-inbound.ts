@@ -385,6 +385,7 @@ export async function processInboundEmail(email: GraphEmail): Promise<{
       subject: emailContent.subject,
       html: emailContent.html,
       text: emailContent.text,
+      ticketId: ticket.id,
     });
 
     if (org?.id) {

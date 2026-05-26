@@ -62,6 +62,21 @@ export async function findTicketByMessageId(messageId: string): Promise<typeof t
 }
 
 /**
+ * Find ticket by In-Reply-To header matching outbound Message-IDs
+ * Searches ticket_comments for a matching outbound_message_id
+ */
+export async function findTicketByOutboundMessageId(inReplyTo: string): Promise<typeof tickets.$inferSelect | null> {
+  const comment = await db.query.ticketComments.findFirst({
+    where: eq(ticketComments.outboundMessageId, inReplyTo),
+    with: {
+      ticket: true,
+    },
+  });
+
+  return comment?.ticket || null;
+}
+
+/**
  * Find ticket by In-Reply-To header
  * Searches for comments that have this message ID
  */
@@ -111,13 +126,14 @@ export async function findTicketByReferences(references: string): Promise<typeof
 
 /**
  * Match incoming email to an existing ticket
- * 
+ *
  * Tries multiple strategies in order:
  * 1. Extract ticket key from subject
- * 2. Match by In-Reply-To header
- * 3. Match by References header
- * 4. Match by Message-ID (if this is a forwarded email)
- * 
+ * 2. Match by In-Reply-To header against outbound_message_id
+ * 3. Match by In-Reply-To header against message_id
+ * 4. Match by References header
+ * 5. Match by Message-ID (if this is a forwarded email)
+ *
  * @param email - Email data with headers
  * @returns Matched ticket or null if no match found
  */
@@ -138,7 +154,15 @@ export async function matchEmailToTicket(email: {
     }
   }
 
-  // Strategy 2: Match by In-Reply-To header
+  // Strategy 2: Match by In-Reply-To header against outbound Message-IDs
+  if (email.inReplyTo) {
+    const ticket = await findTicketByOutboundMessageId(email.inReplyTo);
+    if (ticket) {
+      return ticket;
+    }
+  }
+
+  // Strategy 3: Match by In-Reply-To header against inbound message IDs
   if (email.inReplyTo) {
     const ticket = await findTicketByInReplyTo(email.inReplyTo);
     if (ticket) {
@@ -146,7 +170,7 @@ export async function matchEmailToTicket(email: {
     }
   }
 
-  // Strategy 3: Match by References header
+  // Strategy 4: Match by References header
   if (email.references) {
     const ticket = await findTicketByReferences(email.references);
     if (ticket) {
@@ -154,7 +178,7 @@ export async function matchEmailToTicket(email: {
     }
   }
 
-  // Strategy 4: Match by Message-ID (for forwarded emails)
+  // Strategy 5: Match by Message-ID (for forwarded emails)
   if (email.messageId) {
     const ticket = await findTicketByMessageId(email.messageId);
     if (ticket) {

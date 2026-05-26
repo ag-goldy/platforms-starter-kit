@@ -14,7 +14,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 vi.mock("@/lib/email", () => ({
   emailService: {
-    send: vi.fn(async () => undefined),
+    send: vi.fn(async () => ({})),
   },
 }));
 

@@ -6,7 +6,7 @@ import { sendWithOutbox } from "@/lib/email/outbox";
 
 vi.mock("@/lib/email", () => ({
   emailService: {
-    send: vi.fn(async () => undefined),
+    send: vi.fn(async () => ({})),
   },
 }));
 
