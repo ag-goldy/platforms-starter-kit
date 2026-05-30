@@ -16,7 +16,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import type { Action } from "./types";
 import type { TicketPriority, TicketStatus } from "@/lib/tickets/queries";
-import { sendEmail } from "@/lib/email";
+import { sendWithOutbox } from "@/lib/email/outbox";
 import { createNotification } from "@/lib/notifications/service";
 import { publishRealtimeEvent } from "@/lib/realtime/broadcast";
 import { getAIResponse } from "@/lib/ai/client";
@@ -322,14 +322,29 @@ async function sendAutomationEmail(
     columns: { key: true, subject: true },
   });
 
-  await sendEmail({
+  const subject =
+    action.subject || `Automation notice for ${ticket?.key || "ticket"}`;
+  const text =
+    action.template ||
+    `Automation rule applied to ${ticket?.subject || context.ticketId}.`;
+
+  await sendWithOutbox({
+    type: "automation_action",
     to,
-    subject:
-      action.subject || `Automation notice for ${ticket?.key || "ticket"}`,
-    text:
-      action.template ||
-      `Automation rule applied to ${ticket?.subject || context.ticketId}.`,
+    subject,
+    html: `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`,
+    text,
+    ticketId: context.ticketId,
   });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function isSafeWebhookUrl(rawUrl: string): boolean {

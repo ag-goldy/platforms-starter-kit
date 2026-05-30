@@ -802,6 +802,9 @@ export const emailOutbox = pgTable("email_outbox", {
   sentAt: timestamp("sent_at"),
   messageId: text("message_id"),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  ticketId: uuid("ticket_id").references(() => tickets.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

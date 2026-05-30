@@ -19,6 +19,7 @@ export async function queueEmail(params: {
   subject: string;
   html: string;
   text?: string | null;
+  ticketId?: string;
 }) {
   const [record] = await db
     .insert(emailOutbox)
@@ -30,6 +31,7 @@ export async function queueEmail(params: {
       text: params.text ?? null,
       status: "PENDING",
       attempts: 0,
+      ticketId: params.ticketId ?? null,
     })
     .returning();
 

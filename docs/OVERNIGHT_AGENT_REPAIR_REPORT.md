@@ -172,13 +172,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 
 17. **Migrate remaining direct `sendEmail()` bypasses to `sendWithOutbox`**
    - Three additional `sendEmail()` bypasses were identified during the public tickets outbox fix:
-   - `lib/automation/actions.ts:325` — automation action emails skip outbox.
+   - ~~`lib/automation/actions.ts:325` — automation action emails skip outbox.~~ ✅ DONE (2026-05-31, commit `this commit`) — now uses `sendWithOutbox` with `type = "automation_action"` and queued delivery.
    - ~~`app/api/cron/email-digest/route.ts:60` — digest emails skip outbox.~~ ✅ DONE (2026-05-26, commit `this commit`) — now uses `sendWithOutbox` with `type = "email_digest"` and immediate delivery so the outbox row reaches `SENT`.
    - `app/api/cron/csat-reminders/route.ts:24` — CSAT reminder emails skip outbox.
-   - Automation emails and CSAT reminder emails remain pending.
-   - CSAT reminders are also blocked by the known requesterId vs email bug.
-   - All remaining bypasses skip the `email_outbox` audit trail and retry logic. Migrate them to `sendWithOutbox` using the same pattern as the public tickets fix.
-   - Each migration is small, but they touch different call paths (automation engine, scheduled cron), so track them separately for staged rollout.
+   - CSAT reminders remain the only known `sendEmail()` outbox bypass, and are blocked by the known requesterId vs email bug.
+   - `email_outbox.ticket_id` was added alongside the automation migration so call paths that pass `ticketId` now have a database column to land it.
 
 20. **Audit stray SQL files outside `_journal.json`**
    - 46 stray SQL files exist in `drizzle/` that are not in `_journal.json`.
