@@ -1,3 +1,7 @@
+-- ARCHIVED: stale notification_preferences-era migration not tracked in drizzle/meta/_journal.json.
+-- Production does not have notification_preferences from this file.
+-- Kept for audit trail only; do not re-add to the active Drizzle journal.
+
 -- Migration: Notifications, KB, Mentions, Watchers
 -- Created: 2026-02-02
 

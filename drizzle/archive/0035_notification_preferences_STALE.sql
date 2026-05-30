@@ -1,3 +1,7 @@
+-- ARCHIVED: stale notification_preferences migration not tracked in drizzle/meta/_journal.json.
+-- Replaced by the notification_preferences rebuild that uses the rich channel/category schema.
+-- Kept for audit trail only; do not re-add to the active Drizzle journal.
+
 -- Create notification_preferences table
 CREATE TABLE IF NOT EXISTS "notification_preferences" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -7,7 +7,6 @@ import { notifications } from "@/db/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NotificationPreferences } from "@/components/settings/notification-preferences";
 import { formatDateTime } from "@/lib/utils/date";
 
 export default async function NotificationsPage() {
@@ -131,15 +130,19 @@ export default async function NotificationsPage() {
           <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <Settings2 className="h-4 w-4 text-slate-400" />
-              Delivery model
+              Notification settings
             </div>
             <div className="space-y-3 text-sm text-slate-500">
               <p>In-app alerts are persisted in Postgres and streamed to the bell through SSE.</p>
               <p>Email digest delivery is handled by the scheduled digest route.</p>
               <p>Web push uses VAPID keys when configured.</p>
             </div>
+            <Button asChild variant="outline" className="mt-4 w-full">
+              <Link href="/app/settings/notifications">
+                Manage notification preferences
+              </Link>
+            </Button>
           </div>
-          <NotificationPreferences />
         </aside>
       </section>
     </div>

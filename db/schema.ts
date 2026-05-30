@@ -1699,31 +1699,8 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const notificationPreferences = pgTable("notification_preferences", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  platformAdminId: uuid("platform_admin_id").references(
-    () => platformAdmins.id,
-    { onDelete: "cascade" },
-  ),
-  emailEnabled: boolean("email_enabled").default(true).notNull(),
-  emailDigestFrequency: text("email_digest_frequency")
-    .default("immediate")
-    .notNull(),
-  emailTypes: jsonb("email_types").$type<string[]>().default([]),
-  pushEnabled: boolean("push_enabled").default(true).notNull(),
-  pushTypes: jsonb("push_types").$type<string[]>().default([]),
-  inAppEnabled: boolean("in_app_enabled").default(true).notNull(),
-  inAppTypes: jsonb("in_app_types").$type<string[]>().default([]),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
-export type NotificationPreference =
-  typeof notificationPreferences.$inferSelect;
-export type NewNotificationPreference =
-  typeof notificationPreferences.$inferInsert;
 
 // User Mentions in comments
 export const userMentions = pgTable(

@@ -6,7 +6,7 @@ import {
   boolean,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { users, platformAdmins } from "./identity";
+import { users } from "./identity";
 import { organizations } from "./tenancy";
 
 export const notifications = pgTable("notifications", {
@@ -26,25 +26,3 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
-
-export const notificationPreferences = pgTable(
-  "notification_preferences",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").references(() => users.id, {
-      onDelete: "cascade",
-    }),
-    platformAdminId: uuid("platform_admin_id").references(
-      () => platformAdmins.id,
-      { onDelete: "cascade" },
-    ),
-    emailEnabled: boolean("email_enabled").default(true).notNull(),
-    emailDigestFrequency: text("email_digest_frequency")
-      .default("immediate")
-      .notNull(),
-    pushEnabled: boolean("push_enabled").default(true).notNull(),
-    inAppEnabled: boolean("in_app_enabled").default(true).notNull(),
-    categoriesJson: jsonb("categories_json").default({}),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-);

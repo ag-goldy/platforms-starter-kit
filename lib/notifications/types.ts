@@ -39,23 +39,6 @@ export interface Notification {
   link?: string;
 }
 
-export interface NotificationPreferences {
-  userId: string;
-  email: {
-    enabled: boolean;
-    digestFrequency: 'immediate' | 'hourly' | 'daily' | 'weekly';
-    types: NotificationType[];
-  };
-  push: {
-    enabled: boolean;
-    types: NotificationType[];
-  };
-  inApp: {
-    enabled: boolean;
-    types: NotificationType[];
-  };
-}
-
 export const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   TICKET_CREATED: '🎫',
   TICKET_UPDATED: '📝',
