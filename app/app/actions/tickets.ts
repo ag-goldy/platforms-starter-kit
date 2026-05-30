@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { attachments, ticketComments, tickets, users } from "@/db/schema";
 import {
-  canEditTicket,
+  requireTicketAccess,
   requireAuth,
   requireInternalRole,
 } from "@/lib/auth/permissions";
@@ -19,9 +19,7 @@ import { getOrgSLATargets } from "@/lib/tickets/sla";
 type TicketStatus = typeof tickets.$inferSelect.status;
 type TicketPriority = typeof tickets.$inferSelect.priority;
 type TicketCategory = typeof tickets.$inferSelect.category;
-type EditableTicket = NonNullable<
-  Awaited<ReturnType<typeof canEditTicket>>["ticket"]
-> & {
+type EditableTicket = Awaited<ReturnType<typeof requireTicketAccess>> & {
   orgId: string | null;
 };
 
@@ -65,7 +63,7 @@ async function getEditableTicket(
   ticketId: string,
   orgId?: string,
 ): Promise<EditableTicket> {
-  const { ticket } = await canEditTicket(ticketId);
+  const ticket = await requireTicketAccess(ticketId);
 
   if (!ticket) {
     throw new Error("Ticket not found");

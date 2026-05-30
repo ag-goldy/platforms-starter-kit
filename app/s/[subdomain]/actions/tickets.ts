@@ -13,7 +13,7 @@ import {
   type Ticket,
   organizations,
 } from "@/db/schema";
-import { requireOrgMemberRole, canEditTicket } from "@/lib/auth/permissions";
+import { requireOrgMemberRole, requireTicketAccess } from "@/lib/auth/permissions";
 import { logAudit } from "@/lib/audit/log";
 import { generateTicketKey } from "@/lib/tickets/keys";
 import {
@@ -429,23 +429,23 @@ export async function addCustomerTicketCommentAction(
   ticketId: string,
   content: string,
 ) {
-  const result = await canEditTicket(ticketId);
-  if (!result.ticket.orgId) {
+  const ticket = await requireTicketAccess(ticketId);
+  if (!ticket.orgId) {
     throw new Error(
       "Public tickets cannot be accessed through customer portal",
     );
   }
-  const { user } = await requireOrgMemberRole(result.ticket.orgId);
-  assertTicketMutable(result.ticket);
-  await (result.ticket.status === "RESOLVED" ||
-  result.ticket.status === "CLOSED"
+  const { user } = await requireOrgMemberRole(ticket.orgId);
+  assertTicketMutable(ticket);
+  await (ticket.status === "RESOLVED" ||
+  ticket.status === "CLOSED"
     ? reopenTicket({
         ticketId,
-        orgId: result.ticket.orgId,
+        orgId: ticket.orgId,
         actor: { type: "customer", userId: user.id },
         reason: "Customer replied after resolution.",
       })
-    : Promise.resolve(result.ticket));
+    : Promise.resolve(ticket));
 
   // Customers can only add public comments (not internal notes)
   const [comment] = await db
@@ -460,7 +460,7 @@ export async function addCustomerTicketCommentAction(
 
   await logAudit({
     userId: user.id,
-    orgId: result.ticket.orgId,
+    orgId: ticket.orgId,
     ticketId,
     action: "TICKET_COMMENT_ADDED",
     details: { isInternal: false },
@@ -482,7 +482,7 @@ export async function updateCustomerTicketCcAction(
   ticketId: string,
   ccEmails: string[],
 ) {
-  const { ticket } = await canEditTicket(ticketId);
+  const ticket = await requireTicketAccess(ticketId);
 
   if (!ticket.orgId) {
     throw new Error(
@@ -503,7 +503,7 @@ export async function updateCustomerTicketCcAction(
 }
 
 export async function closeCustomerTicketAction(ticketId: string) {
-  const { ticket } = await canEditTicket(ticketId);
+  const ticket = await requireTicketAccess(ticketId);
   if (!ticket.orgId) {
     throw new Error(
       "Public tickets cannot be accessed through customer portal",

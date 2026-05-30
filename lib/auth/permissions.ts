@@ -401,15 +401,6 @@ export async function requireTicketAccess(ticketId: string) {
   return ticket;
 }
 
-export async function canEditTicket(ticketId: string) {
-  const result = await canViewTicket(ticketId);
-  if (!result.ticket) {
-    throw new AuthorizationError("Ticket not found");
-  }
-
-  return result as { ticket: NonNullable<typeof result.ticket> };
-}
-
 export async function canManageOrgSettings(
   userId: string,
   orgId: string | null | undefined,
