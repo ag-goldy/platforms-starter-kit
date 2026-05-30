@@ -195,7 +195,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Adding `@testing-library/react` + `happy-dom` + updating `vitest.config.ts` to support both node and DOM environments would enable proper component tests.
    - Estimate: 60-90 min for setup + retrofit existing components incrementally.
 
-24. ~~**Notifications table lacks platform_admin_id recipient column (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `TBD`)
+24. ~~**Notifications table lacks platform_admin_id recipient column (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `6b16b21`)
    - Added `platform_admin_id` column to `notifications` with FK to `platform_admins(id) ON DELETE CASCADE`, dropped `NOT NULL` on `user_id`, added `notifications_one_recipient` check constraint, and two partial indexes.
    - Updated `lib/notifications/service.ts` to accept either `userId` or `platformAdminId` with validation.
    - Updated `app/api/cron/email-digest/route.ts` to query unread notifications by `platform_admin_id` for admin batch.
