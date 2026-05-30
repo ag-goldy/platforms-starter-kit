@@ -1699,8 +1699,52 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  platformAdminId: uuid("platform_admin_id").references(
+    () => platformAdmins.id,
+    { onDelete: "cascade" },
+  ),
+  emailEnabled: boolean("email_enabled").default(true).notNull(),
+  emailTicketAssigned: boolean("email_ticket_assigned").default(true).notNull(),
+  emailTicketStatusChanged: boolean("email_ticket_status_changed")
+    .default(false)
+    .notNull(),
+  emailCommentAdded: boolean("email_comment_added").default(true).notNull(),
+  emailMention: boolean("email_mention").default(true).notNull(),
+  emailSlaBreach: boolean("email_sla_breach").default(true).notNull(),
+  emailDigestFrequency: text("email_digest_frequency")
+    .default("daily")
+    .notNull(),
+  inappEnabled: boolean("inapp_enabled").default(true).notNull(),
+  inappTicketAssigned: boolean("inapp_ticket_assigned")
+    .default(true)
+    .notNull(),
+  inappTicketStatusChanged: boolean("inapp_ticket_status_changed")
+    .default(true)
+    .notNull(),
+  inappCommentAdded: boolean("inapp_comment_added").default(true).notNull(),
+  inappMention: boolean("inapp_mention").default(true).notNull(),
+  inappSlaBreach: boolean("inapp_sla_breach").default(true).notNull(),
+  pushEnabled: boolean("push_enabled").default(false).notNull(),
+  pushTicketAssigned: boolean("push_ticket_assigned").default(false).notNull(),
+  pushTicketStatusChanged: boolean("push_ticket_status_changed")
+    .default(false)
+    .notNull(),
+  pushCommentAdded: boolean("push_comment_added").default(false).notNull(),
+  pushMention: boolean("push_mention").default(false).notNull(),
+  pushSlaBreach: boolean("push_sla_breach").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type NotificationPreference =
+  typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference =
+  typeof notificationPreferences.$inferInsert;
 
 // User Mentions in comments
 export const userMentions = pgTable(

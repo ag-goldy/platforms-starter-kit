@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/ui/nav-link";
 import { cn } from "@/lib/utils";
-import { Monitor, Shield, ChevronRight } from "lucide-react";
+import { Monitor, Shield, Bell, ChevronRight } from "lucide-react";
 
 const settingsNav = [
   {
@@ -8,6 +8,12 @@ const settingsNav = [
     label: "Security",
     description: "Password & 2FA",
     icon: Shield,
+  },
+  {
+    href: "/app/settings/notifications",
+    label: "Notifications",
+    description: "Email, in-app & push",
+    icon: Bell,
   },
   {
     href: "/app/settings/sessions",

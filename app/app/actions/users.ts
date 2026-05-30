@@ -13,6 +13,7 @@ import {
   cancelInvitation,
   resendInvitationEmail,
 } from "@/lib/users/invitations";
+import { ensureNotificationPreferencesForUser } from "@/lib/notifications/preferences";
 import type { CustomerRole } from "@/lib/auth/roles";
 
 const passwordSchema = z.string().min(8).max(100);
@@ -439,6 +440,8 @@ export async function createUserAction(data: {
   if (!newUser) {
     throw new Error("Failed to create user");
   }
+
+  await ensureNotificationPreferencesForUser(newUser.id);
 
   // If orgId and role provided, create membership
   if (data.orgId && data.role) {

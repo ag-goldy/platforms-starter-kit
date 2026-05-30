@@ -183,16 +183,33 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Each should be audited for production schema impact and classified as: archive to preserve history, integrate into the journal if already applied, or delete if never used.
    - Do not mass-add these files to the journal without verifying schema impact.
 
-21. **Investigate missing `notification_preferences` table**
-   - `notification_preferences` is missing from the production schema.
-   - The email digest cron iterates this table, so it has been non-functional despite the outbox send path now being wired correctly.
-   - Decide product intent: create the table via migration if the feature is intended, gate the cron to skip cleanly if the table does not exist, or remove the cron entirely if the feature was never intended.
+21. **~~Investigate missing `notification_preferences` table~~** ✅ DONE (2026-05-31, Phase 2A/2B)
+   - Migration `0021_notification_preferences.sql` created and applied to production.
+   - Table exists with full schema (user_id + platform_admin_id ownership, boolean toggles per channel/category, email_digest_frequency).
+   - Eager creation hooks installed on all 6 user/admin creation paths.
+   - Cron handler restored in Phase 2C.
+
+23. **No component testing infrastructure (MEDIUM)**
+   - Vitest is configured for `node` environment with no `@testing-library/react` or `happy-dom` dependency.
+   - UI component tests are limited to module/export verification.
+   - Adding `@testing-library/react` + `happy-dom` + updating `vitest.config.ts` to support both node and DOM environments would enable proper component tests.
+   - Estimate: 60-90 min for setup + retrofit existing components incrementally.
+
+24. **Notifications table lacks platform_admin_id recipient column (MEDIUM)**
+   - `notifications` table only has `user_id` column, not `platform_admin_id`. Platform admins can have `notification_preferences` but won't receive any in-app notifications until the `notifications` table supports admin recipients.
+   - Two options: add `platform_admin_id` column with check constraint (matches `notification_preferences` pattern), or refactor notifications to have a generic `recipient_id` + `recipient_type`.
+   - Estimate: 2-3 hours including migration, hook sites, query updates.
 
 22. **Add security headers to invalid tenant slug rewrites**
    - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.
    - This branch was effectively dead code before the matcher fix; it now runs for every invalid tenant slug.
    - Fix: add `addSecurityHeaders(response)` before the rewrite return.
    - One-line change, separate commit for clarity.
+
+23. **Fix duplicate `MaintenanceWindow` type exports in `db/schema.ts`**
+   - `db/schema.ts` has 4 pre-existing duplicate identifier errors on `MaintenanceWindow` and `NewMaintenanceWindow` type exports at lines 2547-2548 and 3367-3368.
+   - These are part of the remaining TypeScript cleanup tracked above.
+   - Fix: remove one duplicate declaration pair. Estimate: 5 minutes.
 
 ### LOW — Polish
 

@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { platformAdmins } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { bearerTokenMatches } from "@/lib/security/secrets";
+import { ensureNotificationPreferencesForPlatformAdmin } from "@/lib/notifications/preferences";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -80,16 +81,23 @@ export async function POST(request: NextRequest) {
   const temporaryPassword = crypto.randomBytes(32).toString("base64url");
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
-  await db.insert(platformAdmins).values({
-    email: normalizedEmail,
-    name,
-    passwordHash,
-    role,
-    isActive: true,
-    twoFactorEnabled: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+  const [admin] = await db
+    .insert(platformAdmins)
+    .values({
+      email: normalizedEmail,
+      name,
+      passwordHash,
+      role,
+      isActive: true,
+      twoFactorEnabled: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning({ id: platformAdmins.id });
+
+  if (admin) {
+    await ensureNotificationPreferencesForPlatformAdmin(admin.id);
+  }
 
   return NextResponse.json({
     success: true,

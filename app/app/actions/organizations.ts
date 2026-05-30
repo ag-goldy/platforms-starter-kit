@@ -21,6 +21,7 @@ import type { OnboardingData } from "@/components/organizations/onboarding-wizar
 import { rateLimit } from "@/lib/rate-limit";
 import { normalizeCustomerId } from "@/lib/tickets/keys";
 import { generateKbKey } from "@/lib/kb/keys";
+import { ensureNotificationPreferencesForUser } from "@/lib/notifications/preferences";
 
 export interface OrgEmailSettings {
   allowPublicIntake: boolean;
@@ -259,6 +260,7 @@ Open your browser and accept the terms of service if prompted.
             isInternal: false,
           })
           .returning();
+        await ensureNotificationPreferencesForUser(targetUser.id);
       }
 
       await db.insert(memberships).values({
@@ -385,6 +387,7 @@ export async function inviteUserAction(data: {
         isInternal: false,
       })
       .returning();
+    await ensureNotificationPreferencesForUser(targetUser.id);
   }
 
   // Check if membership already exists

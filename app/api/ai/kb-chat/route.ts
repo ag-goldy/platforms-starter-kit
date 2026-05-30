@@ -22,6 +22,7 @@ import {
 import { detectPromptInjection } from "@/lib/ai/prompt-guard";
 import { logAIInteraction } from "@/lib/ai/audit";
 import { getAIResponse } from "@/lib/ai/client";
+import { ensureNotificationPreferencesForUser } from "@/lib/notifications/preferences";
 
 const chatSchema = z.object({
   query: z.string().min(3).max(2000),
@@ -424,6 +425,7 @@ async function createSupportTicketIfPossible({
         })
         .returning();
       user = newUser;
+      await ensureNotificationPreferencesForUser(user.id);
     }
 
     const orgId = null; // Public tickets have no org

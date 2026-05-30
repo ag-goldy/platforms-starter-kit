@@ -141,6 +141,13 @@
       "when": 1780160079140,
       "tag": "0020_email_outbox_ticket_id",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780162937998,
+      "tag": "0021_notification_preferences",
+      "breakpoints": true
     }
   ]
 }

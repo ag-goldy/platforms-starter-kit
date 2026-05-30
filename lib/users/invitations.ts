@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { sendInvitationEmail } from "@/lib/email/invitations";
+import { ensureNotificationPreferencesForUser } from "@/lib/notifications/preferences";
 import { appBaseUrl } from "@/lib/utils";
 
 export interface InvitationData {
@@ -201,6 +202,7 @@ export async function acceptInvitation(
       })
       .returning();
     user = newUsers[0];
+    await ensureNotificationPreferencesForUser(user.id);
   }
 
   // Create membership
