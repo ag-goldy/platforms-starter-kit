@@ -48,7 +48,7 @@ run("email digest cron", () => {
       `),
     );
     await db.execute(
-      sql.raw(`DELETE FROM notifications WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'digest-cron-%');`),
+      sql.raw(`DELETE FROM notifications WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'digest-cron-%') OR platform_admin_id IN (SELECT id FROM platform_admins WHERE email LIKE 'digest-cron-%');`),
     );
     await db.execute(
       sql.raw(`DELETE FROM users WHERE email LIKE 'digest-cron-%';`),
@@ -228,9 +228,16 @@ run("email digest cron", () => {
       emailDigestFrequency: "daily",
     });
 
-    // Only user gets a notification row; admins have no notification table support
     await db.insert(notifications).values({
       userId: user.id,
+      type: "TICKET_ASSIGNED",
+      title: "Ticket assigned",
+      message: "You have been assigned a ticket",
+      read: false,
+    });
+
+    await db.insert(notifications).values({
+      platformAdminId: admin.id,
       type: "TICKET_ASSIGNED",
       title: "Ticket assigned",
       message: "You have been assigned a ticket",
@@ -245,8 +252,8 @@ run("email digest cron", () => {
     expect(body.ok).toBe(true);
     expect(body.processed.users).toBe(1);
     expect(body.processed.admins).toBe(1);
-    expect(body.sent).toBe(1); // only user gets email
-    expect(body.skipped_no_unread).toBe(1); // admin skipped (no unread)
+    expect(body.sent).toBe(2); // both user and admin get email
+    expect(body.skipped_no_unread).toBe(0);
   });
 
   it("empty unread list means no email sent", async () => {

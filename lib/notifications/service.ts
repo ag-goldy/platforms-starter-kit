@@ -5,12 +5,31 @@ import { NotificationType } from "./types";
 import { sendPushNotification } from "./push";
 
 interface CreateNotificationParams {
-  userId: string;
+  userId?: string;
+  platformAdminId?: string;
   type: NotificationType;
   title: string;
   message: string;
   data?: Record<string, unknown>;
   link?: string;
+}
+
+function validateRecipient(params: {
+  userId?: string;
+  platformAdminId?: string;
+}) {
+  const hasUser = Boolean(params.userId);
+  const hasAdmin = Boolean(params.platformAdminId);
+  if (hasUser && hasAdmin) {
+    throw new Error(
+      "Cannot specify both userId and platformAdminId for a notification",
+    );
+  }
+  if (!hasUser && !hasAdmin) {
+    throw new Error(
+      "Must specify either userId or platformAdminId for a notification",
+    );
+  }
 }
 
 /**
@@ -40,20 +59,24 @@ async function publishNotification(userId: string, notification: unknown) {
 }
 
 /**
- * Create a notification for a user
+ * Create a notification for a user or platform admin
  */
 export async function createNotification({
   userId,
+  platformAdminId,
   type,
   title,
   message,
   data,
   link,
 }: CreateNotificationParams) {
+  validateRecipient({ userId, platformAdminId });
+
   const [notification] = await db
     .insert(notifications)
     .values({
       userId,
+      platformAdminId,
       type,
       title,
       message,
@@ -62,15 +85,17 @@ export async function createNotification({
     })
     .returning();
 
-  // Publish to Redis for real-time delivery
-  await publishNotification(userId, notification);
-  await sendPushNotification({
-    userId,
-    type,
-    title,
-    message,
-    link,
-  });
+  // Publish to Redis for real-time delivery (user notifications only)
+  if (userId) {
+    await publishNotification(userId, notification);
+    await sendPushNotification({
+      userId,
+      type,
+      title,
+      message,
+      link,
+    });
+  }
 
   return notification;
 }
@@ -83,11 +108,16 @@ export async function createBulkNotifications(
 ) {
   if (params.length === 0) return [];
 
+  for (const p of params) {
+    validateRecipient(p);
+  }
+
   const notificationsList = await db
     .insert(notifications)
     .values(
       params.map((p) => ({
         userId: p.userId,
+        platformAdminId: p.platformAdminId,
         type: p.type,
         title: p.title,
         message: p.message,
@@ -97,11 +127,14 @@ export async function createBulkNotifications(
     )
     .returning();
 
-  // Publish each notification to Redis for real-time delivery
+  // Publish each notification to Redis for real-time delivery (user notifications only)
   await Promise.all(
-    notificationsList.map((notification) =>
-      publishNotification(notification.userId, notification),
-    ),
+    notificationsList.map((notification) => {
+      if (notification.userId) {
+        return publishNotification(notification.userId, notification);
+      }
+      return Promise.resolve();
+    }),
   );
 
   return notificationsList;

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       }
 
       const hours = pref.frequency === "weekly" ? 168 : 24;
-      const unread = await getUnreadNotifications(pref.userId, hours);
+      const unread = await getUnreadNotifications("user", pref.userId, hours);
 
       if (unread.length === 0) {
         result.skippedNoUnread++;
@@ -78,7 +78,11 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      const { subject, html, text } = buildDigestEmail(user.name, unread, pref.frequency);
+      const { subject, html, text } = buildDigestEmail(
+        user.name,
+        unread,
+        pref.frequency,
+      );
       await sendWithOutbox({
         type: "email_digest",
         to: user.email,
@@ -114,9 +118,41 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Platform admins do not have in-app notification rows (notifications table
-      // only has user_id), so unread count is always zero.
-      result.skippedNoUnread++;
+      const hours = pref.frequency === "weekly" ? 168 : 24;
+      const unread = await getUnreadNotifications(
+        "admin",
+        pref.platformAdminId,
+        hours,
+      );
+
+      if (unread.length === 0) {
+        result.skippedNoUnread++;
+        continue;
+      }
+
+      const admin = await db.query.platformAdmins.findFirst({
+        where: eq(platformAdmins.id, pref.platformAdminId),
+        columns: { email: true, name: true },
+      });
+
+      if (!admin?.email) {
+        result.skippedNoUnread++;
+        continue;
+      }
+
+      const { subject, html, text } = buildDigestEmail(
+        admin.name,
+        unread,
+        pref.frequency,
+      );
+      await sendWithOutbox({
+        type: "email_digest",
+        to: admin.email,
+        subject,
+        html,
+        text,
+      });
+      result.sent++;
     }
 
     return NextResponse.json({
@@ -135,8 +171,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getUnreadNotifications(userId: string, hours: number) {
+async function getUnreadNotifications(
+  ownerType: "user" | "admin",
+  ownerId: string,
+  hours: number,
+) {
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+  const ownerFilter =
+    ownerType === "user"
+      ? eq(notifications.userId, ownerId)
+      : eq(notifications.platformAdminId, ownerId);
+
   return db
     .select({
       id: notifications.id,
@@ -148,7 +193,7 @@ async function getUnreadNotifications(userId: string, hours: number) {
     .from(notifications)
     .where(
       and(
-        eq(notifications.userId, userId),
+        ownerFilter,
         eq(notifications.read, false),
         gt(notifications.createdAt, since),
       ),

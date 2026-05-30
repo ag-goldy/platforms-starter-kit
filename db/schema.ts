@@ -1684,20 +1684,35 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "AUTOMATION_TRIGGERED",
 ]);
 
-export const notifications = pgTable("notifications", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  type: notificationTypeEnum("type").notNull(),
-  title: text("title").notNull(),
-  message: text("message").notNull(),
-  data: jsonb("data"),
-  link: text("link"),
-  read: boolean("read").default(false).notNull(),
-  readAt: timestamp("read_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    platformAdminId: uuid("platform_admin_id").references(
+      () => platformAdmins.id,
+      { onDelete: "cascade" },
+    ),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    data: jsonb("data"),
+    link: text("link"),
+    read: boolean("read").default(false).notNull(),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_notifications_platform_admin_id")
+      .on(table.platformAdminId)
+      .where(sql`${table.platformAdminId} IS NOT NULL`),
+    index("idx_notifications_platform_admin_read")
+      .on(table.platformAdminId, table.read)
+      .where(sql`${table.platformAdminId} IS NOT NULL AND ${table.read} = false`),
+  ],
+);
 
 export const notificationPreferences = pgTable("notification_preferences", {
   id: uuid("id").defaultRandom().primaryKey(),

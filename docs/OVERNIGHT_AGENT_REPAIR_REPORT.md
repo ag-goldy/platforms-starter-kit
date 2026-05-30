@@ -28,7 +28,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 
 **Verification:** All permission tests pass (26 tests, 1 skipped). `canViewTicket` correctly returns `{ ticket: null }` for denied internal users without leaking org info. Platform admin bypass remains intact.
 
-**Deviation:** `canEditTicket` and other `canX` functions were identified but not audited in this phase. Deferred to backlog.
+**Deviation:** `canEditTicket` and other `canX` functions were identified but not audited in this phase. Deferred to backlog (completed 2026-05-30, see below).
 
 ### Phase 3: End-to-End Ticket Creation Verification
 
@@ -79,9 +79,9 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 
 ### HIGH — Do before any customer touches Atlas
 
-1. **Audit all `canX` functions in `lib/auth/permissions.ts`**
-   - `canEditTicket` and any other guard functions use the return-null-on-deny pattern.
-   - Apply `requireX` helpers (like `requireTicketAccess`) where callers only need a guard, not the object itself.
+1. **~~Audit all `canX` functions in `lib/auth/permissions.ts`~~** ✅ DONE (2026-05-30, commit `574eb71`)
+   - `canEditTicket` was a thin wrapper around `canViewTicket` with identical throw-on-deny behavior but misleading name. Deleted `canEditTicket` and replaced 4 call sites with direct `requireTicketAccess` calls (after adjusting destructuring, since `requireTicketAccess` returns the ticket directly, not `{ ticket }`).
+   - Remaining `canX` functions (`canManageOrgSettings`, `canManageTickets`, `canDownloadAttachment`, `canTransitionTicketStatus`) were already safe: they all throw, return booleans checked by callers, or return structured results.
 
 2. **~~Sweep for `eq(field, null)` Drizzle pattern~~** ✅ DONE (2026-05-25, commit `TBD`)
    - Fixed: `app/app/actions/time-tracking.ts:170` — `eq(timeEntries.endedAt, null)` → `isNull(timeEntries.endedAt)`.
@@ -195,16 +195,29 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Adding `@testing-library/react` + `happy-dom` + updating `vitest.config.ts` to support both node and DOM environments would enable proper component tests.
    - Estimate: 60-90 min for setup + retrofit existing components incrementally.
 
-24. **Notifications table lacks platform_admin_id recipient column (MEDIUM)**
-   - `notifications` table only has `user_id` column, not `platform_admin_id`. Platform admins can have `notification_preferences` but won't receive any in-app notifications until the `notifications` table supports admin recipients.
-   - Two options: add `platform_admin_id` column with check constraint (matches `notification_preferences` pattern), or refactor notifications to have a generic `recipient_id` + `recipient_type`.
-   - Estimate: 2-3 hours including migration, hook sites, query updates.
+24. ~~**Notifications table lacks platform_admin_id recipient column (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `TBD`)
+   - Added `platform_admin_id` column to `notifications` with FK to `platform_admins(id) ON DELETE CASCADE`, dropped `NOT NULL` on `user_id`, added `notifications_one_recipient` check constraint, and two partial indexes.
+   - Updated `lib/notifications/service.ts` to accept either `userId` or `platformAdminId` with validation.
+   - Updated `app/api/cron/email-digest/route.ts` to query unread notifications by `platform_admin_id` for admin batch.
+   - Added tests for user/admin notification creation, DB constraint enforcement, and bulk mixed recipients.
+   - Digest cron now functional end-to-end for platform admins.
 
 22. **Add security headers to invalid tenant slug rewrites**
    - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.
    - This branch was effectively dead code before the matcher fix; it now runs for every invalid tenant slug.
    - Fix: add `addSecurityHeaders(response)` before the rewrite return.
    - One-line change, separate commit for clarity.
+
+25. **Notification real-time channels (Redis pub/sub) need platform admin support (MEDIUM)**
+   - Redis pub/sub channels use `notifications:{userId}` pattern in `app/api/notifications/stream/route.ts` and `lib/notifications/service.ts`.
+   - Now that notifications support `platform_admin_id`, real-time delivery for platform admins also needs channel support.
+   - Two options: introduce a discriminated channel pattern (`notifications:user:{id}` vs `notifications:admin:{id}`), or maintain a single channel namespace assuming UUID non-collision.
+   - Estimate: 30-45 min including SSE route updates.
+
+26. **Notifications table index drift — 3 existing indexes not declared in schema (LOW)**
+   - `idx_notifications_user`, `idx_notifications_user_read`, `idx_notifications_created` exist in production but are not declared in `db/schema.ts`.
+   - Pre-existing drift between schema declaration and DB reality.
+   - Audit and add to schema declarations for completeness. No functional impact.
 
 23. **Fix duplicate `MaintenanceWindow` type exports in `db/schema.ts`**
    - `db/schema.ts` has 4 pre-existing duplicate identifier errors on `MaintenanceWindow` and `NewMaintenanceWindow` type exports at lines 2547-2548 and 3367-3368.
@@ -269,13 +282,13 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
 **Remaining blockers (none merge-blocking, but high priority for next branch):**
 1. ~~Drizzle journal drift~~ — ✅ Reconciled with Flavor A on 2026-05-26; remaining work is targeted audit of archived/stray SQL files.
 2. ~~`eq(field, null)` pattern in `app/app/actions/time-tracking.ts`~~ — ✅ Fixed (2026-05-25).
-3. `canEditTicket` audit — potential privilege escalation if call sites discard return values.
+3. ~~`canEditTicket` audit — potential privilege escalation if call sites discard return values.~~ ✅ DONE (2026-05-30, commit `574eb71`). Deleted `canEditTicket`; all former callers now use `requireTicketAccess`.
 
 **Recommended follow-up branches:**
 | Priority | Branch purpose |
 |----------|---------------|
 | ~~HIGH~~ | ~~`fix/drizzle-journal-reset`~~ — ✅ Done 2026-05-26 via Flavor A reconciliation: 5 rows added, 1 malformed row repaired, partial `028` archived. |
-| HIGH | `fix/permissions-canX-audit` — Audit all `canX` functions, add `requireX` helpers, fix unsafe call sites. |
+| ~~HIGH~~ | ~~`fix/permissions-canX-audit`~~ — ✅ Done 2026-05-30: `canEditTicket` deleted, 4 call sites migrated to `requireTicketAccess`, remaining `canX` functions verified safe.
 | HIGH | `fix/performance-indexes-028-cleanup` — Review archived `028_performance_indexes`; create a clean replacement migration for any still-needed missing indexes. |
 | ~~HIGH~~ | ~~`fix/drizzle-null-comparison`~~ — ✅ Done 2026-05-25. Only 1 occurrence found (`time-tracking.ts:170`). |
 | HIGH | `fix/support-ticket-outbox` — Route `/api/support/tickets` through `sendWithOutbox` for `email_outbox` tracking. |
@@ -349,7 +362,7 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
 | # | Function | File | Signature | Return Type |
 |---|----------|------|-----------|-------------|
 | 1 | `canViewTicket` | `lib/auth/permissions.ts:350` | `async (ticketId: string)` | `Promise<{ ticket: Ticket \| null }>` |
-| 2 | `canEditTicket` | `lib/auth/permissions.ts:404` | `async (ticketId: string)` | `Promise<{ ticket: NonNullable<Ticket> }>` |
+| ~~2~~ | ~~`canEditTicket`~~ | ~~`lib/auth/permissions.ts:404`~~ | ~~`async (ticketId: string)`~~ | ~~`Promise<{ ticket: NonNullable<Ticket> }>`~~ | **DELETED** (2026-05-30, commit `574eb71`) |
 | 3 | `canManageOrgSettings` | `lib/auth/permissions.ts:413` | `async (userId, orgId)` | `Promise<boolean>` |
 | 4 | `canManageTickets` | `lib/auth/permissions.ts:426` | `async (userId, orgId)` | `Promise<boolean>` |
 | 5 | `canDownloadAttachment` | `lib/auth/permissions.ts:439` | `async (attachmentId: string)` | `Promise<{ attachment: Attachment }>` |
@@ -360,7 +373,7 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
 | Function | Deny Pattern | # Call Sites | # Unsafe | Risk Level |
 |----------|-------------|--------------|----------|------------|
 | `canViewTicket` | **INCONSISTENT** (returns null for internal users without membership; throws for customers via `requireOrgRole`) | 6 + tests | 0 | **CRITICAL** (pattern) / LOW (callers) |
-| `canEditTicket` | DENY-BY-THROW | 4 | 0 | LOW |
+| ~~`canEditTicket`~~ | ~~DENY-BY-THROW~~ | ~~4~~ | ~~0~~ | ~~LOW~~ | **DELETED** (2026-05-30) |
 | `canManageOrgSettings` | DENY-BY-BOOLEAN | 10 | 0 | LOW |
 | `canManageTickets` | DENY-BY-BOOLEAN | 2 | 0 | LOW |
 | `canDownloadAttachment` | DENY-BY-THROW | 1 + tests | 0 | LOW |
@@ -371,15 +384,14 @@ The Drizzle migrations journal remains severely out of sync with the actual migr
 No DENY-BY-NULL with unsafe callers found. All canX functions either throw on deny, are wrapped by a `require*` helper, or return structured results that callers handle.
 
 - `canViewTicket` exhibits an inconsistent deny pattern (null for internal users without membership, throw for customers) but all 6 callers are safe and the `requireTicketAccess` wrapper converts null to throw.
-- `canEditTicket` throws on deny via a thin wrapper over `canViewTicket`.
+- ~~`canEditTicket`~~ was deleted after confirming it was a thin wrapper over `canViewTicket`; 4 call sites now use `requireTicketAccess` directly.
 - `canManageOrgSettings` and `canManageTickets` return booleans and are only invoked through `requireStatuspageAccess`, which explicitly checks `if (!canManage) return forbidden`.
 - `canDownloadAttachment` throws on deny.
 - `canTransitionTicketStatus` returns a structured `{ allowed, reason? }` object; its single production caller checks `!check.allowed` and throws before proceeding.
 
 ### Follow-up Items (LOW Backlog)
 
-1. **Rename `canEditTicket`** to reflect what it actually checks (view access, not edit permission). The current name implies a permission check that doesn't exist.
-2. **Consider hardening `canViewTicket`** to always throw on deny, then deleting `requireTicketAccess`. Current state has two deny paths through one function (throw for customers, null for internal users) which is architectural debt even though all callers are mitigated.
+1. **Consider hardening `canViewTicket`** to always throw on deny, then deleting `requireTicketAccess`. Current state has two deny paths through one function (throw for customers, null for internal users) which is architectural debt even though all callers are mitigated.
 
 ---
 
@@ -402,5 +414,5 @@ No DENY-BY-NULL with unsafe callers found. All canX functions either throw on de
 **Test coverage:** 23 tests across 4 test files (preferences-eager, email-digest-cron, preferences-actions, notification-preferences-form).
 
 **Known gaps (backlogged, not blocking):**
-1. **Platform admin in-app notifications (#24):** `notifications` table only has `user_id`, so platform admins with `notification_preferences` will never have unread in-app notifications and therefore never receive email digests. Needs migration to add `platform_admin_id` or generic recipient pattern.
+1. ~~**Platform admin in-app notifications (#24):**~~ ✅ DONE (2026-05-30). `platform_admin_id` column added to `notifications`, digest cron now queries admin unread notifications by `platform_admin_id`. Real-time SSE channels for admins remain backlogged as #25.
 2. **Component testing infrastructure (#23):** Atlas has no `@testing-library/react` or `happy-dom`. UI component tests are limited to module/export verification. Full interaction testing requires dependency additions.
