@@ -380,3 +380,27 @@ No DENY-BY-NULL with unsafe callers found. All canX functions either throw on de
 
 1. **Rename `canEditTicket`** to reflect what it actually checks (view access, not edit permission). The current name implies a permission check that doesn't exist.
 2. **Consider hardening `canViewTicket`** to always throw on deny, then deleting `requireTicketAccess`. Current state has two deny paths through one function (throw for customers, null for internal users) which is architectural debt even though all callers are mitigated.
+
+---
+
+## Completed Features Log
+
+### notification_preferences — DONE (2026-05-31)
+
+**Shipped in commit:** `1512c84`
+
+**What was built:**
+- **Migration 0021:** `notification_preferences` table with dual ownership (`user_id` + `platform_admin_id`) and per-channel/category boolean toggles.
+- **Schema:** Full Drizzle declaration in `db/schema.ts` with type exports.
+- **Backfill:** 4 existing platform admin rows created with default preferences.
+- **Eager creation:** Hooks installed at 5 user creation paths (`invitations.ts`, `users.ts`, `organizations.ts` ×2, `kb-chat`) + 1 platform admin bootstrap path.
+- **Cron restore:** `/api/cron/email-digest` rebuilt against new schema — daily/weekly frequency, Monday-UTC gate for weekly, unread notification query, `sendWithOutbox` delivery, skip-empty logic.
+- **Server actions:** `getNotificationPreferences()` and `updateNotificationPreferences()` in `app/app/settings/notifications/actions.ts` with zod validation and IDOR protection.
+- **Settings UI:** `/app/settings/notifications` page with Email, In-App, and Push ("Coming soon") channels. Master toggles disable sub-toggles. Digest frequency selector. Save button with change detection and toast feedback.
+- **Navigation:** "Notifications" link added to settings sidebar between Security and Sessions.
+
+**Test coverage:** 23 tests across 4 test files (preferences-eager, email-digest-cron, preferences-actions, notification-preferences-form).
+
+**Known gaps (backlogged, not blocking):**
+1. **Platform admin in-app notifications (#24):** `notifications` table only has `user_id`, so platform admins with `notification_preferences` will never have unread in-app notifications and therefore never receive email digests. Needs migration to add `platform_admin_id` or generic recipient pattern.
+2. **Component testing infrastructure (#23):** Atlas has no `@testing-library/react` or `happy-dom`. UI component tests are limited to module/export verification. Full interaction testing requires dependency additions.
