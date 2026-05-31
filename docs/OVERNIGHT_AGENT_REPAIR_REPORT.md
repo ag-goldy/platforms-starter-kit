@@ -215,7 +215,7 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Fix: add `addSecurityHeaders(response)` before the rewrite return.
    - One-line change, separate commit for clarity.
 
-28. ~~**Webhooks routing collision — list route uses deprecated table while detail routes use canonical (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `TBD`)
+28. ~~**Webhooks routing collision — list route uses deprecated table while detail routes use canonical (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `ed7136a`)
    - Rewrote `app/api/webhooks/route.ts` to use canonical `webhooks` table via `lib/webhooks/queries.ts` (`createWebhook`, `getOrgWebhooks`).
    - Removed deprecated `webhookSubscriptions`, `webhookSubscriptionsRelations`, duplicate `webhookDeliveries`, and `webhookDeliveriesRelations` declarations from `db/schema-extensions.ts`.
    - Removed deprecated type exports (`WebhookSubscription`, `NewWebhookSubscription`, `WebhookDelivery`, `NewWebhookDelivery`).
