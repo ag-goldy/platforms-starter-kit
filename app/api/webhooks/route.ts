@@ -1,11 +1,9 @@
-// TODO(fix-6.2): This route uses the deprecated `webhookSubscriptions` table from schema-extensions.ts.
-// Migrate to use `createWebhook` / `getOrgWebhooks` from lib/webhooks/queries.ts (canonical `webhooks` table).
-// The [id] sub-routes already use the canonical table — this mismatch means created webhooks are invisible there.
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { db } from "@/db";
-import { webhookSubscriptions } from "@/db/schema-extensions";
-import { eq } from "drizzle-orm";
+import {
+  createWebhook,
+  getOrgWebhooks,
+} from "@/lib/webhooks/queries";
 import { requireInternalRole } from "@/lib/auth/permissions";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -26,13 +24,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "orgId required" }, { status: 400 });
     }
 
-    const webhooks = await db.query.webhookSubscriptions.findMany({
-      where: eq(webhookSubscriptions.orgId, orgId),
-      orderBy: (webhooks, { desc }) => [desc(webhooks.createdAt)],
-    });
+    const webhookList = await getOrgWebhooks(orgId);
 
     // Remove secrets from response
-    const sanitized = webhooks.map((w) => ({
+    const sanitized = webhookList.map((w) => ({
       ...w,
       secret: w.secret ? "***" : undefined,
     }));
@@ -74,9 +69,9 @@ export async function POST(req: NextRequest) {
       url: webhookUrl,
       events,
       secret,
-      retryCount,
-      timeoutSeconds,
+      filterConditions,
       customHeaders,
+      maxRetries,
     } = await req.json();
 
     if (!orgId || !name || !webhookUrl || !events || events.length === 0) {
@@ -93,22 +88,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
     }
 
-    const webhook = await db
-      .insert(webhookSubscriptions)
-      .values({
-        orgId,
-        name,
-        url: webhookUrl,
-        events,
-        secret,
-        retryCount: retryCount || 3,
-        timeoutSeconds: timeoutSeconds || 30,
-        customHeaders,
-        createdBy: session.user.id,
-      })
-      .returning();
+    const { webhook } = await createWebhook({
+      orgId,
+      name,
+      url: webhookUrl,
+      events,
+      secret,
+      filterConditions,
+      customHeaders,
+      maxRetries,
+      createdBy: session.user.id,
+    });
 
-    return NextResponse.json({ webhook: webhook[0] });
+    return NextResponse.json({ webhook });
   } catch (error) {
     console.error("Error creating webhook:", error);
     return NextResponse.json(

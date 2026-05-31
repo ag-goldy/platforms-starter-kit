@@ -128,64 +128,6 @@ export const kbArticleAnalyticsRelations = relations(kbArticleAnalytics, ({ one 
   }),
 }));
 
-// DEPRECATED: webhook_subscriptions is superseded by `webhooks` in schema.ts.
-// The canonical webhook system is db/schema.ts `webhooks` + `webhookDeliveries` (lib/webhooks/queries.ts).
-// `app/api/webhooks/route.ts` must be migrated to use lib/webhooks/queries.ts createWebhook/getOrgWebhooks.
-// Do NOT add new features to this table. This table will be dropped in a future migration.
-// TODO(fix-6.2): Migrate /api/webhooks route.ts to canonical webhooks table, then drop this.
-export const webhookSubscriptions = pgTable('webhook_subscriptions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  url: text('url').notNull(),
-  secret: text('secret'),
-  events: text('events').array().notNull(),
-  isActive: boolean('is_active').default(true),
-  retryCount: integer('retry_count').default(3),
-  timeoutSeconds: integer('timeout_seconds').default(30),
-  customHeaders: jsonb('custom_headers'),
-  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  lastTriggeredAt: timestamp('last_triggered_at'),
-  lastError: text('last_error'),
-  lastSuccessAt: timestamp('last_success_at'),
-});
-
-export const webhookSubscriptionsRelations = relations(webhookSubscriptions, ({ one, many }) => ({
-  organization: one(organizations, {
-    fields: [webhookSubscriptions.orgId],
-    references: [organizations.id],
-  }),
-  creator: one(users, {
-    fields: [webhookSubscriptions.createdBy],
-    references: [users.id],
-  }),
-  deliveries: many(webhookDeliveries),
-}));
-
-// Webhook Deliveries
-export const webhookDeliveries = pgTable('webhook_deliveries', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  webhookId: uuid('webhook_id').notNull().references(() => webhookSubscriptions.id, { onDelete: 'cascade' }),
-  eventType: text('event_type').notNull(),
-  payload: jsonb('payload').notNull(),
-  responseStatus: integer('response_status'),
-  responseBody: text('response_body'),
-  errorMessage: text('error_message'),
-  attemptNumber: integer('attempt_number').default(1),
-  durationMs: integer('duration_ms'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  completedAt: timestamp('completed_at'),
-});
-
-export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one }) => ({
-  webhook: one(webhookSubscriptions, {
-    fields: [webhookDeliveries.webhookId],
-    references: [webhookSubscriptions.id],
-  }),
-}));
-
 // Integration Configs
 export const integrationConfigs = pgTable('integration_configs', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -313,10 +255,6 @@ export type PiiDetection = typeof piiDetections.$inferSelect;
 export type NewPiiDetection = typeof piiDetections.$inferInsert;
 export type KbArticleAnalytic = typeof kbArticleAnalytics.$inferSelect;
 export type NewKbArticleAnalytic = typeof kbArticleAnalytics.$inferInsert;
-export type WebhookSubscription = typeof webhookSubscriptions.$inferSelect;
-export type NewWebhookSubscription = typeof webhookSubscriptions.$inferInsert;
-export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
-export type NewWebhookDelivery = typeof webhookDeliveries.$inferInsert;
 export type IntegrationConfig = typeof integrationConfigs.$inferSelect;
 export type NewIntegrationConfig = typeof integrationConfigs.$inferInsert;
 export type AgentMetric = typeof agentMetrics.$inferSelect;

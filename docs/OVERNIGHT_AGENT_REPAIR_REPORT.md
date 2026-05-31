@@ -215,6 +215,12 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Fix: add `addSecurityHeaders(response)` before the rewrite return.
    - One-line change, separate commit for clarity.
 
+28. ~~**Webhooks routing collision — list route uses deprecated table while detail routes use canonical (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `TBD`)
+   - Rewrote `app/api/webhooks/route.ts` to use canonical `webhooks` table via `lib/webhooks/queries.ts` (`createWebhook`, `getOrgWebhooks`).
+   - Removed deprecated `webhookSubscriptions`, `webhookSubscriptionsRelations`, duplicate `webhookDeliveries`, and `webhookDeliveriesRelations` declarations from `db/schema-extensions.ts`.
+   - Removed deprecated type exports (`WebhookSubscription`, `NewWebhookSubscription`, `WebhookDelivery`, `NewWebhookDelivery`).
+   - `webhook_subscriptions` table never existed in production, so no data migration was required.
+
 25. **Notification real-time channels (Redis pub/sub) need platform admin support (MEDIUM)**
    - Redis pub/sub channels use `notifications:{userId}` pattern in `app/api/notifications/stream/route.ts` and `lib/notifications/service.ts`.
    - Now that notifications support `platform_admin_id`, real-time delivery for platform admins also needs channel support.

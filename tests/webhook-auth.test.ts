@@ -2,7 +2,7 @@
  * Webhook authentication tests
  *
  * Verifies that webhook endpoints enforce authentication and
- * that the deprecated webhookSubscriptions route uses proper auth guards.
+ * that the canonical webhooks route uses proper auth guards.
  * Also validates that lib/webhooks/queries.ts (canonical path) properly
  * signs and validates webhook payloads.
  */
