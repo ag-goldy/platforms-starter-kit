@@ -174,9 +174,11 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Three additional `sendEmail()` bypasses were identified during the public tickets outbox fix:
    - ~~`lib/automation/actions.ts:325` — automation action emails skip outbox.~~ ✅ DONE (2026-05-31, commit `this commit`) — now uses `sendWithOutbox` with `type = "automation_action"` and queued delivery.
    - ~~`app/api/cron/email-digest/route.ts:60` — digest emails skip outbox.~~ ✅ DONE (2026-05-26, commit `this commit`) — now uses `sendWithOutbox` with `type = "email_digest"` and immediate delivery so the outbox row reaches `SENT`.
-   - `app/api/cron/csat-reminders/route.ts:24` — CSAT reminder emails skip outbox.
-   - CSAT reminders remain the only known `sendEmail()` outbox bypass, and are blocked by the known requesterId vs email bug.
-   - `email_outbox.ticket_id` was added alongside the automation migration so call paths that pass `ticketId` now have a database column to land it.
+   - ~~`app/api/cron/csat-reminders/route.ts:24` — CSAT reminder emails skip outbox.~~ ✅ DONE (2026-05-31, commit `this commit`)
+   - Rewrote `sendCSATReminders()` in `lib/csat/queries.ts` to join `users` for recipient email (was passing `survey.requesterId` UUID to `sendEmail()`, which would have silently failed).
+   - Rewrote `app/api/cron/csat-reminders/route.ts` to route through `sendWithOutbox({ type: "csat_reminder", ticketId })` with graceful skip for deleted users (ON DELETE SET NULL on `requesterId`).
+   - Added structured counters to cron response: `total`, `sent`, `skippedNoRecipient`, `errors`.
+   - Added 5 Vitest tests covering: email dispatch via outbox, deleted-user skip, empty result, reminder count guard, and error resilience.
 
 20. **Audit stray SQL files outside `_journal.json`**
    - 46 stray SQL files exist in `drizzle/` that are not in `_journal.json`.
@@ -220,6 +222,12 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Removed deprecated `webhookSubscriptions`, `webhookSubscriptionsRelations`, duplicate `webhookDeliveries`, and `webhookDeliveriesRelations` declarations from `db/schema-extensions.ts`.
    - Removed deprecated type exports (`WebhookSubscription`, `NewWebhookSubscription`, `WebhookDelivery`, `NewWebhookDelivery`).
    - `webhook_subscriptions` table never existed in production, so no data migration was required.
+
+25. **Notification real-time channels (Redis pub/sub) need platform admin support (MEDIUM)**
+   - Redis pub/sub channels use `notifications:{userId}` pattern in `app/api/notifications/stream/route.ts` and `lib/notifications/service.ts`.
+   - Now that notifications support `platform_admin_id`, real-time delivery for platform admins also needs channel support.
+   - Two options: introduce a discriminated channel pattern (`notifications:user:{id}` vs `notifications:admin:{id}`), or maintain a single channel namespace assuming UUID non-collision.
+   - Estimate: 30-45 min including SSE route updates.
 
 25. **Notification real-time channels (Redis pub/sub) need platform admin support (MEDIUM)**
    - Redis pub/sub channels use `notifications:{userId}` pattern in `app/api/notifications/stream/route.ts` and `lib/notifications/service.ts`.

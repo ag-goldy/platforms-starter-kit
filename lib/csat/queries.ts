@@ -1,6 +1,6 @@
-import { eq, and, desc, isNull, gte, lte, sql, count, avg } from 'drizzle-orm';
+import { eq, and, or, desc, isNull, gte, lte, lt, sql, count, avg } from 'drizzle-orm';
 import { db } from '@/db';
-import { csatSurveys, csatAnalytics, tickets, organizations } from '@/db/schema';
+import { csatSurveys, csatAnalytics, tickets, organizations, users } from '@/db/schema';
 import { createHash, randomBytes } from 'crypto';
 
 export interface CreateCSATInput {
@@ -221,19 +221,26 @@ export async function sendCSATReminders(maxReminders = 2) {
       org: {
         subdomain: organizations.subdomain,
       },
+      requesterEmail: users.email,
     })
     .from(csatSurveys)
     .innerJoin(organizations, eq(csatSurveys.orgId, organizations.id))
+    .leftJoin(users, eq(csatSurveys.requesterId, users.id))
     .where(
       and(
         isNull(csatSurveys.respondedAt),
         gte(csatSurveys.expiresAt, new Date()),
         lte(csatSurveys.sentAt, threeDaysAgo),
         lte(csatSurveys.reminderCount, maxReminders),
-        sql`(${csatSurveys.lastReminderAt} IS NULL OR ${csatSurveys.lastReminderAt} < ${threeDaysAgo})`
+        or(
+          isNull(csatSurveys.lastReminderAt),
+          lt(csatSurveys.lastReminderAt, threeDaysAgo)
+        )
       )
     );
 
+  // Note: requesterEmail will be null if the user was deleted (requesterId has ON DELETE SET NULL).
+  // Callers must handle null emails by skipping the reminder.
   return pendingSurveys;
 }
 

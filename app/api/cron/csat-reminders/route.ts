@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sendCSATReminders, incrementReminderCount } from "@/lib/csat/queries";
-import { sendEmail } from "@/lib/email";
+import { sendWithOutbox } from "@/lib/email/outbox";
 import { verifyCronAuth } from "@/lib/auth/cron";
 import { appBaseUrl } from "@/lib/utils";
 
@@ -15,35 +15,45 @@ export async function GET(req: NextRequest) {
     // Get pending surveys that need reminders
     const reminders = await sendCSATReminders(2); // Max 2 reminders
 
-    const results = [];
-    for (const { survey } of reminders) {
+    let sent = 0;
+    let skippedNoRecipient = 0;
+    let errors = 0;
+
+    for (const { survey, requesterEmail } of reminders) {
+      // Skip surveys where the requester was deleted and has no email
+      if (!requesterEmail) {
+        skippedNoRecipient++;
+        continue;
+      }
+
       try {
-        // Send reminder email
+        // Send reminder email via outbox for tracking
         const surveyUrl = `${appBaseUrl}/csat/${survey.tokenHash}`;
 
-        await sendEmail({
-          to: survey.requesterId || "", // Would need to look up email
+        await sendWithOutbox({
+          type: "csat_reminder",
+          to: requesterEmail,
           subject: "Reminder: How was your support experience?",
-          html: `
-            <p>We'd love to hear your feedback on your recent support ticket.</p>
-            <p><a href="${surveyUrl}">Take 30 seconds to rate your experience</a></p>
-          `,
+          html: `<p>We'd love to hear your feedback on your recent support ticket.</p><p><a href="${surveyUrl}">Take 30 seconds to rate your experience</a></p>`,
+          text: `We'd love to hear your feedback on your recent support ticket. Rate your experience: ${surveyUrl}`,
+          ticketId: survey.ticketId,
         });
 
+        // Only mark as reminded if we actually attempted to send
         await incrementReminderCount(survey.id);
-        results.push({ surveyId: survey.id, sent: true });
+        sent++;
       } catch (error) {
-        results.push({
-          surveyId: survey.id,
-          sent: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+        console.error(`[CSAT Reminder] Failed for survey ${survey.id}:`, error);
+        errors++;
       }
     }
 
     return NextResponse.json({
-      remindersSent: results.filter((r) => r.sent).length,
-      results,
+      ok: true,
+      total: reminders.length,
+      sent,
+      skipped_no_recipient: skippedNoRecipient,
+      errors,
     });
   } catch (error) {
     console.error("Error sending CSAT reminders:", error);
