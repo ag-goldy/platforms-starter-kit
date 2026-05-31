@@ -246,6 +246,10 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - The old constraints are redundant but harmless: PostgreSQL treats NULL != NULL, so both old and new indexes allow duplicate global slugs. The new partial indexes are stricter where needed.
    - Drop the old constraints in a future cleanup if cleanliness matters. Estimate: 5 minutes.
 
+28. **Multi-org admin org picker for /app/settings/contact-info (LOW)**
+   - For users with multiple active org admin memberships, `/app/settings/contact-info` currently resolves to their oldest membership (ORDER BY createdAt ASC). This is deterministic but not user-friendly.
+   - Add an org picker (or current-org session preference) when multi-org admin scenarios become real. Currently theoretical (0 multi-org admin users in production).
+
 23. **Fix duplicate `MaintenanceWindow` type exports in `db/schema.ts`**
    - `db/schema.ts` has 4 pre-existing duplicate identifier errors on `MaintenanceWindow` and `NewMaintenanceWindow` type exports at lines 2547-2548 and 3367-3368.
    - These are part of the remaining TypeScript cleanup tracked above.
