@@ -162,6 +162,34 @@
       "when": 1780189621000,
       "tag": "0026_new_features_phase5",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1770522198000,
+      "tag": "0027_kb_global_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779103804000,
+      "tag": "0028_email_to_ticket_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1770630321000,
+      "tag": "0029_ticket_tokens_purpose",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1780193910656,
+      "tag": "0030_org_contact_info",
+      "breakpoints": true
     }
   ]
 }

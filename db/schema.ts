@@ -1088,7 +1088,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 });
 
 // Relations
-export const organizationsRelations = relations(organizations, ({ many }) => ({
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
   memberships: many(memberships),
   tickets: many(tickets),
   auditLogs: many(auditLogs),
@@ -1099,6 +1099,10 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   assets: many(assets),
   notices: many(notices),
   exportRequests: many(exportRequests),
+  orgContactInfo: one(orgContactInfo, {
+    fields: [organizations.id],
+    references: [orgContactInfo.orgId],
+  }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -3516,6 +3520,25 @@ export const orgUsageRelations = relations(orgUsage, ({ one }) => ({
   }),
 }));
 
+// Org Contact Info Table (tenant-scoped support contact details)
+export const orgContactInfo = pgTable("org_contact_info", {
+  orgId: uuid("org_id")
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  supportPhone: text("support_phone"),
+  supportEmail: text("support_email"),
+  supportUrl: text("support_url"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const orgContactInfoRelations = relations(orgContactInfo, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgContactInfo.orgId],
+    references: [organizations.id],
+  }),
+}));
+
 // Re-export tables from schema subdirectory that are referenced by other modules
 export { slaPolicies, slaPoliciesRelations } from "./schema/sla";
 export { ticketMessages, ticketEvents } from "./schema/tickets";
@@ -3527,6 +3550,9 @@ export type NewScheduledTicketAction =
 
 export type OrgQuota = typeof orgQuotas.$inferSelect;
 export type NewOrgQuota = typeof orgQuotas.$inferInsert;
+
+export type OrgContactInfo = typeof orgContactInfo.$inferSelect;
+export type NewOrgContactInfo = typeof orgContactInfo.$inferInsert;
 
 export type OrgUsage = typeof orgUsage.$inferSelect;
 export type NewOrgUsage = typeof orgUsage.$inferInsert;

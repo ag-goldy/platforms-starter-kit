@@ -240,6 +240,12 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Pre-existing drift between schema declaration and DB reality.
    - Audit and add to schema declarations for completeness. No functional impact.
 
+27. **Redundant unique constraints on kb_categories and kb_articles (LOW)**
+   - `kb_categories_org_id_slug_key` and `kb_articles_org_id_slug_key` are pre-0027 unique constraints that enforce `(org_id, slug)` uniqueness for all rows.
+   - Migration 0027 added partial unique indexes (`kb_categories_org_slug_unique`, `kb_articles_org_slug_unique`) that cover the same case more precisely (only where `org_id IS NOT NULL`), plus global slug indexes for null org_id rows.
+   - The old constraints are redundant but harmless: PostgreSQL treats NULL != NULL, so both old and new indexes allow duplicate global slugs. The new partial indexes are stricter where needed.
+   - Drop the old constraints in a future cleanup if cleanliness matters. Estimate: 5 minutes.
+
 23. **Fix duplicate `MaintenanceWindow` type exports in `db/schema.ts`**
    - `db/schema.ts` has 4 pre-existing duplicate identifier errors on `MaintenanceWindow` and `NewMaintenanceWindow` type exports at lines 2547-2548 and 3367-3368.
    - These are part of the remaining TypeScript cleanup tracked above.
