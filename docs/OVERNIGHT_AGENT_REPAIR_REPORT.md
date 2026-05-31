@@ -202,6 +202,13 @@ This overnight repair session focused on stabilizing the Atlas Helpdesk codebase
    - Added tests for user/admin notification creation, DB constraint enforcement, and bulk mixed recipients.
    - Digest cron now functional end-to-end for platform admins.
 
+27. ~~**Migration 0026 not applied — dormant feature tables missing (MEDIUM)**~~ ✅ DONE (2026-05-30, commit `TBD`)
+   - Applied 43 of 49 statements from `drizzle/0026_new_features_phase5.sql` via `scripts/0026_partial_apply.sql`.
+   - Skipped: `CREATE TABLE time_entries` + 5 indexes (table already exists in production with different schema; covered by `db/schema.ts`).
+   - Tables enabled: `csat_surveys`, `csat_analytics`, `time_tracking_settings`, `active_timers`, `webhooks`, `webhook_deliveries`, `scheduled_tickets`, `dashboard_widgets`, `bulk_operations`.
+   - Six enum types, one shared function, and seven `updated_at` triggers also created.
+   - These features had `db/schema.ts` declarations but no production tables. Database calls have been throwing on every invocation. After this commit, queries succeed but features may surface latent UI/UX bugs.
+
 22. **Add security headers to invalid tenant slug rewrites**
    - Tenant slug → `/404` rewrite branch in `middleware.ts` does not call `addSecurityHeaders` before returning.
    - This branch was effectively dead code before the matcher fix; it now runs for every invalid tenant slug.
