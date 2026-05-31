@@ -1,14 +1,9 @@
 "use server";
 
 import { db } from "@/db";
-import { orgContactInfo, memberships } from "@/db/schema";
-import {
-  requireAuth,
-  requireOrgRole,
-  AuthorizationError,
-} from "@/lib/auth/permissions";
-import { getRequestContext } from "@/lib/auth/context";
-import { eq, and, asc } from "drizzle-orm";
+import { orgContactInfo } from "@/db/schema";
+import { requireOrgRole } from "@/lib/auth/permissions";
+import { eq } from "drizzle-orm";
 import { z } from "zod/v3";
 
 const updateSchema = z.object({
@@ -40,43 +35,10 @@ const updateSchema = z.object({
 export type UpdateOrgContactInfoInput = z.infer<typeof updateSchema>;
 
 /**
- * Resolve orgId for contact info settings.
- * Prefers subdomain-resolved org from request context.
- * Falls back to the user's oldest active membership.
- */
-async function resolveOrgIdForContactInfo(): Promise<string> {
-  const context = await getRequestContext();
-
-  // If subdomain resolved an org, use it
-  if (context.org?.id) {
-    return context.org.id;
-  }
-
-  // Fallback: look up the user's oldest active membership
-  if (context.user) {
-    const membership = await db.query.memberships.findFirst({
-      where: and(
-        eq(memberships.userId, context.user.id),
-        eq(memberships.isActive, true),
-      ),
-      orderBy: [asc(memberships.createdAt)],
-    });
-
-    if (membership?.orgId) {
-      return membership.orgId;
-    }
-  }
-
-  throw new AuthorizationError("No organization context available");
-}
-
-/**
- * Get the current authenticated user's org contact info.
+ * Get an organization's contact info.
  * Returns a default shape if no row exists.
  */
-export async function getOrgContactInfo() {
-  await requireAuth();
-  const orgId = await resolveOrgIdForContactInfo();
+export async function getOrgContactInfo(orgId: string) {
   await requireOrgRole(orgId, ["ADMIN", "CUSTOMER_ADMIN"]);
 
   const row = await db.query.orgContactInfo.findFirst({
@@ -98,12 +60,13 @@ export async function getOrgContactInfo() {
 }
 
 /**
- * Update the current authenticated user's org contact info.
+ * Update an organization's contact info.
  * Validates input with zod and performs an UPSERT.
  */
-export async function updateOrgContactInfo(input: UpdateOrgContactInfoInput) {
-  await requireAuth();
-  const orgId = await resolveOrgIdForContactInfo();
+export async function updateOrgContactInfo(
+  orgId: string,
+  input: UpdateOrgContactInfoInput,
+) {
   await requireOrgRole(orgId, ["ADMIN", "CUSTOMER_ADMIN"]);
 
   // Sanitize empty strings to null before validation

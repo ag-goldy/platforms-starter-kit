@@ -41,6 +41,7 @@ import {
   MonitorDot,
   Network,
   PanelTop,
+  Phone,
   Plug,
   Settings,
   Workflow,
@@ -260,6 +261,7 @@ export default async function OrganizationDetailPage({
             <AdminSurface href={`/app/organizations/${orgId}/notices`} icon={Bell} title="Notices" description="Maintenance banners and customer portal notices" />
             <AdminSurface href={`/app/organizations/${orgId}/email-settings`} icon={Mail} title="Email-to-Ticket" description={org.intakeEmailAddress || "Configure intake and auto-replies"} />
             <AdminSurface href={`/app/organizations/${orgId}/ai-settings`} icon={Sparkles} title="AI Settings" description="Data access, suggestions, and assistant controls" />
+            <AdminSurface href={`/app/organizations/${orgId}/contact-info`} icon={Phone} title="Support contacts" description="Phone, email, and URL for customer emails" />
             <AdminSurface href={`/app/admin/audit?orgId=${orgId}`} icon={History} title="Audit Trail" description={`${auditSummary.total} immutable events`} />
           </nav>
           <div className="mt-4 pt-4 border-t">

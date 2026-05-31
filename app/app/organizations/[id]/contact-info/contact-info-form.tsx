@@ -24,10 +24,16 @@ type ContactInfo = {
 };
 
 interface ContactInfoFormProps {
+  orgId: string;
+  orgName: string;
   initial: ContactInfo;
 }
 
-export function ContactInfoForm({ initial }: ContactInfoFormProps) {
+export function ContactInfoForm({
+  orgId,
+  orgName,
+  initial,
+}: ContactInfoFormProps) {
   const { success, error: showError } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -54,7 +60,7 @@ export function ContactInfoForm({ initial }: ContactInfoFormProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const result = await updateOrgContactInfo({
+      const result = await updateOrgContactInfo(orgId, {
         supportPhone: form.supportPhone,
         supportEmail: form.supportEmail,
         supportUrl: form.supportUrl,
@@ -76,7 +82,7 @@ export function ContactInfoForm({ initial }: ContactInfoFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Support contacts</CardTitle>
+        <CardTitle>Support contacts for {orgName}</CardTitle>
         <CardDescription>
           These details appear in emails sent to your customers
         </CardDescription>

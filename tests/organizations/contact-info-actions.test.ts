@@ -5,7 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import {
   getOrgContactInfo,
   updateOrgContactInfo,
-} from "@/app/app/settings/contact-info/actions";
+} from "@/app/app/organizations/[id]/contact-info/actions";
 import { getRequestContext } from "@/lib/auth/context";
 
 vi.mock("@/lib/auth/context", () => ({
@@ -109,7 +109,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await getOrgContactInfo();
+    const result = await getOrgContactInfo(org.id);
     expect(result.orgId).toBe(org.id);
     expect(result.supportPhone).toBeNull();
     expect(result.supportEmail).toBeNull();
@@ -134,62 +134,14 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await getOrgContactInfo();
+    const result = await getOrgContactInfo(org.id);
     expect(result.orgId).toBe(org.id);
     expect(result.supportPhone).toBe("+1 555 0100");
     expect(result.supportEmail).toBe("help@example.com");
     expect(result.supportUrl).toBe("https://help.example.com");
   });
 
-  it("getOrgContactInfo uses context.org when subdomain-resolved", async () => {
-    const { org, admin } = await createOrgAndAdmin();
-
-    mockGetRequestContext.mockResolvedValue({
-      user: admin,
-      isPlatformAdmin: false,
-      platformAdmin: null,
-      org,
-      membership: null,
-    });
-
-    const result = await getOrgContactInfo();
-    expect(result.orgId).toBe(org.id);
-  });
-
-  it("getOrgContactInfo falls back to oldest active membership", async () => {
-    const { org: org1, admin } = await createOrgAndAdmin();
-
-    // Create a second org and membership (newer)
-    const [org2] = await db
-      .insert(organizations)
-      .values({
-        name: `contact-info-test-org2-${Date.now()}`,
-        slug: `contact-info-test-org2-${Date.now()}`,
-        subdomain: `contact-info-test-org2-${Date.now()}`,
-      })
-      .returning();
-
-    await db.insert(memberships).values({
-      userId: admin.id,
-      orgId: org2.id,
-      role: "ADMIN",
-      isActive: true,
-    });
-
-    // No org in context, so it should fall back to oldest membership (org1)
-    mockGetRequestContext.mockResolvedValue({
-      user: admin,
-      isPlatformAdmin: false,
-      platformAdmin: null,
-      org: null,
-      membership: null,
-    });
-
-    const result = await getOrgContactInfo();
-    expect(result.orgId).toBe(org1.id);
-  });
-
-  it("getOrgContactInfo throws when user is not an admin", async () => {
+  it("getOrgContactInfo throws when user is not an admin of the org", async () => {
     const { org } = await createOrgAndAdmin();
     const member = await createMember(org.id);
 
@@ -201,31 +153,14 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    await expect(getOrgContactInfo()).rejects.toThrow("Insufficient organization role");
-  });
-
-  it("getOrgContactInfo throws when no org context and no memberships", async () => {
-    const [lonelyUser] = await db
-      .insert(users)
-      .values({
-        email: `contact-info-test-lonely-${Date.now()}@example.com`,
-        name: "Lonely User",
-        isInternal: false,
-      })
-      .returning();
-
-    mockGetRequestContext.mockResolvedValue({
-      user: lonelyUser,
-      isPlatformAdmin: false,
-      platformAdmin: null,
-      org: null,
-      membership: null,
-    });
-
-    await expect(getOrgContactInfo()).rejects.toThrow("No organization context available");
+    await expect(getOrgContactInfo(org.id)).rejects.toThrow(
+      "Insufficient organization role",
+    );
   });
 
   it("getOrgContactInfo throws when unauthenticated", async () => {
+    const { org } = await createOrgAndAdmin();
+
     mockGetRequestContext.mockResolvedValue({
       user: null,
       isPlatformAdmin: false,
@@ -234,7 +169,9 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    await expect(getOrgContactInfo()).rejects.toThrow("Authentication required");
+    await expect(getOrgContactInfo(org.id)).rejects.toThrow(
+      "Authentication required",
+    );
   });
 
   it("updateOrgContactInfo inserts new row when none exists", async () => {
@@ -248,7 +185,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await updateOrgContactInfo({
+    const result = await updateOrgContactInfo(org.id, {
       supportPhone: "+1 555 0100",
       supportEmail: "help@example.com",
       supportUrl: "https://help.example.com",
@@ -262,7 +199,6 @@ run("contact info server actions", () => {
     expect(result.contactInfo.supportEmail).toBe("help@example.com");
     expect(result.contactInfo.supportUrl).toBe("https://help.example.com");
 
-    // Verify DB
     const row = await db.query.orgContactInfo.findFirst({
       where: eq(orgContactInfo.orgId, org.id),
     });
@@ -288,7 +224,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await updateOrgContactInfo({
+    const result = await updateOrgContactInfo(org.id, {
       supportPhone: "+1 555 9999",
       supportEmail: "new@example.com",
       supportUrl: "https://new.example.com",
@@ -299,7 +235,6 @@ run("contact info server actions", () => {
 
     expect(result.contactInfo.supportPhone).toBe("+1 555 9999");
 
-    // Verify DB
     const row = await db.query.orgContactInfo.findFirst({
       where: eq(orgContactInfo.orgId, org.id),
     });
@@ -318,7 +253,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await updateOrgContactInfo({
+    const result = await updateOrgContactInfo(org.id, {
       supportEmail: "not-an-email",
     });
 
@@ -337,7 +272,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await updateOrgContactInfo({
+    const result = await updateOrgContactInfo(org.id, {
       supportUrl: "ftp://help.example.com",
     });
 
@@ -356,7 +291,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await updateOrgContactInfo({
+    const result = await updateOrgContactInfo(org.id, {
       supportPhone: "+1 555 0100 ".repeat(10),
     });
 
@@ -364,11 +299,10 @@ run("contact info server actions", () => {
     expect(result.error).toBe("Invalid contact info data");
   });
 
-  it("updateOrgContactInfo cannot update another org's contact info (IDOR)", async () => {
+  it("IDOR: admin of org A cannot edit org B's contact info", async () => {
     const { org: orgA, admin: adminA } = await createOrgAndAdmin();
-    const { org: orgB, admin: adminB } = await createOrgAndAdmin();
+    const { org: orgB } = await createOrgAndAdmin();
 
-    // Set up contact info for orgB
     await db.insert(orgContactInfo).values({
       orgId: orgB.id,
       supportPhone: "+1 555 0200",
@@ -376,7 +310,7 @@ run("contact info server actions", () => {
       supportUrl: "https://orgB.example.com",
     });
 
-    // Authenticate as adminA (orgA) but try to update with orgB context
+    // Authenticate as adminA (orgA)
     mockGetRequestContext.mockResolvedValue({
       user: adminA,
       isPlatformAdmin: false,
@@ -385,20 +319,14 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    // AdminA updates orgA's contact info
-    const result = await updateOrgContactInfo({
-      supportPhone: "+1 555 0300",
-      supportEmail: "orgA@example.com",
-      supportUrl: "https://orgA.example.com",
-    });
-
-    expect(result.success).toBe(true);
-
-    // Verify orgA was updated
-    const rowA = await db.query.orgContactInfo.findFirst({
-      where: eq(orgContactInfo.orgId, orgA.id),
-    });
-    expect(rowA!.supportPhone).toBe("+1 555 0300");
+    // adminA tries to update orgB's contact info
+    await expect(
+      updateOrgContactInfo(orgB.id, {
+        supportPhone: "+1 555 0300",
+        supportEmail: "orgA@example.com",
+        supportUrl: "https://orgA.example.com",
+      }),
+    ).rejects.toThrow("Organization membership required");
 
     // Verify orgB was NOT changed
     const rowB = await db.query.orgContactInfo.findFirst({
@@ -408,7 +336,7 @@ run("contact info server actions", () => {
     expect(rowB!.supportEmail).toBe("orgB@example.com");
   });
 
-  it("updateOrgContactInfo rejects non-admin member", async () => {
+  it("IDOR: non-admin member of org cannot edit contact info", async () => {
     const { org } = await createOrgAndAdmin();
     const member = await createMember(org.id);
 
@@ -421,10 +349,40 @@ run("contact info server actions", () => {
     });
 
     await expect(
-      updateOrgContactInfo({
+      updateOrgContactInfo(org.id, {
         supportPhone: "+1 555 0100",
       }),
     ).rejects.toThrow("Insufficient organization role");
+  });
+
+  it("platform admin can edit any org's contact info", async () => {
+    const { org } = await createOrgAndAdmin();
+    const platformAdmin = {
+      id: "platform-admin-1",
+      email: "platform@example.com",
+      name: "Platform Admin",
+      role: "SUPER_ADMIN",
+      isActive: true,
+    };
+
+    mockGetRequestContext.mockResolvedValue({
+      user: null,
+      isPlatformAdmin: true,
+      platformAdmin,
+      org: null,
+      membership: null,
+    });
+
+    const result = await updateOrgContactInfo(org.id, {
+      supportPhone: "+1 555 7777",
+      supportEmail: "platform@example.com",
+      supportUrl: "https://platform.example.com",
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.contactInfo.supportPhone).toBe("+1 555 7777");
   });
 
   it("updateOrgContactInfo handles empty strings as null", async () => {
@@ -438,7 +396,7 @@ run("contact info server actions", () => {
       membership: null,
     });
 
-    const result = await updateOrgContactInfo({
+    const result = await updateOrgContactInfo(org.id, {
       supportPhone: "",
       supportEmail: "",
       supportUrl: "",
